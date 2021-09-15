@@ -4,7 +4,7 @@ Generate an opinionated Dart package from a Rust library. Extremely fast perform
 
 ## Example
 
-First create a lib.rs that exposes a `RUNTIME` static that will survive for the lifetime of the program:
+First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program:
 ``` rust
 use once_cell::sync::Lazy;
 use tokio::runtime::{Builder, Runtime};
@@ -35,7 +35,7 @@ pub async fn contact(id: String) -> Result<account::Contact, account::Error> {
 }
 ```
 
-And now you are ready to generate the Dart package. Note that this goes in a `bin.rs` to be ran with `cargo run` as part of compilation rather than in a `build.rs` which is just before compilation:
+And now you are ready to generate the Dart package. Note that this goes in a `bin.rs` as part of your program to be ran with `cargo run` rather than in a `build.rs` (which only runs before compilation):
 
 ``` rust
 fn main() {

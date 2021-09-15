@@ -9,6 +9,7 @@ crate-type = ["lib"]
 
 [features]
 generate = ["membrane_macro/generate"]
+skip-generate = ["membrane_macro/skip-generate"]
 
 [dependencies]
 allo-isolate = "0.1.9"

@@ -1,0 +1,26 @@
+[package]
+default-run = "generator"
+edition = "2018"
+name = "example"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "generator"
+path = "src/generator.rs"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[features]
+codegen = ["membrane/generate"]
+skip-codegen = ["membrane/skip-generate"]
+
+[dependencies]
+futures = "0.3"
+membrane = {path = "../membrane"}
+once_cell = "1.8"
+serde = {version = "1.0", features = ["derive"]}
+tokio = {version = "1", features = ["full"]}
+tokio-stream = "0.1"

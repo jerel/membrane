@@ -36,6 +36,7 @@ pub struct Membrane {
   namespaces: Vec<String>,
   namespaced_registry: HashMap<String, Tracer>,
   namespaced_fn_registry: HashMap<String, Vec<Function>>,
+  generated: bool,
 }
 
 impl Membrane {
@@ -70,6 +71,7 @@ impl Membrane {
       namespaced_registry,
       namespaced_fn_registry,
       namespaces,
+      generated: false,
     }
   }
 
@@ -91,8 +93,15 @@ impl Membrane {
   pub fn create_pub_package(&mut self) -> &mut Self {
     use serde_generate::SourceInstaller;
 
+    #[cfg(all(
+      any(not(debug_assertions), feature = "skip-generate"),
+      not(feature = "generate")
+    ))]
+    return self;
+
     // remove all previously generated type and header files
     let _ = std::fs::remove_dir_all(self.destination.clone() + "/lib");
+    let _ = std::fs::remove_file(self.destination.clone() + "/pubspec.yaml");
     std::fs::create_dir_all(self.destination.clone() + "/lib/src").unwrap();
 
     let source = std::path::PathBuf::from(self.destination.clone());
@@ -110,18 +119,8 @@ impl Membrane {
       generator.output(source.clone(), &registry).unwrap();
     }
 
-    // serde-generate uses the last namespace as the pubspec name and dart doesn't
-    // like that so we replace it with the name of the package folder
-    let package_name = self.destination.rsplit('/').next().unwrap();
-    let path = self.destination.clone() + "/pubspec.yaml";
-    let re = regex::Regex::new(r"^name:(.*?)\n").unwrap();
-    let pubspec = re
-      .replace(
-        std::fs::read_to_string(&path).unwrap().as_str(),
-        "name: ".to_string() + package_name + "\n",
-      )
-      .to_string();
-    std::fs::write(path, pubspec).unwrap();
+    self.generated = true;
+    self.write_pubspec();
 
     self
   }
@@ -141,13 +140,19 @@ impl Membrane {
       self.create_class(x.to_string());
     });
 
-    self.create_loader();
+    if self.generated {
+      self.create_loader();
+    }
 
     self
   }
 
   pub fn run_dart_ffigen(&mut self) -> &mut Self {
     use std::io::Write;
+    if !self.generated {
+      return self;
+    }
+
     self.write_ffigen_config();
 
     let ffigen = std::process::Command::new("dart")
@@ -173,6 +178,30 @@ impl Membrane {
   ///
   /// Private implementations
   ///
+
+  fn write_pubspec(&mut self) -> &mut Self {
+    // serde-generate uses the last namespace as the pubspec name and dart doesn't
+    // like that so we replace it with the name of the package folder
+    let package_name = self.destination.rsplit('/').next().unwrap();
+    let path = self.destination.clone() + "/pubspec.yaml";
+    let re = regex::Regex::new(r"^name:(.*?)\n").unwrap();
+    match std::fs::read_to_string(&path) {
+      Ok(old) => {
+        let pubspec = re
+          .replace(
+            old.as_str().trim(),
+            "name: ".to_string() + package_name + "\n",
+          )
+          .to_string();
+
+        let extra_deps = "\n  meta: ^1.7.0\n";
+        std::fs::write(path, pubspec + extra_deps).unwrap();
+      }
+      Err(_) => (),
+    }
+
+    self
+  }
 
   fn write_ffigen_config(&mut self) -> &mut Self {
     let config = r#"
@@ -257,7 +286,7 @@ final bindings = _load();"#,
 
   fn create_class(&mut self, namespace: String) -> &mut Self {
     use std::io::prelude::*;
-    let path = self.destination.clone() + "/lib/" + &namespace + "_api.dart";
+    let path = self.destination.clone() + "/lib/" + &namespace + ".dart";
     let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
 
     let head = format!(

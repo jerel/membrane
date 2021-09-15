@@ -267,7 +267,11 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
       }
   };
 
-  #[cfg(feature = "generate")]
+  // by default only enable tracing in the dev profile or with an explicit flag
+  #[cfg(all(
+    any(debug_assertions, feature = "generate"),
+    not(feature = "skip-generate")
+  ))]
   functions.extend::<TokenStream>(_deferred_trace.into());
 
   functions
