@@ -1,0 +1,8 @@
+[workspace]
+exclude = [
+  "example",
+]
+members = [
+  "membrane_macro",
+  "membrane",
+]
