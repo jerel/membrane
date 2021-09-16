@@ -11,9 +11,9 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Function {
-  pub c_fn_name: String,
+  pub extern_c_fn_name: String,
   pub fn_name: String,
-  pub c_fn_args: String,
+  pub rust_c_fn_args: String,
   pub fn_args: String,
   pub is_stream: bool,
   pub return_type: String,
@@ -355,12 +355,12 @@ impl Function {
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "int32_t {c_fn_name}(int64_t port{c_fn_args});",
-      c_fn_name = self.c_fn_name,
-      c_fn_args = if self.c_fn_args.is_empty() {
+      "int32_t {extern_c_fn_name}(int64_t port{rust_c_fn_args});",
+      extern_c_fn_name = self.extern_c_fn_name,
+      rust_c_fn_args = if self.rust_c_fn_args.is_empty() {
         String::new()
       } else {
-        String::from(", ") + &self.c_fn_args
+        String::from(", ") + &self.rust_c_fn_args
       }
     )
     .as_str();
@@ -373,16 +373,16 @@ impl Function {
     ReceivePort port = new ReceivePort();
     port.timeout(Duration(milliseconds: 200));
 
-    if (_bindings.{c_fn_name}(port.sendPort.nativePort{c_fn_args}) < 1) {{
+    if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{rust_c_fn_args}) < 1) {{
       throw 'Call to C failed';
     }}
 "#,
       fn_transforms = "",
-      c_fn_name = self.c_fn_name,
-      c_fn_args = if self.c_fn_args.is_empty() {
+      extern_c_fn_name = self.extern_c_fn_name,
+      rust_c_fn_args = if self.rust_c_fn_args.is_empty() {
         String::new()
       } else {
-        String::from(", ") + &self.c_fn_args
+        String::from(", ") + &self.rust_c_fn_args
       }
     )
     .as_str();

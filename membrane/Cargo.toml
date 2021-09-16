@@ -19,6 +19,7 @@ futures = "0.3"
 heck = "0.3"
 inventory = "0.1"
 membrane_macro = {path = "../membrane_macro"}
+membrane_types = {path = "../membrane_types"}
 regex = "1.5"
 serde = {version = "1.0", features = ["derive"]}
 serde-generate = {git = "https://github.com/jerel/serde-reflection", rev = "d3cc7eb"}

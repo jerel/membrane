@@ -1,29 +1,12 @@
 extern crate proc_macro;
+use membrane_types::{
+  proc_macro2, quote, syn, Input, OutputStyle, RustArgs, RustExternParams, RustTransform,
+};
 use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use std::fmt;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{parse_macro_input, Block, Error, FnArg, Ident, LitStr, PatType, Path, Token};
-
-#[derive(Debug)]
-struct Input {
-  variable: String,
-  rust_type: String,
-  ty: syn::Type,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum OutputStyle {
-  StreamSerialized,
-  Serialized,
-}
-
-impl fmt::Display for OutputStyle {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{:?}", self)
-  }
-}
 
 struct ReprDartAttrs {
   namespace: String,
@@ -121,23 +104,6 @@ impl Parse for ReprDart {
   }
 }
 
-fn to_c_type(ty: &str) -> proc_macro2::TokenStream {
-  match ty {
-    "String" => quote!(*const ::std::os::raw::c_char),
-    _ => panic!("c type not yet supported"),
-  }
-}
-
-fn cast_c_type(ty: &str, variable: &str) -> proc_macro2::TokenStream {
-  match ty {
-    "String" => {
-      let variable = Ident::new(variable, Span::call_site());
-      quote!(cstr!(#variable).to_string())
-    }
-    _ => panic!("casting c type not yet supported"),
-  }
-}
-
 #[proc_macro_attribute]
 pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let ReprDartAttrs { namespace } = parse_macro_input!(attrs as ReprDartAttrs);
@@ -154,29 +120,9 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
     ..
   } = parse_macro_input!(input as ReprDart);
 
-  let outer_rust_inputs: Vec<proc_macro2::TokenStream> = inputs
-    .iter()
-    .map(|i| {
-      let variable = Ident::new(&i.variable, Span::call_site());
-      let c_type = to_c_type(&i.rust_type);
-      quote!(#variable: #c_type)
-    })
-    .collect();
-
-  let transform_rust_inputs: Vec<proc_macro2::TokenStream> = inputs
-    .iter()
-    .map(|i| {
-      let variable = Ident::new(&i.variable, Span::call_site());
-      let cast = cast_c_type(&i.rust_type, &i.variable);
-
-      quote!(let #variable = #cast;)
-    })
-    .collect();
-
-  let inner_rust_inputs: Vec<Ident> = inputs
-    .iter()
-    .map(|i| Ident::new(&i.variable, Span::call_site()))
-    .collect();
+  let extern_c_fn_params: Vec<TokenStream2> = RustExternParams::from(&inputs).into();
+  let transform_extern_c_to_rust: Vec<TokenStream2> = RustTransform::from(&inputs).into();
+  let rust_fn_args: Vec<Ident> = RustArgs::from(&inputs).into();
 
   let serializer = quote! {
       match result {
@@ -197,7 +143,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
     OutputStyle::StreamSerialized => {
       quote! {
           use ::futures::stream::StreamExt;
-          let mut stream = #fn_name(#(#inner_rust_inputs),*);
+          let mut stream = #fn_name(#(#rust_fn_args),*);
           while let Some(result) = stream.next().await {
               let result: ::std::result::Result<#output, #error> = result;
               #serializer
@@ -205,12 +151,12 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
       }
     }
     OutputStyle::Serialized => quote! {
-        let result: ::std::result::Result<#output, #error> = #fn_name(#(#inner_rust_inputs),*).await;
+        let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_fn_args),*).await;
         #serializer
     },
   };
 
-  let c_fn_name = Ident::new(
+  let extern_c_fn_name = Ident::new(
     format!("membrane_{}_{}", namespace, fn_name).as_str(),
     Span::call_site(),
   );
@@ -218,14 +164,14 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #c_fn_name(port: i64, #(#outer_rust_inputs),*) -> i32 {
+      pub extern "C" fn #extern_c_fn_name(port: i64, #(#extern_c_fn_params),*) -> i32 {
           use crate::RUNTIME;
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
           let isolate = ::membrane::allo_isolate::Isolate::new(port);
 
-          #(#transform_rust_inputs)*
+          #(#transform_extern_c_to_rust)*
           RUNTIME.spawn(async move {
               #return_statement
           });
@@ -236,7 +182,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
   functions.extend::<TokenStream>(c_fn.into());
 
-  let c_name = c_fn_name.to_string();
+  let c_name = extern_c_fn_name.to_string();
   let name = fn_name.to_string();
   let is_stream = output_style == OutputStyle::StreamSerialized;
   let return_type = output.segments.last().unwrap().ident.to_string();
@@ -247,9 +193,9 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
           #![crate = ::membrane]
           ::membrane::DeferredTrace {
               function: ::membrane::Function {
-                c_fn_name: #c_name.to_string(),
+                extern_c_fn_name: #c_name.to_string(),
                 fn_name: #name.to_string(),
-                c_fn_args: "".to_string(),
+                rust_c_fn_args: "".to_string(),
                 fn_args: "".to_string(),
                 is_stream: #is_stream,
                 return_type: #return_type.to_string(),

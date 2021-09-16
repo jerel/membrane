@@ -412,6 +412,7 @@ dependencies = [
  "heck",
  "inventory",
  "membrane_macro",
+ "membrane_types",
  "regex",
  "serde",
  "serde-generate",
@@ -420,6 +421,13 @@ dependencies = [
 
 [[package]]
 name = "membrane_macro"
+version = "0.1.0"
+dependencies = [
+ "membrane_types",
+]
+
+[[package]]
+name = "membrane_types"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",

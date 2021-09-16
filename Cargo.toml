@@ -5,4 +5,5 @@ exclude = [
 members = [
   "membrane_macro",
   "membrane",
+  "membrane_types",
 ]
