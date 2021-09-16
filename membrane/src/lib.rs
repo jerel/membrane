@@ -12,14 +12,16 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct Function {
   pub extern_c_fn_name: String,
+  pub extern_c_fn_types: String,
   pub fn_name: String,
-  pub rust_c_fn_args: String,
-  pub fn_args: String,
   pub is_stream: bool,
   pub return_type: String,
   pub error_type: String,
   pub namespace: String,
   pub output: String,
+  pub dart_outer_params: String,
+  pub dart_transforms: String,
+  pub dart_inner_args: String,
 }
 
 pub struct DeferredTrace {
@@ -194,7 +196,7 @@ impl Membrane {
           )
           .to_string();
 
-        let extra_deps = "\n  meta: ^1.7.0\n";
+        let extra_deps = "\n  ffi: ^1.1.2\n  meta: ^1.7.0\n";
         std::fs::write(path, pubspec + extra_deps).unwrap();
       }
       Err(_) => (),
@@ -293,6 +295,7 @@ final bindings = _load();"#,
       r#"import 'dart:ffi';
 import 'dart:isolate' show ReceivePort;
 import 'dart:typed_data';
+import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 
 import './src/loader.dart' as loader;
@@ -343,11 +346,11 @@ impl Function {
 
   pub fn signature(&mut self) -> &mut Self {
     self.output += format!(
-      "  {output_style}<{return_type}> {fn_name}({fn_args}){asink}",
+      "  {output_style}<{return_type}> {fn_name}({fn_params}){asink}",
       output_style = if self.is_stream { "Stream" } else { "Future" },
       return_type = self.return_type,
       fn_name = self.fn_name,
-      fn_args = self.fn_args,
+      fn_params = self.dart_outer_params,
       asink = if self.is_stream { "" } else { " async" }
     )
     .as_str();
@@ -355,12 +358,12 @@ impl Function {
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "int32_t {extern_c_fn_name}(int64_t port{rust_c_fn_args});",
+      "int32_t {extern_c_fn_name}(int64_t port{extern_c_fn_types});",
       extern_c_fn_name = self.extern_c_fn_name,
-      rust_c_fn_args = if self.rust_c_fn_args.is_empty() {
+      extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
         String::new()
       } else {
-        String::from(", ") + &self.rust_c_fn_args
+        String::from(", ") + &self.extern_c_fn_types
       }
     )
     .as_str();
@@ -373,16 +376,20 @@ impl Function {
     ReceivePort port = new ReceivePort();
     port.timeout(Duration(milliseconds: 200));
 
-    if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{rust_c_fn_args}) < 1) {{
+    if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{dart_inner_args}) < 1) {{
       throw 'Call to C failed';
     }}
 "#,
-      fn_transforms = "",
-      extern_c_fn_name = self.extern_c_fn_name,
-      rust_c_fn_args = if self.rust_c_fn_args.is_empty() {
+      fn_transforms = if self.dart_transforms.is_empty() {
         String::new()
       } else {
-        String::from(", ") + &self.rust_c_fn_args
+        "\n    ".to_string() + &self.dart_transforms + ";"
+      },
+      extern_c_fn_name = self.extern_c_fn_name,
+      dart_inner_args = if self.dart_inner_args.is_empty() {
+        String::new()
+      } else {
+        String::from(", ") + &self.dart_inner_args
       }
     )
     .as_str();

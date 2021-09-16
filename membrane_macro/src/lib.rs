@@ -1,7 +1,8 @@
 extern crate proc_macro;
-use membrane_types::{
-  proc_macro2, quote, syn, Input, OutputStyle, RustArgs, RustExternParams, RustTransform,
-};
+use membrane_types::c::CHeaderTypes;
+use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
+use membrane_types::rust::{RustArgs, RustExternParams, RustTransforms};
+use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
@@ -120,9 +121,15 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
     ..
   } = parse_macro_input!(input as ReprDart);
 
-  let extern_c_fn_params: Vec<TokenStream2> = RustExternParams::from(&inputs).into();
-  let transform_extern_c_to_rust: Vec<TokenStream2> = RustTransform::from(&inputs).into();
-  let rust_fn_args: Vec<Ident> = RustArgs::from(&inputs).into();
+  let rust_outer_params: Vec<TokenStream2> = RustExternParams::from(&inputs).into();
+  let rust_transforms: Vec<TokenStream2> = RustTransforms::from(&inputs).into();
+  let rust_inner_args: Vec<Ident> = RustArgs::from(&inputs).into();
+
+  let c_header_types: Vec<String> = CHeaderTypes::from(&inputs).into();
+
+  let dart_outer_params: Vec<String> = DartParams::from(&inputs).into();
+  let dart_transforms: Vec<String> = DartTransforms::from(&inputs).into();
+  let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
   let serializer = quote! {
       match result {
@@ -143,7 +150,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
     OutputStyle::StreamSerialized => {
       quote! {
           use ::futures::stream::StreamExt;
-          let mut stream = #fn_name(#(#rust_fn_args),*);
+          let mut stream = #fn_name(#(#rust_inner_args),*);
           while let Some(result) = stream.next().await {
               let result: ::std::result::Result<#output, #error> = result;
               #serializer
@@ -151,7 +158,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
       }
     }
     OutputStyle::Serialized => quote! {
-        let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_fn_args),*).await;
+        let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
         #serializer
     },
   };
@@ -164,14 +171,14 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #extern_c_fn_name(port: i64, #(#extern_c_fn_params),*) -> i32 {
+      pub extern "C" fn #extern_c_fn_name(port: i64, #(#rust_outer_params),*) -> i32 {
           use crate::RUNTIME;
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
           let isolate = ::membrane::allo_isolate::Isolate::new(port);
 
-          #(#transform_extern_c_to_rust)*
+          #(#rust_transforms)*
           RUNTIME.spawn(async move {
               #return_statement
           });
@@ -183,10 +190,15 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   functions.extend::<TokenStream>(c_fn.into());
 
   let c_name = extern_c_fn_name.to_string();
+  let c_header_types = c_header_types.join(", ");
   let name = fn_name.to_string();
   let is_stream = output_style == OutputStyle::StreamSerialized;
   let return_type = output.segments.last().unwrap().ident.to_string();
   let error_type = error.segments.last().unwrap().ident.to_string();
+
+  let dart_outer_params = dart_outer_params.join(", ");
+  let dart_transforms = dart_transforms.join(";\n    ");
+  let dart_inner_args = dart_inner_args.join(", ");
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
@@ -194,13 +206,15 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
           ::membrane::DeferredTrace {
               function: ::membrane::Function {
                 extern_c_fn_name: #c_name.to_string(),
+                extern_c_fn_types: #c_header_types.to_string(),
                 fn_name: #name.to_string(),
-                rust_c_fn_args: "".to_string(),
-                fn_args: "".to_string(),
                 is_stream: #is_stream,
                 return_type: #return_type.to_string(),
                 error_type: #error_type.to_string(),
                 namespace: #namespace.to_string(),
+                dart_outer_params: #dart_outer_params.to_string(),
+                dart_transforms: #dart_transforms.to_string(),
+                dart_inner_args: #dart_inner_args.to_string(),
                 output: "".to_string(),
               },
               namespace: #namespace.to_string(),
