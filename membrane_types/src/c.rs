@@ -27,7 +27,10 @@ impl From<CHeaderTypes> for Vec<String> {
 fn c_type(ty: &str) -> String {
   match ty {
     "String" => "const char *",
-    _ => panic!("C type not yet supported"),
+    "i64" => "signed long ",
+    "f64" => "double ",
+    "bool" => "const char ", // u8
+    _ => panic!("C type {} not yet supported in header generation", ty),
   }
   .to_string()
 }

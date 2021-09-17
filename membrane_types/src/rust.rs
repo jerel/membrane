@@ -69,7 +69,10 @@ impl From<RustArgs> for Vec<Ident> {
 fn rust_c_type(ty: &str) -> TokenStream2 {
   match ty {
     "String" => q!(*const ::std::os::raw::c_char),
-    _ => panic!("c type not yet supported"),
+    "i64" => q!(::std::os::raw::c_long),
+    "f64" => q!(::std::os::raw::c_double),
+    "bool" => q!(::std::os::raw::c_char), // u8
+    _ => panic!("C type {} not yet supported", ty),
   }
 }
 
@@ -79,6 +82,19 @@ fn cast_c_type_to_rust(ty: &str, variable: &str) -> TokenStream2 {
       let variable = Ident::new(variable, Span::call_site());
       q!(cstr!(#variable).to_string())
     }
-    _ => panic!("casting c type not yet supported"),
+    "i64" => {
+      let variable = Ident::new(variable, Span::call_site());
+      q!(#variable)
+    }
+    "f64" => {
+      let variable = Ident::new(variable, Span::call_site());
+      q!(#variable)
+    }
+    "bool" => {
+      let variable = Ident::new(variable, Span::call_site());
+      q!(#variable != 0)
+    }
+
+    _ => panic!("casting C type {} not yet supported", ty),
   }
 }

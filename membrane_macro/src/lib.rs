@@ -7,7 +7,8 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parse_macro_input, Block, Error, FnArg, Ident, LitStr, PatType, Path, Token};
+use syn::punctuated::Punctuated;
+use syn::{parse_macro_input, Block, Error, Expr, Ident, LitStr, Path, Token};
 
 struct ReprDartAttrs {
   namespace: String,
@@ -80,22 +81,20 @@ impl Parse for ReprDart {
     Ok(ReprDart {
       fn_name,
       inputs: {
-        let mut args = Vec::new();
-        while !arg_buffer.is_empty() {
-          match arg_buffer.parse()? {
-            FnArg::Typed(PatType { pat, ty, .. }) => {
-              args.push(Input {
-                variable: quote!(#pat).to_string(),
-                rust_type: quote!(#ty).to_string(),
-                ty: *ty,
-              });
-            }
-            FnArg::Receiver(_) => {
+        let args: Punctuated<Expr, Token![,]> = arg_buffer.parse_terminated(Expr::parse)?;
+        args
+          .iter()
+          .map(|arg| match arg {
+            Expr::Type(syn::ExprType { ty, expr: var, .. }) => Input {
+              variable: quote!(#var).to_string(),
+              rust_type: quote!(#ty).to_string(),
+              ty: *ty.clone(),
+            },
+            _ => {
               panic!("self is not supported in #[async_dart] functions");
             }
-          }
-        }
-        args
+          })
+          .collect()
       },
       output_style,
       output: ret_type,

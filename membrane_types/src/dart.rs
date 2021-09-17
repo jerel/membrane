@@ -69,7 +69,10 @@ impl From<DartArgs> for Vec<String> {
 fn dart_type(ty: &str) -> String {
   match ty {
     "String" => "String",
-    _ => panic!("dart type not yet supported"),
+    "i64" => "int",
+    "f64" => "double",
+    "bool" => "bool",
+    _ => panic!("Dart type {} not yet supported", ty),
   }
   .to_string()
 }
@@ -82,6 +85,9 @@ fn cast_dart_type_to_c(ty: &str, variable: &str) -> String {
         variable = variable
       )
     }
-    _ => panic!("casting dart to c type not yet supported"),
+    "i64" => format!("{variable}", variable = variable),
+    "f64" => format!("{variable}", variable = variable),
+    "bool" => format!("{variable} ? 1 : 0", variable = variable),
+    _ => panic!("Casting Dart to C type {} not yet supported", ty),
   }
 }
