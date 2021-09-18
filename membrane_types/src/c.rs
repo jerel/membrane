@@ -29,8 +29,8 @@ fn c_type(ty: &str) -> String {
     "String" => "const char *",
     "i64" => "signed long ",
     "f64" => "double ",
-    "bool" => "const char ", // u8
-    _ => panic!("C type {} not yet supported in header generation", ty),
+    "bool" => "uint8_t ",
+    _serialized => "uint8_t *",
   }
   .to_string()
 }

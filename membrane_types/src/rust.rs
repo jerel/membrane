@@ -2,7 +2,7 @@ use crate::Input;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote as q;
-use syn::Ident;
+use syn::{Ident, Type};
 
 pub struct RustExternParams(Vec<TokenStream2>);
 pub struct RustTransforms(Vec<TokenStream2>);
@@ -28,7 +28,7 @@ impl From<&Vec<Input>> for RustTransforms {
 
     for input in inputs {
       let variable = Ident::new(&input.variable, Span::call_site());
-      let cast = cast_c_type_to_rust(&input.rust_type, &input.variable);
+      let cast = cast_c_type_to_rust(&input.rust_type, &input.variable, &input.ty);
       stream.push(q!(let #variable = #cast;))
     }
 
@@ -71,13 +71,13 @@ fn rust_c_type(ty: &str) -> TokenStream2 {
     "String" => q!(*const ::std::os::raw::c_char),
     "i64" => q!(::std::os::raw::c_long),
     "f64" => q!(::std::os::raw::c_double),
-    "bool" => q!(::std::os::raw::c_char), // u8
-    _ => panic!("C type {} not yet supported", ty),
+    "bool" => q!(::std::os::raw::c_char), // i8
+    _serialized => q!(*const u8),
   }
 }
 
-fn cast_c_type_to_rust(ty: &str, variable: &str) -> TokenStream2 {
-  match ty {
+fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 {
+  match str_ty {
     "String" => {
       let variable = Ident::new(variable, Span::call_site());
       q!(cstr!(#variable).to_string())
@@ -94,7 +94,23 @@ fn cast_c_type_to_rust(ty: &str, variable: &str) -> TokenStream2 {
       let variable = Ident::new(variable, Span::call_site());
       q!(#variable != 0)
     }
-
-    _ => panic!("casting C type {} not yet supported", ty),
+    _serialized => {
+      let variable_name = variable;
+      let variable = Ident::new(variable, Span::call_site());
+      q! {
+          {
+            let data = unsafe {
+              // read the first 8 bytes to get the length of the full payload (including the length byte)
+              let length = ::std::slice::from_raw_parts::<u8>(#variable, 1 as usize)[0];
+              // read the payload from the pointer
+              ::std::slice::from_raw_parts(#variable, length as usize)
+            };
+            // deserialize, skipping the known 8 byte length field
+            ::membrane::bincode::deserialize::<#ty>(&data[8..]).expect(
+              format!("Deserialization error at variable '{}' of type '{}'", #variable_name, #str_ty).as_str()
+            )
+          }
+      }
+    }
   }
 }

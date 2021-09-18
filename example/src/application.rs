@@ -15,3 +15,21 @@ pub async fn contact(id: String) -> Result<data::Contact, data::Error> {
     ..Default::default()
   })
 }
+
+#[async_dart(namespace = "accounts")]
+pub async fn update_contact(
+  id: String,
+  contact: data::Contact,
+  send_email: bool,
+) -> Result<data::Contact, data::Error> {
+  println!(
+    "Rust received id {} with send_email flag {}: {:?}",
+    id, send_email, contact
+  );
+  Ok(contact)
+}
+  Ok(data::Contact {
+    id: id.parse().unwrap(),
+    ..Default::default()
+  })
+}

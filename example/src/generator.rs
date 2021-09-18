@@ -20,7 +20,10 @@ import 'package:dart_example/accounts.dart';
 
 void main(List<String> arguments) async {
   var accounts = AccountsApi();
-  print(await accounts.contact("1"));
+  var one = await accounts.contact("1");
+  print('Item: ' + one.toString());
+  var updated = await accounts.update_contact("1", Contact(1, "Alice Smith"), true);
+  print('Updated: ' + updated.toString());
 
   accounts.contacts().forEach((contact) {
     print('Stream item: ' + contact.toString());

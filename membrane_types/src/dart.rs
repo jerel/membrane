@@ -72,7 +72,7 @@ fn dart_type(ty: &str) -> String {
     "i64" => "int",
     "f64" => "double",
     "bool" => "bool",
-    _ => panic!("Dart type {} not yet supported", ty),
+    _serialized => ty.split("::").last().unwrap().trim(),
   }
   .to_string()
 }
@@ -88,6 +88,19 @@ fn cast_dart_type_to_c(ty: &str, variable: &str) -> String {
     "i64" => format!("{variable}", variable = variable),
     "f64" => format!("{variable}", variable = variable),
     "bool" => format!("{variable} ? 1 : 0", variable = variable),
-    _ => panic!("Casting Dart to C type {} not yet supported", ty),
+    _serialized => format!(
+      r#"(){{
+      final data = {variable}.bincodeSerialize();
+      final blob = calloc<Uint8>(data.length + 8);
+      final blobBytes = blob.asTypedList(data.length + 8);
+      final payloadLength = Int64List(1);
+      payloadLength.setAll(0, [data.length + 8]);
+      blobBytes.setAll(0, payloadLength);
+      blobBytes.setAll(8, data);
+      print(blobBytes.buffer.asInt8List());
+      return blob;
+    }}()"#,
+      variable = variable
+    ),
   }
 }
