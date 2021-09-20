@@ -8,7 +8,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, Block, Error, Expr, Ident, LitStr, Path, Token};
+use syn::{parse_macro_input, Block, Error, Expr, Ident, LitStr, Path, Token, Type};
 
 struct ReprDartAttrs {
   namespace: String,
@@ -194,6 +194,10 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let is_stream = output_style == OutputStyle::StreamSerialized;
   let return_type = output.segments.last().unwrap().ident.to_string();
   let error_type = error.segments.last().unwrap().ident.to_string();
+  let rust_arg_types = inputs
+    .iter()
+    .map(|Input { ty, .. }| ty)
+    .collect::<Vec<&Type>>();
 
   let dart_outer_params = dart_outer_params.join(", ");
   let dart_transforms = dart_transforms.join(";\n    ");
@@ -220,6 +224,8 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
               trace: |tracer: &mut ::membrane::serde_reflection::Tracer| {
                   tracer.trace_type::<#output>(&::membrane::serde_reflection::Samples::new()).unwrap();
                   tracer.trace_type::<#error>(&::membrane::serde_reflection::Samples::new()).unwrap();
+                  // send all argument types over to serde-reflection, the primitives will be dropped
+                  #(tracer.trace_type::<#rust_arg_types>(&::membrane::serde_reflection::Samples::new()).unwrap();)*
                   tracer
               }
           }
