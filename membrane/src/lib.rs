@@ -406,7 +406,7 @@ impl Function {
         return {return_type}.deserialize(deserializer);
       }}
       throw Error.deserialize(deserializer);
-    }}).asBroadcastStream();"#,
+    }});"#,
         return_type = self.return_type
       )
     } else {
