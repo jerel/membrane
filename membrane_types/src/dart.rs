@@ -1,4 +1,5 @@
 use crate::Input;
+use syn::Type;
 
 pub struct DartParams(Vec<String>);
 pub struct DartTransforms(Vec<String>);
@@ -28,7 +29,7 @@ impl From<&Vec<Input>> for DartTransforms {
       stream.push(format!(
         "var c{variable} = {cast}",
         variable = &input.variable,
-        cast = cast_dart_type_to_c(&input.rust_type, &input.variable)
+        cast = cast_dart_type_to_c(&input.rust_type, &input.variable, &input.ty)
       ))
     }
 
@@ -66,19 +67,33 @@ impl From<DartArgs> for Vec<String> {
   }
 }
 
-fn dart_type(ty: &str) -> String {
-  match ty {
+fn dart_type(str_ty: &str) -> String {
+  match str_ty {
     "String" => "String",
     "i64" => "int",
     "f64" => "double",
     "bool" => "bool",
-    _serialized => ty.split("::").last().unwrap().trim(),
+    _serialized => str_ty.split("::").last().unwrap().trim(),
   }
   .to_string()
 }
 
-fn cast_dart_type_to_c(ty: &str, variable: &str) -> String {
+fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
   match ty {
+    &syn::Type::Reference(_) => panic!("{}", unsupported_type_error(str_ty, variable, "a struct")),
+    &syn::Type::Tuple(_) | &syn::Type::Slice(_) | &syn::Type::Array(_) => {
+      panic!("{}", unsupported_type_error(str_ty, variable, "a struct"))
+    }
+    &syn::Type::Path(ref p) => match p.path.segments.first() {
+      Some(segment) if segment.ident == "Vec" => {
+        panic!("{}", unsupported_type_error(str_ty, variable, "a struct"))
+      }
+      _ => (),
+    },
+    _ => (),
+  };
+
+  match str_ty {
     "String" => {
       format!(
         "{variable}.toNativeUtf8().cast<Int8>()",
@@ -88,6 +103,17 @@ fn cast_dart_type_to_c(ty: &str, variable: &str) -> String {
     "i64" => format!("{variable}", variable = variable),
     "f64" => format!("{variable}", variable = variable),
     "bool" => format!("{variable} ? 1 : 0", variable = variable),
+    "& str" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
+    "char" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
+    "i8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "i16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "i32" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "i128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "u8" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
+    "u16" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
+    "u32" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
+    "u128" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
+    "f32" => panic!("{}", unsupported_type_error(str_ty, variable, "f64")),
     _serialized => format!(
       r#"(){{
       final data = {variable}.bincodeSerialize();
@@ -97,10 +123,18 @@ fn cast_dart_type_to_c(ty: &str, variable: &str) -> String {
       payloadLength.setAll(0, [data.length + 8]);
       blobBytes.setAll(0, payloadLength);
       blobBytes.setAll(8, data);
-      print(blobBytes.buffer.asInt8List());
       return blob;
     }}()"#,
       variable = variable
     ),
   }
+}
+
+fn unsupported_type_error(ty: &str, variable: &str, new_ty: &str) -> String {
+  format!(
+    "A Rust type of {ty} is invalid for `{var}: {ty}`. Please use {new_ty} instead.",
+    ty = ty.split_whitespace().collect::<String>(),
+    var = variable,
+    new_ty = new_ty
+  )
 }

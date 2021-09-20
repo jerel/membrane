@@ -100,7 +100,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
       q! {
           {
             let data = unsafe {
-              // read the first 8 bytes to get the length of the full payload (including the length byte)
+              // read the first 8 bytes to get the length of the full payload (which includes the length byte)
               let length = ::std::slice::from_raw_parts::<u8>(#variable, 1 as usize)[0];
               // read the payload from the pointer
               ::std::slice::from_raw_parts(#variable, length as usize)
