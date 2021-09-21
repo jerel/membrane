@@ -1,10 +1,10 @@
 # Membrane
 
-Generate an opinionated Dart package from a Rust library. Extremely fast performance with strict typing and zero copy over the FFI boundary.
+Membrane is an opinionated crate that generates a Dart package from a Rust library. Extremely fast performance with strict typing and zero copy returns over the FFI boundary via bincode.
 
 ## Example
 
-First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program:
+First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a tokio style `spawn` function:
 ``` rust
 use once_cell::sync::Lazy;
 use tokio::runtime::{Builder, Runtime};
@@ -18,7 +18,7 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
 });
 ```
 
-Then write some code that is annotated with the `#[async_dart]` macro. The functions can be anywhere in your program and may return either an async `Result<T, E>` or a `Stream<Result<T, E>>`:
+Then write some code that is annotated with the `#[async_dart]` macro. The functions can be anywhere in your program and may return either an async `Result<T, E>` or a `Stream<Item = Result<T, E>>`:
 
 ``` rust
 use membrane::async_dart;
@@ -57,7 +57,7 @@ fn main() {
     .create_pub_package()
     .write_api()
     .write_c_headers()
-    .run_dart_ffigen();
+    .write_bindings();
 }
 ```
 

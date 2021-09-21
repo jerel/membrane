@@ -9,7 +9,7 @@ fn main() {
     .create_pub_package()
     .write_api()
     .write_c_headers()
-    .run_dart_ffigen();
+    .write_bindings();
 
   let _ = std::fs::create_dir_all("../dart_example/bin");
   let _ = std::fs::write("../dart_example/bin/dart_example.dart", RUNNABLE_EXAMPLE);

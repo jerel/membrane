@@ -1,14 +1,21 @@
+#[doc(hidden)]
 pub use allo_isolate;
+#[doc(hidden)]
 pub use bincode;
+#[doc(hidden)]
 pub use ffi_helpers;
+#[doc(hidden)]
 pub use inventory;
+#[doc(hidden)]
 pub use membrane_macro::async_dart;
+#[doc(hidden)]
 pub use serde_reflection;
 
 use heck::CamelCase;
 use serde_reflection::{Tracer, TracerConfig};
 use std::collections::HashMap;
 
+#[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct Function {
   pub extern_c_fn_name: String,
@@ -24,6 +31,7 @@ pub struct Function {
   pub dart_inner_args: String,
 }
 
+#[doc(hidden)]
 pub struct DeferredTrace {
   pub function: Function,
   pub namespace: String,
@@ -77,11 +85,8 @@ impl Membrane {
     }
   }
 
-  pub fn using_lib(&mut self, name: &str) -> &mut Self {
-    self.library = name.to_string();
-    self
-  }
-
+  ///
+  /// The directory for the pub package output. The basename will be the name of the pub package.
   pub fn package_destination_dir(&mut self, path: &str) -> &mut Self {
     // allowing an empty path could result in data loss in a directory named `lib`
     if path.is_empty() {
@@ -92,6 +97,17 @@ impl Membrane {
     self
   }
 
+  ///
+  /// The name of the dylib or so that the Rust project produces. Membrane
+  /// generated code will load this library at runtime.
+  pub fn using_lib(&mut self, name: &str) -> &mut Self {
+    self.library = name.to_string();
+    self
+  }
+
+  ///
+  /// Write the pub package to the destination set with `package_destination_dir`.
+  /// Existing Dart files in this directory may be deleted during this operation.
   pub fn create_pub_package(&mut self) -> &mut Self {
     use serde_generate::SourceInstaller;
 
@@ -127,6 +143,9 @@ impl Membrane {
     self
   }
 
+  ///
+  /// Write a header file for each namespace that provides the C types
+  /// needed by ffigen to generate the FFI bindings.
   pub fn write_c_headers(&mut self) -> &mut Self {
     let namespaces = self.namespaces.clone();
     namespaces.iter().for_each(|x| {
@@ -136,6 +155,8 @@ impl Membrane {
     self
   }
 
+  ///
+  /// Write all Dart classes needed by the Dart application.
   pub fn write_api(&mut self) -> &mut Self {
     let namespaces = self.namespaces.clone();
     namespaces.iter().for_each(|x| {
@@ -149,7 +170,9 @@ impl Membrane {
     self
   }
 
-  pub fn run_dart_ffigen(&mut self) -> &mut Self {
+  ///
+  /// Invokes `dart run ffigen` with the appropriate config to generate FFI bindings.
+  pub fn write_bindings(&mut self) -> &mut Self {
     use std::io::Write;
     if !self.generated {
       return self;
@@ -200,7 +223,7 @@ impl Membrane {
 dev_dependencies:
   ffigen: ^3.0.0
 "#;
-        std::fs::write(path, pubspec + extra_deps).unwrap();
+        std::fs::write(path, pubspec + extra_deps).expect("pubspec could not be written");
       }
       Err(_) => (),
     }
@@ -239,7 +262,8 @@ headers:
 
 "#;
 
-    let mut buffer = std::fs::File::create(path.clone()).unwrap();
+    let mut buffer =
+      std::fs::File::create(path.clone()).expect("header could not be written at namespace path");
     buffer.write_all(head.as_bytes()).unwrap_or_else(|_| {
       panic!("unable to write C header file {}", path);
     });
@@ -323,7 +347,7 @@ class {class_name}Api {{
       class_name = &namespace.to_camel_case()
     );
 
-    let mut buffer = std::fs::File::create(path).unwrap();
+    let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
     buffer.write_all(head.as_bytes()).unwrap();
 
     fns.iter().for_each(|x| {
@@ -446,11 +470,14 @@ impl Function {
 
   pub fn write(&mut self, mut buffer: &std::fs::File) -> &mut Self {
     use std::io::Write;
-    buffer.write_all(&self.output.as_bytes()).unwrap();
+    buffer
+      .write_all(&self.output.as_bytes())
+      .expect("function could not be written at path");
     self
   }
 }
 
+#[doc(hidden)]
 #[macro_export]
 macro_rules! error {
   ($result:expr) => {
@@ -467,6 +494,7 @@ macro_rules! error {
   };
 }
 
+#[doc(hidden)]
 #[macro_export]
 macro_rules! cstr {
   ($ptr:expr) => {
