@@ -28,8 +28,10 @@ pub async fn update_contact(
   );
   Ok(contact)
 }
-  Ok(data::Contact {
-    id: id.parse().unwrap(),
-    ..Default::default()
+
+#[async_dart(namespace = "accounts")]
+pub async fn delete_contact(id: String) -> Result<data::Contact, data::Error> {
+  Err(data::Error {
+    message: format!("{} cannot be deleted", id),
   })
 }

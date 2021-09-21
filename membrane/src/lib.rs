@@ -157,19 +157,6 @@ impl Membrane {
 
     self.write_ffigen_config();
 
-    let dart_pub = std::process::Command::new("dart")
-      .current_dir(&self.destination)
-      .arg("pub")
-      .arg("get")
-      .output()
-      .unwrap();
-
-    if dart_pub.status.code() != Some(0) {
-      std::io::stderr().write_all(&dart_pub.stderr).unwrap();
-      std::io::stdout().write_all(&dart_pub.stdout).unwrap();
-      panic!("dart pub get returned an error");
-    }
-
     let ffigen = std::process::Command::new("dart")
       .current_dir(&self.destination)
       .arg("run")
@@ -323,6 +310,12 @@ export './src/{ns}/{ns}.dart' hide TraitHelpers;
 final _bindings = loader.bindings;
 
 @immutable
+class {class_name}ApiError implements Exception {{
+  final e;
+  const {class_name}ApiError(this.e);
+}}
+
+@immutable
 class {class_name}Api {{
   const {class_name}Api();
 "#,
@@ -338,8 +331,8 @@ class {class_name}Api {{
       fun
         .begin()
         .signature()
-        .body()
-        .body_return()
+        .body(&namespace)
+        .body_return(&namespace)
         .end()
         .write(&buffer);
     });
@@ -386,14 +379,14 @@ impl Function {
     self
   }
 
-  pub fn body(&mut self) -> &mut Self {
+  pub fn body(&mut self, namespace: &str) -> &mut Self {
     self.output += format!(
       r#" {{{fn_transforms}
     ReceivePort port = new ReceivePort();
     port.timeout(Duration(milliseconds: 200));
 
     if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{dart_inner_args}) < 1) {{
-      throw 'Call to C failed';
+      throw {class_name}ApiError('Call to C failed');
     }}
 "#,
       fn_transforms = if self.dart_transforms.is_empty() {
@@ -406,13 +399,14 @@ impl Function {
         String::new()
       } else {
         String::from(", ") + &self.dart_inner_args
-      }
+      },
+      class_name = namespace.to_camel_case()
     )
     .as_str();
     self
   }
 
-  pub fn body_return(&mut self) -> &mut Self {
+  pub fn body_return(&mut self, namespace: &str) -> &mut Self {
     self.output += if self.is_stream {
       format!(
         r#"
@@ -421,9 +415,11 @@ impl Function {
       if (deserializer.deserialize_bool()) {{
         return {return_type}.deserialize(deserializer);
       }}
-      throw Error.deserialize(deserializer);
+      throw {class_name}ApiError({error_type}.deserialize(deserializer));
     }});"#,
-        return_type = self.return_type
+        return_type = self.return_type,
+        error_type = self.error_type,
+        class_name = namespace.to_camel_case()
       )
     } else {
       format!(
@@ -432,8 +428,10 @@ impl Function {
     if (deserializer.deserialize_bool()) {{
       return {return_type}.deserialize(deserializer);
     }}
-    throw Error.deserialize(deserializer);"#,
-        return_type = self.return_type
+    throw {class_name}ApiError({error_type}.deserialize(deserializer));"#,
+        return_type = self.return_type,
+        error_type = self.error_type,
+        class_name = namespace.to_camel_case()
       )
     }
     .as_str();

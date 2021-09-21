@@ -8,5 +8,5 @@ pub struct Contact {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Error {
-  message: String,
+  pub message: String,
 }

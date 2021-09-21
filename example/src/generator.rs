@@ -26,6 +26,12 @@ void main(List<String> arguments) async {
       await accounts.update_contact("1", Contact(1, "Alice Smith"), true);
   print('Updated: ' + updated.toString());
 
+  try {
+    await accounts.delete_contact("1");
+  } on AccountsApiError catch(err) {
+    print(err.e);
+  }
+
   accounts.contacts().take(1).forEach((contact) {
     print('Stream item: ' + contact.toString());
   });
