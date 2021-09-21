@@ -159,8 +159,6 @@ impl Membrane {
 
     let ffigen = std::process::Command::new("dart")
       .current_dir(&self.destination)
-      .arg("pub")
-      .arg("global")
       .arg("run")
       .arg("ffigen")
       .arg("--config")
@@ -196,7 +194,12 @@ impl Membrane {
           )
           .to_string();
 
-        let extra_deps = "\n  ffi: ^1.1.2\n  meta: ^1.7.0\n";
+        let extra_deps = r#"
+  ffi: ^1.1.2
+  meta: ^1.7.0
+dev_dependencies:
+  ffigen: ^3.0.0
+"#;
         std::fs::write(path, pubspec + extra_deps).unwrap();
       }
       Err(_) => (),
