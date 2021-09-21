@@ -157,6 +157,19 @@ impl Membrane {
 
     self.write_ffigen_config();
 
+    let dart_pub = std::process::Command::new("dart")
+      .current_dir(&self.destination)
+      .arg("pub")
+      .arg("get")
+      .output()
+      .unwrap();
+
+    if dart_pub.status.code() != Some(0) {
+      std::io::stderr().write_all(&dart_pub.stderr).unwrap();
+      std::io::stdout().write_all(&dart_pub.stdout).unwrap();
+      panic!("dart pub get returned an error");
+    }
+
     let ffigen = std::process::Command::new("dart")
       .current_dir(&self.destination)
       .arg("run")
