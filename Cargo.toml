@@ -3,7 +3,7 @@ exclude = [
   "example",
 ]
 members = [
+  "membrane_types",
   "membrane_macro",
   "membrane",
-  "membrane_types",
 ]
