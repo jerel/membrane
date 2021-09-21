@@ -100,20 +100,21 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
         variable = variable
       )
     }
-    "i64" => format!("{variable}", variable = variable),
-    "f64" => format!("{variable}", variable = variable),
     "bool" => format!("{variable} ? 1 : 0", variable = variable),
     "& str" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
     "char" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
     "i8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "i16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "i32" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "i64" => format!("{variable}", variable = variable),
     "i128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "u8" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
-    "u16" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
-    "u32" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
-    "u128" => panic!("{}", unsupported_type_error(str_ty, variable, "u64")),
+    "u8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "u16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "u32" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "u64" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
+    "u128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "f32" => panic!("{}", unsupported_type_error(str_ty, variable, "f64")),
+    "f64" => format!("{variable}", variable = variable),
     _serialized => format!(
       r#"(){{
       final data = {variable}.bincodeSerialize();
