@@ -61,13 +61,22 @@ fn main() {
 }
 ```
 
-If everything went as planned you can now call Rust from Dart with `cd dart_example && cp ../example/target/debug/libexample.dylib . && dart --enable-asserts run` (`--enable-asserts` enables a pretty print `toString()` in the generated classes):
+If everything went as planned you can now call Rust from Dart with:
+
+``` bash
+cd example &&
+cargo build &&
+cd ../dart_example &&
+cp ../example/target/debug/libexample.dylib . &&
+dart --enable-asserts run
+```
+(`--enable-asserts` enables a pretty print `toString()` in the generated classes)
 
 ``` dart
 import 'package:dart_example/accounts.dart';
 
 void main(List<String> arguments) async {
   var accounts = AccountsApi();
-  print(await accounts.contact());
+  print(await accounts.contact(id: "1"));
 }
 ```

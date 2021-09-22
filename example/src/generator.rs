@@ -5,6 +5,7 @@ fn main() {
   let mut project = membrane::Membrane::new();
   project
     .package_destination_dir("../dart_example")
+    .package_name("dart_example")
     .using_lib("libexample")
     .create_pub_package()
     .write_api()
