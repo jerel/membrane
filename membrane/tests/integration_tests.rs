@@ -10,14 +10,14 @@ mod test_app {
   #[derive(Serialize, Deserialize)]
   pub struct User {
     id: i64,
-    name: String,
+    full_name: String,
   }
 
   #[async_dart(namespace = "users")]
-  pub async fn get_user(id: i64) -> Result<User, String> {
+  pub async fn get_user(user_id: i64) -> Result<User, String> {
     Ok(User {
-      id,
-      name: "Test User".to_string(),
+      id: user_id,
+      full_name: "Test User".to_string(),
     })
   }
 }
@@ -41,11 +41,23 @@ mod test {
 
     let dart = read_to_string(path.join("lib").join("users.dart")).unwrap();
     assert!(dart.contains("@immutable\nclass UsersApi {"));
-    assert!(dart.contains("Future<User> get_user(int id) async {"));
+    assert!(dart.contains("Future<User> getUser(int userId) async {"));
+    let dart_impl =
+      read_to_string(path.join("lib").join("src").join("users").join("user.dart")).unwrap();
+    assert!(dart_impl.contains(
+      r#"@immutable
+class User {
+  final int id;
+  final String fullName;
+
+  const User(int id, String fullName) :
+    this.id = id,
+    this.fullName = fullName;"#
+    ));
 
     let headers =
       read_to_string(path.join("lib").join("src").join("users").join("users.h")).unwrap();
 
-    assert!(headers.contains("int32_t membrane_users_get_user(int64_t port, signed long id);"));
+    assert!(headers.contains("int32_t membrane_users_get_user(int64_t port, signed long user_id);"));
   }
 }

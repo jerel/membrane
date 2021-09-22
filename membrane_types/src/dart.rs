@@ -1,4 +1,5 @@
 use crate::Input;
+use heck::{CamelCase, MixedCase};
 use syn::Type;
 
 pub struct DartParams(Vec<String>);
@@ -12,8 +13,8 @@ impl From<&Vec<Input>> for DartParams {
     for input in inputs {
       stream.push(format!(
         "{dart_type} {variable}",
-        variable = &input.variable,
-        dart_type = dart_type(&input.rust_type)
+        dart_type = dart_type(&input.rust_type),
+        variable = &input.variable.to_mixed_case(),
       ))
     }
 
@@ -27,8 +28,8 @@ impl From<&Vec<Input>> for DartTransforms {
 
     for input in inputs {
       stream.push(format!(
-        "var c{variable} = {cast}",
-        variable = &input.variable,
+        "final c{variable} = {cast}",
+        variable = &input.variable.to_camel_case(),
         cast = cast_dart_type_to_c(&input.rust_type, &input.variable, &input.ty)
       ))
     }
@@ -42,7 +43,10 @@ impl From<&Vec<Input>> for DartArgs {
     let mut stream = vec![];
 
     for input in inputs {
-      stream.push(format!("c{variable}", variable = &input.variable))
+      stream.push(format!(
+        "c{variable}",
+        variable = &input.variable.to_camel_case()
+      ))
     }
 
     Self(stream)
@@ -97,16 +101,16 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     "String" => {
       format!(
         "{variable}.toNativeUtf8().cast<Int8>()",
-        variable = variable
+        variable = variable.to_mixed_case()
       )
     }
-    "bool" => format!("{variable} ? 1 : 0", variable = variable),
+    "bool" => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
     "& str" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
     "char" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
     "i8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "i16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "i32" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "i64" => format!("{variable}", variable = variable),
+    "i64" => format!("{variable}", variable = variable.to_mixed_case()),
     "i128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "u8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "u16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
@@ -114,7 +118,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     "u64" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "u128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "f32" => panic!("{}", unsupported_type_error(str_ty, variable, "f64")),
-    "f64" => format!("{variable}", variable = variable),
+    "f64" => format!("{variable}", variable = variable.to_mixed_case()),
     _serialized => format!(
       r#"(){{
       final data = {variable}.bincodeSerialize();
@@ -126,7 +130,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
       blobBytes.setAll(8, data);
       return blob;
     }}()"#,
-      variable = variable
+      variable = variable.to_mixed_case()
     ),
   }
 }

@@ -122,10 +122,10 @@ impl Membrane {
     let _ = std::fs::remove_file(self.destination.clone() + "/pubspec.yaml");
     std::fs::create_dir_all(self.destination.clone() + "/lib/src").unwrap();
 
-    let source = std::path::PathBuf::from(self.destination.clone());
-    let dest = serde_generate::dart::Installer::new(source.clone());
-    dest.install_serde_runtime().unwrap();
-    dest.install_bincode_runtime().unwrap();
+    let dest_path = std::path::PathBuf::from(self.destination.clone());
+    let installer = serde_generate::dart::Installer::new(dest_path.clone());
+    installer.install_serde_runtime().unwrap();
+    installer.install_bincode_runtime().unwrap();
 
     for namespace in self.namespaces.iter() {
       let config = serde_generate::CodeGeneratorConfig::new(namespace.to_string())
@@ -134,7 +134,7 @@ impl Membrane {
       let tracer = self.namespaced_registry.remove(namespace).unwrap();
       let registry = tracer.registry().unwrap();
       let generator = serde_generate::dart::CodeGenerator::new(&config);
-      generator.output(source.clone(), &registry).unwrap();
+      generator.output(dest_path.clone(), &registry).unwrap();
     }
 
     self.generated = true;

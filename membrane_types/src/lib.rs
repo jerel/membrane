@@ -1,3 +1,4 @@
+pub use heck;
 pub use proc_macro2;
 pub use quote;
 pub use syn;

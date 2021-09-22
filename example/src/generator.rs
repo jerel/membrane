@@ -23,11 +23,11 @@ void main(List<String> arguments) async {
   var one = await accounts.contact("1");
   print('Item: ' + one.toString());
   var updated =
-      await accounts.update_contact("1", Contact(1, "Alice Smith"), true);
+      await accounts.updateContact("1", Contact(1, "Alice Smith"), true);
   print('Updated: ' + updated.toString());
 
   try {
-    await accounts.delete_contact("1");
+    await accounts.deleteContact("1");
   } on AccountsApiError catch(err) {
     print(err.e);
   }

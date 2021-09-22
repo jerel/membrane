@@ -2,7 +2,7 @@
 authors = ["Jerel Unruh <mail@unruhdesigns.com>"]
 description = "Membrane is an opinionated crate that generates a Dart package from a Rust library. Extremely fast performance with strict typing and zero copy returns over the FFI boundary via bincode."
 edition = "2018"
-license = "Apache 2.0"
+license = "Apache-2.0"
 name = "membrane"
 repository = "https://github.com/jerel/membrane"
 version = "0.1.0"

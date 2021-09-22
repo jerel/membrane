@@ -477,6 +477,7 @@ dependencies = [
 name = "membrane_types"
 version = "0.1.0"
 dependencies = [
+ "heck",
  "proc-macro2",
  "quote",
  "syn",

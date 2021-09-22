@@ -1,6 +1,7 @@
 extern crate proc_macro;
 use membrane_types::c::CHeaderTypes;
 use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
+use membrane_types::heck::MixedCase;
 use membrane_types::rust::{RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
 use proc_macro::TokenStream;
@@ -190,7 +191,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
   let c_name = extern_c_fn_name.to_string();
   let c_header_types = c_header_types.join(", ");
-  let name = fn_name.to_string();
+  let name = fn_name.to_string().to_mixed_case();
   let is_stream = output_style == OutputStyle::StreamSerialized;
   let return_type = output.segments.last().unwrap().ident.to_string();
   let error_type = error.segments.last().unwrap().ident.to_string();
