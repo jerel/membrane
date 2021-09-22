@@ -41,6 +41,7 @@ pub struct DeferredTrace {
 inventory::collect!(DeferredTrace);
 
 pub struct Membrane {
+  package_name: String,
   destination: String,
   library: String,
   namespaces: Vec<String>,
@@ -76,6 +77,7 @@ impl Membrane {
     // this might be useful for printing warnings
     // incomplete_enums: BTreeSet::new()
     Self {
+      package_name: "".to_string(),
       destination: "./membrane_output".to_string(),
       library: "libmembrane".to_string(),
       namespaced_registry,
@@ -94,6 +96,13 @@ impl Membrane {
     }
     self.destination = path.trim_end_matches('/').to_string();
 
+    self
+  }
+
+  ///
+  /// The name of the generate package.
+  pub fn package_name(&mut self, name: &str) -> &mut Self {
+    self.package_name = name.to_string();
     self
   }
 
@@ -205,8 +214,12 @@ impl Membrane {
 
   fn write_pubspec(&mut self) -> &mut Self {
     // serde-generate uses the last namespace as the pubspec name and dart doesn't
-    // like that so we replace it with the name of the package folder
-    let package_name = self.destination.rsplit('/').next().unwrap();
+    // like that so we set a proper package name from the basename or from an explicitly given name
+    let package_name = if self.package_name.is_empty() {
+      self.destination.rsplit('/').next().unwrap()
+    } else {
+      self.package_name.as_str()
+    };
     let path = self.destination.clone() + "/pubspec.yaml";
     let re = regex::Regex::new(r"^name:(.*?)\n").unwrap();
     match std::fs::read_to_string(&path) {
