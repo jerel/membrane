@@ -72,12 +72,16 @@ impl From<DartArgs> for Vec<String> {
 }
 
 fn dart_type(str_ty: &str) -> String {
+  let ser_type;
   match str_ty {
-    "String" => "String",
-    "i64" => "int",
-    "f64" => "double",
-    "bool" => "bool",
-    _serialized => str_ty.split("::").last().unwrap().trim(),
+    "String" => "required String",
+    "i64" => "required int",
+    "f64" => "required double",
+    "bool" => "required bool",
+    _serialized => {
+      ser_type = format!("required {} ", str_ty.split("::").last().unwrap().trim());
+      &ser_type
+    }
   }
   .to_string()
 }

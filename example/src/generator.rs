@@ -20,14 +20,15 @@ import 'package:dart_example/accounts.dart';
 
 void main(List<String> arguments) async {
   var accounts = AccountsApi();
-  var one = await accounts.contact("1");
+  var one = await accounts.contact(id: "1");
   print('Item: ' + one.toString());
   var updated =
-      await accounts.updateContact("1", Contact(1, "Alice Smith"), true);
+      await accounts.updateContact(
+        id: "1", contact: Contact(1, "Alice Smith"), sendEmail: true);
   print('Updated: ' + updated.toString());
 
   try {
-    await accounts.deleteContact("1");
+    await accounts.deleteContact(id: "1");
   } on AccountsApiError catch(err) {
     print(err.e);
   }

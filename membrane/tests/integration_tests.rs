@@ -41,7 +41,7 @@ mod test {
 
     let dart = read_to_string(path.join("lib").join("users.dart")).unwrap();
     assert!(dart.contains("@immutable\nclass UsersApi {"));
-    assert!(dart.contains("Future<User> getUser(int userId) async {"));
+    assert!(dart.contains("Future<User> getUser({required int userId}) async {"));
     let dart_impl =
       read_to_string(path.join("lib").join("src").join("users").join("user.dart")).unwrap();
     assert!(dart_impl

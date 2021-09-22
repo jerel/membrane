@@ -410,7 +410,11 @@ impl Function {
       output_style = if self.is_stream { "Stream" } else { "Future" },
       return_type = self.return_type,
       fn_name = self.fn_name,
-      fn_params = self.dart_outer_params,
+      fn_params = if self.dart_outer_params.is_empty() {
+        String::new()
+      } else {
+        format!("{{{}}}", self.dart_outer_params)
+      },
       asink = if self.is_stream { "" } else { " async" }
     )
     .as_str();
