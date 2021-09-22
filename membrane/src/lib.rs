@@ -165,6 +165,7 @@ impl Membrane {
 
     if self.generated {
       self.create_loader();
+      self.format_package();
     }
 
     self
@@ -272,6 +273,17 @@ headers:
       let mut fun = x.clone();
       fun.begin().c_signature().write(&buffer);
     });
+
+    self
+  }
+
+  fn format_package(&mut self) -> &mut Self {
+    // quietly attempt a code format if dart is installed
+    let _ = std::process::Command::new("dart")
+      .current_dir(&self.destination)
+      .arg("format")
+      .arg(".")
+      .output();
 
     self
   }
