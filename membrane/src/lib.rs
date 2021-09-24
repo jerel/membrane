@@ -5,6 +5,8 @@ pub use bincode;
 #[doc(hidden)]
 pub use ffi_helpers;
 #[doc(hidden)]
+pub use futures;
+#[doc(hidden)]
 pub use inventory;
 #[doc(hidden)]
 pub use membrane_macro::async_dart;

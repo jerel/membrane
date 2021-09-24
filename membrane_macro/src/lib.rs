@@ -149,8 +149,9 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let return_statement = match output_style {
     OutputStyle::StreamSerialized => {
       quote! {
-          use ::futures::stream::StreamExt;
+          use ::membrane::futures::stream::StreamExt;
           let mut stream = #fn_name(#(#rust_inner_args),*);
+          ::membrane::futures::pin_mut!(stream);
           while let Some(result) = stream.next().await {
               let result: ::std::result::Result<#output, #error> = result;
               #serializer
