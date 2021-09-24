@@ -12,7 +12,7 @@ pub use membrane_macro::async_dart;
 pub use serde_reflection;
 
 use heck::CamelCase;
-use serde_reflection::{Tracer, TracerConfig};
+use serde_reflection::{Samples, Tracer, TracerConfig};
 use std::collections::HashMap;
 
 #[doc(hidden)]
@@ -35,7 +35,7 @@ pub struct Function {
 pub struct DeferredTrace {
   pub function: Function,
   pub namespace: String,
-  pub trace: fn(tracer: &mut serde_reflection::Tracer) -> &mut serde_reflection::Tracer,
+  pub trace: fn(tracer: &mut serde_reflection::Tracer, samples: &mut serde_reflection::Samples),
 }
 
 inventory::collect!(DeferredTrace);
@@ -55,6 +55,7 @@ impl Membrane {
   pub fn new() -> Self {
     let mut namespaces = vec![];
     let mut namespaced_registry = HashMap::new();
+    let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
     for item in inventory::iter::<DeferredTrace> {
       namespaces.push(item.namespace.clone());
@@ -63,7 +64,11 @@ impl Membrane {
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
-      (item.trace)(&mut entry);
+      let mut samples = namespaced_samples
+        .entry(item.namespace.clone())
+        .or_insert_with(|| Samples::new());
+
+      (item.trace)(&mut entry, &mut samples);
 
       namespaced_fn_registry
         .entry(item.namespace.clone())

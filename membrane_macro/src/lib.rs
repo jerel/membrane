@@ -222,12 +222,14 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
                 output: "".to_string(),
               },
               namespace: #namespace.to_string(),
-              trace: |tracer: &mut ::membrane::serde_reflection::Tracer| {
-                  tracer.trace_type::<#output>(&::membrane::serde_reflection::Samples::new()).unwrap();
-                  tracer.trace_type::<#error>(&::membrane::serde_reflection::Samples::new()).unwrap();
+              trace: |
+                tracer: &mut ::membrane::serde_reflection::Tracer,
+                samples: &mut ::membrane::serde_reflection::Samples
+              | {
+                  tracer.trace_type::<#output>(samples).unwrap();
+                  tracer.trace_type::<#error>(samples).unwrap();
                   // send all argument types over to serde-reflection, the primitives will be dropped
-                  #(tracer.trace_type::<#rust_arg_types>(&::membrane::serde_reflection::Samples::new()).unwrap();)*
-                  tracer
+                  #(tracer.trace_type::<#rust_arg_types>(samples).unwrap();)*
               }
           }
       }
