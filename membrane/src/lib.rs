@@ -15,7 +15,7 @@ pub use serde_reflection;
 
 use heck::CamelCase;
 use serde_reflection::{Samples, Tracer, TracerConfig};
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -156,6 +156,21 @@ impl Membrane {
     self.generated = true;
     self.write_pubspec();
 
+    let pub_get = std::process::Command::new("dart")
+      .current_dir(&self.destination)
+      .arg("--disable-analytics")
+      .arg("pub")
+      .arg("get")
+      .arg("--precompile")
+      .output()
+      .unwrap();
+
+    if pub_get.status.code() != Some(0) {
+      std::io::stderr().write_all(&pub_get.stderr).unwrap();
+      std::io::stdout().write_all(&pub_get.stdout).unwrap();
+      panic!("'dart pub get' returned an error");
+    }
+
     self
   }
 
@@ -190,7 +205,6 @@ impl Membrane {
   ///
   /// Invokes `dart run ffigen` with the appropriate config to generate FFI bindings.
   pub fn write_bindings(&mut self) -> &mut Self {
-    use std::io::Write;
     if !self.generated {
       return self;
     }
@@ -241,6 +255,7 @@ impl Membrane {
         let extra_deps = r#"
   ffi: ^1.1.2
   meta: ^1.7.0
+
 dev_dependencies:
   ffigen: ^3.0.0
 "#;
@@ -507,7 +522,6 @@ impl Function {
   }
 
   pub fn write(&mut self, mut buffer: &std::fs::File) -> &mut Self {
-    use std::io::Write;
     buffer
       .write_all(&self.output.as_bytes())
       .expect("function could not be written at path");
