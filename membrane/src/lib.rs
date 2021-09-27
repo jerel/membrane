@@ -331,27 +331,32 @@ import './ffi_bindings.dart' as ffi_bindings;
 
 DynamicLibrary _open() {{
   if (Platform.isLinux) return DynamicLibrary.open('{lib}.so');
-  if (Platform.isAndroid) return DynamicLibrary.open('{lib}.so');
-  if (Platform.isIOS) return DynamicLibrary.executable();
   if (Platform.isMacOS) return DynamicLibrary.open('{lib}.dylib');
   throw UnsupportedError('This platform is not supported.');
 }}
 
 typedef _StoreDartPostCobjectC = Void Function(
-    Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr);
+  Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr,
+);
 typedef _StoreDartPostCobjectDart = void Function(
   Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr,
 );
 
 _load() {{
-  var bindings = ffi_bindings.NativeLibrary(_dl);
-  _dl.lookupFunction<_StoreDartPostCobjectC, _StoreDartPostCobjectDart>(
-      'store_dart_post_cobject')(NativeApi.postCObject);
+  final dl = _open();
+  final bindings = ffi_bindings.NativeLibrary(dl);
+  final storeDartPostCobject =
+      dl.lookupFunction<_StoreDartPostCobjectC, _StoreDartPostCobjectDart>(
+    'store_dart_post_cobject',
+  );
+
+  storeDartPostCobject(NativeApi.postCObject);
+
   return bindings;
 }}
 
-final _dl = _open();
-final bindings = _load();"#,
+final bindings = _load();
+"#,
       lib = self.library,
     );
 
@@ -458,8 +463,7 @@ impl Function {
   pub fn body(&mut self, namespace: &str) -> &mut Self {
     self.output += format!(
       r#" {{{fn_transforms}
-    ReceivePort port = new ReceivePort();
-    port.timeout(Duration(milliseconds: 200));
+    final port = ReceivePort()..timeout(const Duration(milliseconds: 1000));
 
     if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{dart_inner_args}) < 1) {{
       throw {class_name}ApiError('Call to C failed');
@@ -488,7 +492,7 @@ impl Function {
         r#"
     return port.map((input) {{
       final deserializer = BincodeDeserializer(input as Uint8List);
-      if (deserializer.deserialize_bool()) {{
+      if (deserializer.deserializeBool()) {{
         return {return_type}.deserialize(deserializer);
       }}
       throw {class_name}ApiError({error_type}.deserialize(deserializer));
@@ -501,7 +505,7 @@ impl Function {
       format!(
         r#"
     final deserializer = BincodeDeserializer(await port.first as Uint8List);
-    if (deserializer.deserialize_bool()) {{
+    if (deserializer.deserializeBool()) {{
       return {return_type}.deserialize(deserializer);
     }}
     throw {class_name}ApiError({error_type}.deserialize(deserializer));"#,
