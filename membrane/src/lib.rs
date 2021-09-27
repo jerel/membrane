@@ -254,7 +254,6 @@ impl Membrane {
 
         let extra_deps = r#"
   ffi: ^1.1.2
-  meta: ^1.7.0
 
 dev_dependencies:
   ffigen: ^3.0.0
