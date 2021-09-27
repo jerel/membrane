@@ -331,6 +331,8 @@ import './ffi_bindings.dart' as ffi_bindings;
 
 DynamicLibrary _open() {{
   if (Platform.isLinux) return DynamicLibrary.open('{lib}.so');
+  if (Platform.isAndroid) return DynamicLibrary.open('{lib}.so');
+  if (Platform.isIOS) return DynamicLibrary.executable();
   if (Platform.isMacOS) return DynamicLibrary.open('{lib}.dylib');
   throw UnsupportedError('This platform is not supported.');
 }}
