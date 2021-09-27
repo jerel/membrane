@@ -213,6 +213,7 @@ impl Membrane {
 
     let ffigen = std::process::Command::new("dart")
       .current_dir(&self.destination)
+      .arg("--disable-analytics")
       .arg("run")
       .arg("ffigen")
       .arg("--config")
@@ -267,8 +268,7 @@ dev_dependencies:
   }
 
   fn write_ffigen_config(&mut self) -> &mut Self {
-    let config = r#"
-name: 'NativeLibrary'
+    let config = r#"name: 'NativeLibrary'
 description: 'Auto generated bindings for Dart types'
 output: './lib/src/ffi_bindings.dart'
 headers:
@@ -289,12 +289,10 @@ headers:
     let path = self.namespace_path(namespace.clone()) + "/" + &namespace + ".h";
     let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
 
-    let head = r#"
-#include <stdarg.h>
+    let head = r#"#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-
 "#;
 
     let mut buffer =
@@ -315,6 +313,7 @@ headers:
     // quietly attempt a code format if dart is installed
     let _ = std::process::Command::new("dart")
       .current_dir(&self.destination)
+      .arg("--disable-analytics")
       .arg("format")
       .arg(".")
       .output();
