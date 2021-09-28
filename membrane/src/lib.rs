@@ -15,7 +15,7 @@ pub use serde_reflection;
 
 use heck::CamelCase;
 use serde_reflection::{Samples, Tracer, TracerConfig};
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -156,6 +156,21 @@ impl Membrane {
     self.generated = true;
     self.write_pubspec();
 
+    let pub_get = std::process::Command::new("dart")
+      .current_dir(&self.destination)
+      .arg("--disable-analytics")
+      .arg("pub")
+      .arg("get")
+      .arg("--precompile")
+      .output()
+      .unwrap();
+
+    if pub_get.status.code() != Some(0) {
+      std::io::stderr().write_all(&pub_get.stderr).unwrap();
+      std::io::stdout().write_all(&pub_get.stdout).unwrap();
+      panic!("'dart pub get' returned an error");
+    }
+
     self
   }
 
@@ -190,7 +205,6 @@ impl Membrane {
   ///
   /// Invokes `dart run ffigen` with the appropriate config to generate FFI bindings.
   pub fn write_bindings(&mut self) -> &mut Self {
-    use std::io::Write;
     if !self.generated {
       return self;
     }
@@ -199,6 +213,7 @@ impl Membrane {
 
     let ffigen = std::process::Command::new("dart")
       .current_dir(&self.destination)
+      .arg("--disable-analytics")
       .arg("run")
       .arg("ffigen")
       .arg("--config")
@@ -240,7 +255,7 @@ impl Membrane {
 
         let extra_deps = r#"
   ffi: ^1.1.2
-  meta: ^1.7.0
+
 dev_dependencies:
   ffigen: ^3.0.0
 "#;
@@ -253,8 +268,7 @@ dev_dependencies:
   }
 
   fn write_ffigen_config(&mut self) -> &mut Self {
-    let config = r#"
-name: 'NativeLibrary'
+    let config = r#"name: 'NativeLibrary'
 description: 'Auto generated bindings for Dart types'
 output: './lib/src/ffi_bindings.dart'
 headers:
@@ -275,12 +289,10 @@ headers:
     let path = self.namespace_path(namespace.clone()) + "/" + &namespace + ".h";
     let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
 
-    let head = r#"
-#include <stdarg.h>
+    let head = r#"#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-
 "#;
 
     let mut buffer =
@@ -301,6 +313,7 @@ headers:
     // quietly attempt a code format if dart is installed
     let _ = std::process::Command::new("dart")
       .current_dir(&self.destination)
+      .arg("--disable-analytics")
       .arg("format")
       .arg(".")
       .output();
@@ -324,20 +337,27 @@ DynamicLibrary _open() {{
 }}
 
 typedef _StoreDartPostCobjectC = Void Function(
-    Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr);
+  Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr,
+);
 typedef _StoreDartPostCobjectDart = void Function(
   Pointer<NativeFunction<Int8 Function(Int64, Pointer<Dart_CObject>)>> ptr,
 );
 
 _load() {{
-  var bindings = ffi_bindings.NativeLibrary(_dl);
-  _dl.lookupFunction<_StoreDartPostCobjectC, _StoreDartPostCobjectDart>(
-      'store_dart_post_cobject')(NativeApi.postCObject);
+  final dl = _open();
+  final bindings = ffi_bindings.NativeLibrary(dl);
+  final storeDartPostCobject =
+      dl.lookupFunction<_StoreDartPostCobjectC, _StoreDartPostCobjectDart>(
+    'store_dart_post_cobject',
+  );
+
+  storeDartPostCobject(NativeApi.postCObject);
+
   return bindings;
 }}
 
-final _dl = _open();
-final bindings = _load();"#,
+final bindings = _load();
+"#,
       lib = self.library,
     );
 
@@ -444,8 +464,7 @@ impl Function {
   pub fn body(&mut self, namespace: &str) -> &mut Self {
     self.output += format!(
       r#" {{{fn_transforms}
-    ReceivePort port = new ReceivePort();
-    port.timeout(Duration(milliseconds: 200));
+    final port = ReceivePort()..timeout(const Duration(milliseconds: 1000));
 
     if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{dart_inner_args}) < 1) {{
       throw {class_name}ApiError('Call to C failed');
@@ -474,7 +493,7 @@ impl Function {
         r#"
     return port.map((input) {{
       final deserializer = BincodeDeserializer(input as Uint8List);
-      if (deserializer.deserialize_bool()) {{
+      if (deserializer.deserializeBool()) {{
         return {return_type}.deserialize(deserializer);
       }}
       throw {class_name}ApiError({error_type}.deserialize(deserializer));
@@ -487,7 +506,7 @@ impl Function {
       format!(
         r#"
     final deserializer = BincodeDeserializer(await port.first as Uint8List);
-    if (deserializer.deserialize_bool()) {{
+    if (deserializer.deserializeBool()) {{
       return {return_type}.deserialize(deserializer);
     }}
     throw {class_name}ApiError({error_type}.deserialize(deserializer));"#,
@@ -507,7 +526,6 @@ impl Function {
   }
 
   pub fn write(&mut self, mut buffer: &std::fs::File) -> &mut Self {
-    use std::io::Write;
     buffer
       .write_all(&self.output.as_bytes())
       .expect("function could not be written at path");
