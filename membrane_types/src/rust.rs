@@ -72,7 +72,13 @@ fn rust_c_type(ty: &str) -> TokenStream2 {
     "i64" => q!(::std::os::raw::c_long),
     "f64" => q!(::std::os::raw::c_double),
     "bool" => q!(::std::os::raw::c_char), // i8
-    _serialized => q!(*const u8),
+    serialized if !serialized.starts_with("Option<") => q!(*const u8),
+    "Option<String>" => q!(*const ::std::os::raw::c_char),
+    "Option<i64>" => q!(*const ::std::os::raw::c_long),
+    "Option<f64>" => q!(*const ::std::os::raw::c_double),
+    "Option<bool>" => q!(*const ::std::os::raw::c_char), // i8
+    serialized if serialized.starts_with("Option<") => q!(*const u8),
+    _ => unreachable!(),
   }
 }
 
@@ -94,23 +100,91 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
       let variable = Ident::new(variable, Span::call_site());
       q!(#variable != 0)
     }
-    _serialized => {
+    serialized if !serialized.starts_with("Option<") => {
+      let variable_name = variable;
+      let variable = Ident::new(variable, Span::call_site());
+      let deserialize = deserialize(variable, variable_name, ty, str_ty);
+      q! {
+        {
+          #deserialize
+        }
+      }
+    }
+    "Option<String>" => {
       let variable_name = variable;
       let variable = Ident::new(variable, Span::call_site());
       q! {
-          {
-            let data = unsafe {
-              // read the first 8 bytes to get the length of the full payload (which includes the length byte)
-              let length = ::std::slice::from_raw_parts::<u8>(#variable, 1 as usize)[0];
-              // read the payload from the pointer
-              ::std::slice::from_raw_parts(#variable, length as usize)
-            };
-            // deserialize, skipping the known 8 byte length field
-            ::membrane::bincode::deserialize::<#ty>(&data[8..]).expect(
-              format!("Deserialization error at variable '{}' of type '{}'", #variable_name, #str_ty).as_str()
-            )
-          }
+        match unsafe { #variable.as_ref() } {
+          Some(val) => {
+            match unsafe { CStr::from_ptr(val).to_str() } {
+              Ok(s) => Some(s.to_string()),
+              Err(e) => {
+                panic!("An invalid string {:?} was received for {}. {:?}", val, #variable_name, e);
+              }
+            }
+          },
+          None => None
+        }
       }
     }
+    "Option<i64>" => {
+      let variable = Ident::new(variable, Span::call_site());
+      q! {
+        match unsafe { #variable.as_ref() } {
+          Some(val) => Some(*val),
+          None => None
+        }
+      }
+    }
+    "Option<f64>" => {
+      let variable = Ident::new(variable, Span::call_site());
+      q! {
+        match unsafe { #variable.as_ref() } {
+          Some(val) => Some(*val),
+          None => None
+        }
+      }
+    }
+    "Option<bool>" => {
+      let variable = Ident::new(variable, Span::call_site());
+      q! {
+        match unsafe { #variable.as_ref() } {
+          Some(val) => Some(*val != 0),
+          None => None
+        }
+      }
+    }
+    serialized if serialized.starts_with("Option<") => {
+      let variable_name = variable;
+      let variable = Ident::new(variable, Span::call_site());
+      let deserialize = deserialize(variable.clone(), variable_name, ty, str_ty);
+      q! {
+        {
+          match unsafe { #variable.as_ref() } {
+            None => None,
+            Some(#variable) => {
+              #deserialize
+            }
+          }
+        }
+      }
+    }
+
+    _ => unreachable!(),
+  }
+}
+
+fn deserialize(variable: Ident, variable_name: &str, ty: &Type, str_ty: &str) -> TokenStream2 {
+  q! {
+    let data = unsafe {
+      // read the first 8 bytes to get the length of the full payload (which includes the length byte)
+      let length = ::std::slice::from_raw_parts::<u8>(#variable, 1 as usize)[0];
+      // read the payload from the pointer
+      ::std::slice::from_raw_parts(#variable, length as usize)
+    };
+    // deserialize, skipping the known 8 byte length field
+    ::membrane::bincode::deserialize::<#ty>(&data[8..]).expect(
+      format!("Deserialization error at variable '{}' of type '{}'", #variable_name, #str_ty).as_str()
+    )
   }
 }

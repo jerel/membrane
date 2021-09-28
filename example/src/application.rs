@@ -20,10 +20,10 @@ pub async fn contact(id: String) -> Result<data::Contact, data::Error> {
 pub async fn update_contact(
   id: String,
   contact: data::Contact,
-  send_email: bool,
+  send_email: Option<bool>,
 ) -> Result<data::Contact, data::Error> {
   println!(
-    "Rust received id {} with send_email flag {}: {:?}",
+    "Rust received id {} with send_email flag {:?}: {:?}",
     id, send_email, contact
   );
   Ok(contact)

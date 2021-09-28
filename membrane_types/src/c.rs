@@ -27,10 +27,16 @@ impl From<CHeaderTypes> for Vec<String> {
 fn c_type(ty: &str) -> String {
   match ty {
     "String" => "const char *",
-    "i64" => "signed long ",
-    "f64" => "double ",
-    "bool" => "uint8_t ",
-    _serialized => "uint8_t *",
+    "i64" => "const signed long ",
+    "f64" => "const double ",
+    "bool" => "const uint8_t ",
+    serialized if !serialized.starts_with("Option<") => "const uint8_t *",
+    "Option<String>" => "const char *",
+    "Option<i64>" => "const signed long *",
+    "Option<f64>" => "const double *",
+    "Option<bool>" => "const uint8_t *",
+    serialized if serialized.starts_with("Option<") => "const uint8_t *",
+    _ => unreachable!(),
   }
   .to_string()
 }

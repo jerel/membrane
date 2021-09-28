@@ -39,23 +39,21 @@ mod test {
       .write_api()
       .write_c_headers();
 
-    let dart = read_to_string(path.join("lib").join("users.dart")).unwrap();
-    assert!(dart.contains("@immutable\nclass UsersApi {"));
-    assert!(dart.contains("Future<User> getUser({required int userId}) async {"));
-    let dart_impl =
+    let api = read_to_string(path.join("lib").join("users.dart")).unwrap();
+    assert!(api.contains("@immutable\nclass UsersApi {"));
+    assert!(api.contains("Future<User> getUser({required int userId}) async {"));
+    let dart_type =
       read_to_string(path.join("lib").join("src").join("users").join("user.dart")).unwrap();
-    assert!(dart_impl
+    assert!(dart_type
       .split_whitespace()
       .collect::<String>()
       .contains::<&str>(
         &r#"@immutable
 class User {
-  final int id;
-  final String fullName;
-
-  const User(int id, String fullName)
-      : this.id = id,
-        this.fullName = fullName;"#
+  const User({
+    required this.id,
+    required this.fullName,
+  });"#
           .split_whitespace()
           .collect::<String>()
       ));
@@ -63,6 +61,8 @@ class User {
     let headers =
       read_to_string(path.join("lib").join("src").join("users").join("users.h")).unwrap();
 
-    assert!(headers.contains("int32_t membrane_users_get_user(int64_t port, signed long user_id);"));
+    assert!(
+      headers.contains("int32_t membrane_users_get_user(int64_t port, const signed long user_id);")
+    );
   }
 }

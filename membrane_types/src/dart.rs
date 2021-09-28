@@ -78,10 +78,26 @@ fn dart_type(str_ty: &str) -> String {
     "i64" => "required int",
     "f64" => "required double",
     "bool" => "required bool",
-    _serialized => {
+    serialized if !serialized.starts_with("Option<") => {
       ser_type = format!("required {} ", str_ty.split("::").last().unwrap().trim());
       &ser_type
     }
+    "Option<String>" => "String?",
+    "Option<i64>" => "int?",
+    "Option<f64>" => "double?",
+    "Option<bool>" => "bool?",
+    serialized if serialized.starts_with("Option<") => {
+      ser_type = format!(
+        "{}? ",
+        str_ty
+          .split("::")
+          .last()
+          .unwrap()
+          .trim_end_matches(|c| c == ' ' || c == '>')
+      );
+      &ser_type
+    }
+    _ => unreachable!(),
   }
   .to_string()
 }
@@ -102,19 +118,11 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
   };
 
   match str_ty {
-    "String" => {
-      format!(
-        "{variable}.toNativeUtf8().cast<Int8>()",
-        variable = variable.to_mixed_case()
-      )
-    }
-    "bool" => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
-    "& str" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
+    "&str" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
     "char" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
     "i8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "i16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "i32" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "i64" => format!("{variable}", variable = variable.to_mixed_case()),
     "i128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "u8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "u16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
@@ -122,28 +130,100 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     "u64" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "u128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
     "f32" => panic!("{}", unsupported_type_error(str_ty, variable, "f64")),
+    //
+    // supported types
+    //
+    "String" => {
+      format!(
+        "{variable}.toNativeUtf8().cast<Int8>()",
+        variable = variable.to_mixed_case()
+      )
+    }
+    "bool" => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
+    "i64" => format!("{variable}", variable = variable.to_mixed_case()),
     "f64" => format!("{variable}", variable = variable.to_mixed_case()),
-    _serialized => format!(
+    serialized if !serialized.starts_with("Option<") => format!(
       r#"(){{
       final data = {variable}.bincodeSerialize();
-      final blob = calloc<Uint8>(data.length + 8);
-      final blobBytes = blob.asTypedList(data.length + 8);
-      final payloadLength = Int64List(1);
-      payloadLength.setAll(0, [data.length + 8]);
-      blobBytes.setAll(0, payloadLength);
-      blobBytes.setAll(8, data);
-      return blob;
+      {serialize}
+    }}()"#,
+      variable = variable.to_mixed_case(),
+      serialize = serialization_partial(),
+    ),
+    "Option<String>" => {
+      format!(
+        r#"(){{
+      if ({variable} == null) {{
+        return nullptr;
+      }}
+      return {variable}.toNativeUtf8().cast<Int8>();
+    }}()"#,
+        variable = variable.to_mixed_case()
+      )
+    }
+    "Option<bool>" => format!(
+      r#"(){{
+      if ({variable} == null) {{
+        return nullptr;
+      }}
+      final ptr = calloc<Uint8>();
+      ptr.asTypedList(1).setAll(0, [{variable} ? 1 : 0]);
+      return ptr;
     }}()"#,
       variable = variable.to_mixed_case()
     ),
+    "Option<i64>" => format!(
+      r#"(){{
+      if ({variable} == null) {{
+        return nullptr;
+      }}
+      final ptr = calloc<Int64>();
+      ptr.asTypedList(1).setAll(0, [{variable}]);
+      return ptr;
+    }}()"#,
+      variable = variable.to_mixed_case()
+    ),
+    "Option<f64>" => format!(
+      r#"(){{
+      if ({variable} == null) {{
+        return nullptr;
+      }}
+      final ptr = calloc<Double>();
+      ptr.asTypedList(1).setAll(0, [{variable}]);
+      return ptr;
+    }}()"#,
+      variable = variable.to_mixed_case()
+    ),
+    serialized if serialized.starts_with("Option<") => format!(
+      r#"(){{
+      if ({variable} == null) {{
+        return nullptr;
+      }}
+      final data = {variable}.bincodeSerialize();
+      {serialize}
+    }}()"#,
+      variable = variable.to_mixed_case(),
+      serialize = serialization_partial(),
+    ),
+    _ => unreachable!(),
   }
 }
 
 fn unsupported_type_error(ty: &str, variable: &str, new_ty: &str) -> String {
   format!(
     "A Rust type of {ty} is invalid for `{var}: {ty}`. Please use {new_ty} instead.",
-    ty = ty.split_whitespace().collect::<String>(),
+    ty = ty,
     var = variable,
     new_ty = new_ty
   )
+}
+
+fn serialization_partial() -> &'static str {
+  r#"final blob = calloc<Uint8>(data.length + 8);
+final blobBytes = blob.asTypedList(data.length + 8);
+final payloadLength = Int64List(1);
+payloadLength.setAll(0, [data.length + 8]);
+blobBytes.setAll(0, payloadLength);
+blobBytes.setAll(8, data);
+return blob;"#
 }

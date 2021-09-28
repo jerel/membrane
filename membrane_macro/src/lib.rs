@@ -88,7 +88,7 @@ impl Parse for ReprDart {
           .map(|arg| match arg {
             Expr::Type(syn::ExprType { ty, expr: var, .. }) => Input {
               variable: quote!(#var).to_string(),
-              rust_type: quote!(#ty).to_string(),
+              rust_type: quote!(#ty).to_string().split_whitespace().collect(),
               ty: *ty.clone(),
             },
             _ => {
