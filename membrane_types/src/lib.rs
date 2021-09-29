@@ -8,6 +8,7 @@ use std::fmt;
 pub mod c;
 pub mod dart;
 pub mod rust;
+mod utils;
 
 #[derive(Debug)]
 pub struct Input {

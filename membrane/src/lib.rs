@@ -14,6 +14,7 @@ pub use membrane_macro::async_dart;
 pub use serde_reflection;
 
 use heck::CamelCase;
+use membrane_types::dart::dart_fn_return_type;
 use serde_reflection::{Samples, Tracer, TracerConfig};
 use std::{collections::HashMap, io::Write};
 
@@ -435,7 +436,7 @@ impl Function {
     self.output += format!(
       "  {output_style}<{return_type}> {fn_name}({fn_params}){asink}",
       output_style = if self.is_stream { "Stream" } else { "Future" },
-      return_type = self.return_type,
+      return_type = dart_fn_return_type(&self.return_type),
       fn_name = self.fn_name,
       fn_params = if self.dart_outer_params.is_empty() {
         String::new()
@@ -494,12 +495,12 @@ impl Function {
     return port.map((input) {{
       final deserializer = BincodeDeserializer(input as Uint8List);
       if (deserializer.deserializeBool()) {{
-        return {return_type}.deserialize(deserializer);
+        return {return_de};
       }}
-      throw {class_name}ApiError({error_type}.deserialize(deserializer));
+      throw {class_name}ApiError({error_de});
     }});"#,
-        return_type = self.return_type,
-        error_type = self.error_type,
+        return_de = self.deserializer(&self.return_type),
+        error_de = self.deserializer(&self.error_type),
         class_name = namespace.to_camel_case()
       )
     } else {
@@ -507,11 +508,11 @@ impl Function {
         r#"
     final deserializer = BincodeDeserializer(await port.first as Uint8List);
     if (deserializer.deserializeBool()) {{
-      return {return_type}.deserialize(deserializer);
+      return {return_de};
     }}
-    throw {class_name}ApiError({error_type}.deserialize(deserializer));"#,
-        return_type = self.return_type,
-        error_type = self.error_type,
+    throw {class_name}ApiError({error_de});"#,
+        return_de = self.deserializer(&self.return_type),
+        error_de = self.deserializer(&self.error_type),
         class_name = namespace.to_camel_case()
       )
     }
@@ -530,6 +531,27 @@ impl Function {
       .write_all(&self.output.as_bytes())
       .expect("function could not be written at path");
     self
+  }
+
+  fn deserializer(&self, ty: &str) -> String {
+    let de;
+    match ty {
+      "String" => "deserializer.deserializeString()",
+      "i64" => "deserializer.deserializeUint64()",
+      "f64" => "deserializer.deserializeFloat64()",
+      "bool" => "deserializer.deserializeBool()",
+      ty if ty == "Option" => {
+        panic!(
+          "Option is not supported as a bare return type. Return the inner type from {} instead",
+          self.fn_name
+        )
+      }
+      _ => {
+        de = format!("{}.deserialize(deserializer)", ty);
+        &de
+      }
+    }
+    .to_string()
   }
 }
 

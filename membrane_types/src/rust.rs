@@ -1,3 +1,4 @@
+use crate::utils::extract_type_from_option;
 use crate::Input;
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -157,13 +158,19 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
     serialized if serialized.starts_with("Option<") => {
       let variable_name = variable;
       let variable = Ident::new(variable, Span::call_site());
-      let deserialize = deserialize(variable.clone(), variable_name, ty, str_ty);
+      let ty = extract_type_from_option(ty).unwrap();
+      let str_ty = q!(#ty).to_string().split_whitespace().collect::<String>();
+
+      let deserialize = deserialize(variable.clone(), variable_name, ty, str_ty.as_str());
+
       q! {
         {
           match unsafe { #variable.as_ref() } {
             None => None,
             Some(#variable) => {
-              #deserialize
+              Some({
+                #deserialize
+              })
             }
           }
         }
