@@ -15,7 +15,7 @@ pub use serde_reflection;
 
 use heck::CamelCase;
 use membrane_types::dart::dart_fn_return_type;
-use serde_reflection::{Samples, Tracer, TracerConfig};
+use serde_reflection::{Error, Samples, Tracer, TracerConfig};
 use std::{collections::HashMap, io::Write};
 
 #[doc(hidden)]
@@ -164,7 +164,17 @@ impl Membrane {
         .with_encodings(vec![serde_generate::Encoding::Bincode]);
 
       let tracer = self.namespaced_registry.remove(namespace).unwrap();
-      let registry = tracer.registry().unwrap();
+      let registry = match tracer.registry() {
+        Ok(reg) => reg,
+        Err(Error::MissingVariants(names)) => {
+          panic!(
+            "An enum was used that has not had the membrane::dart_enum macro applied. Please add #[dart_enum(namespace = \"{}\")] to the {} enum.",
+            namespace,
+            names.first().unwrap()
+          );
+        }
+        Err(err) => panic!("{}", err),
+      };
       let generator = serde_generate::dart::CodeGenerator::new(&config);
       generator.output(dest_path.clone(), &registry).unwrap();
     }
