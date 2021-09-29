@@ -9,7 +9,7 @@ pub use futures;
 #[doc(hidden)]
 pub use inventory;
 #[doc(hidden)]
-pub use membrane_macro::async_dart;
+pub use membrane_macro::{async_dart, dart_enum};
 #[doc(hidden)]
 pub use serde_reflection;
 
@@ -41,7 +41,14 @@ pub struct DeferredTrace {
   pub trace: fn(tracer: &mut serde_reflection::Tracer, samples: &mut serde_reflection::Samples),
 }
 
+#[doc(hidden)]
+pub struct DeferredEnumTrace {
+  pub namespace: String,
+  pub trace: fn(tracer: &mut serde_reflection::Tracer),
+}
+
 inventory::collect!(DeferredTrace);
+inventory::collect!(DeferredEnumTrace);
 
 pub struct Membrane {
   package_name: String,
@@ -60,6 +67,14 @@ impl Membrane {
     let mut namespaced_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
+    for item in inventory::iter::<DeferredEnumTrace> {
+      let mut entry = namespaced_registry
+        .entry(item.namespace.clone())
+        .or_insert_with(|| Tracer::new(TracerConfig::default()));
+
+      (item.trace)(&mut entry);
+    }
+
     for item in inventory::iter::<DeferredTrace> {
       namespaces.push(item.namespace.clone());
 

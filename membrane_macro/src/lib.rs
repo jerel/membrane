@@ -245,3 +245,58 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
   functions
 }
+
+#[derive(Debug)]
+struct ReprDartEnum {
+  name: Ident,
+}
+
+impl Parse for ReprDartEnum {
+  fn parse(input: ParseStream) -> Result<Self> {
+    loop {
+      // parse any other macros so that we can get to the enum
+      match input.call(syn::Attribute::parse_outer) {
+        Ok(_) => break,
+        _ => (),
+      }
+    }
+    let item_enum = input.parse::<syn::ItemEnum>()?;
+
+    Ok(ReprDartEnum {
+      name: item_enum.ident,
+    })
+  }
+}
+
+#[proc_macro_attribute]
+pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
+  let ReprDartAttrs { namespace } = parse_macro_input!(attrs as ReprDartAttrs);
+
+  let mut variants = TokenStream::new();
+  variants.extend(input.clone());
+
+  let ReprDartEnum { name } = parse_macro_input!(input as ReprDartEnum);
+
+  let _deferred_trace = quote! {
+      ::membrane::inventory::submit! {
+          #![crate = ::membrane]
+          ::membrane::DeferredEnumTrace {
+              namespace: #namespace.to_string(),
+              trace: |
+                tracer: &mut ::membrane::serde_reflection::Tracer
+              | {
+                  tracer.trace_simple_type::<#name>().unwrap();
+              }
+          }
+      }
+  };
+
+  // by default only enable tracing in the dev profile or with an explicit flag
+  #[cfg(all(
+    any(debug_assertions, feature = "generate"),
+    not(feature = "skip-generate")
+  ))]
+  variants.extend::<TokenStream>(_deferred_trace.into());
+
+  variants
+}

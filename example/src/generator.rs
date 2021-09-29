@@ -23,14 +23,15 @@ void main(List<String> arguments) async {
   var accounts = AccountsApi();
   var one = await accounts.contact(id: "1");
   print('Item: ' + one.toString());
-  var updated =
-      await accounts.updateContact(
-        id: "1", contact: Contact(id: 1, name: "Alice Smith"), sendEmail: true);
+  var updated = await accounts.updateContact(
+      id: "1",
+      contact: Contact(id: 1, name: "Alice Smith", status: StatusPendingItem()),
+      sendEmail: true);
   print('Updated: ' + updated.toString());
 
   try {
     await accounts.deleteContact(id: "1");
-  } on AccountsApiError catch(err) {
+  } on AccountsApiError catch (err) {
     print(err.e);
   }
 
