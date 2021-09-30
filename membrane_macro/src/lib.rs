@@ -39,7 +39,6 @@ struct ReprDart {
   output_style: OutputStyle,
   output: Path,
   error: Path,
-  block: Block,
 }
 
 impl Parse for ReprDart {
@@ -77,7 +76,7 @@ impl Parse for ReprDart {
       input.parse::<Token![>]>()?;
       (OutputStyle::Serialized, t, e)
     };
-    let block = input.parse::<Block>()?;
+    input.parse::<Block>()?;
 
     Ok(ReprDart {
       fn_name,
@@ -100,7 +99,6 @@ impl Parse for ReprDart {
       output_style,
       output: ret_type,
       error: err_type,
-      block,
     })
   }
 }
@@ -255,9 +253,8 @@ impl Parse for ReprDartEnum {
   fn parse(input: ParseStream) -> Result<Self> {
     loop {
       // parse any other macros so that we can get to the enum
-      match input.call(syn::Attribute::parse_outer) {
-        Ok(_) => break,
-        _ => (),
+      if input.call(syn::Attribute::parse_outer).is_err() {
+        break;
       }
     }
     let item_enum = input.parse::<syn::ItemEnum>()?;

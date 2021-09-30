@@ -69,25 +69,25 @@ impl Membrane {
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
     for item in inventory::iter::<DeferredEnumTrace> {
-      let mut entry = namespaced_registry
+      let entry = namespaced_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
-      (item.trace)(&mut entry);
+      (item.trace)(entry);
     }
 
     for item in inventory::iter::<DeferredTrace> {
       namespaces.push(item.namespace.clone());
 
-      let mut entry = namespaced_registry
+      let entry = namespaced_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
-      let mut samples = namespaced_samples
+      let samples = namespaced_samples
         .entry(item.namespace.clone())
-        .or_insert_with(|| Samples::new());
+        .or_insert_with(Samples::new);
 
-      (item.trace)(&mut entry, &mut samples);
+      (item.trace)(entry, samples);
 
       namespaced_fn_registry
         .entry(item.namespace.clone())
@@ -116,9 +116,10 @@ impl Membrane {
   /// The directory for the pub package output. The basename will be the name of the pub package.
   pub fn package_destination_dir(&mut self, path: &str) -> &mut Self {
     // allowing an empty path could result in data loss in a directory named `lib`
-    if path.is_empty() {
-      panic!("package_destination_dir() cannot be called with an empty path");
-    }
+    assert!(
+      !path.is_empty(),
+      "package_destination_dir() cannot be called with an empty path"
+    );
     self.destination = path.trim_end_matches('/').to_string();
 
     self
@@ -281,24 +282,21 @@ impl Membrane {
     };
     let path = self.destination.clone() + "/pubspec.yaml";
     let re = regex::Regex::new(r"^name:(.*?)\n").unwrap();
-    match std::fs::read_to_string(&path) {
-      Ok(old) => {
-        let pubspec = re
-          .replace(
-            old.as_str().trim(),
-            "name: ".to_string() + package_name + "\n",
-          )
-          .to_string();
+    if let Ok(old) = std::fs::read_to_string(&path) {
+      let pubspec = re
+        .replace(
+          old.as_str().trim(),
+          "name: ".to_string() + package_name + "\n",
+        )
+        .to_string();
 
-        let extra_deps = r#"
+      let extra_deps = r#"
   ffi: ^1.1.2
 
 dev_dependencies:
   ffigen: ^3.0.0
 "#;
-        std::fs::write(path, pubspec + extra_deps).expect("pubspec could not be written");
-      }
-      Err(_) => (),
+      std::fs::write(path, pubspec + extra_deps).expect("pubspec could not be written");
     }
 
     self
@@ -564,7 +562,7 @@ impl Function {
 
   pub fn write(&mut self, mut buffer: &std::fs::File) -> &mut Self {
     buffer
-      .write_all(&self.output.as_bytes())
+      .write_all(self.output.as_bytes())
       .expect("function could not be written at path");
     self
   }

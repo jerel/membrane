@@ -150,8 +150,8 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
       )
     }
     "bool" => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
-    "i64" => format!("{variable}", variable = variable.to_mixed_case()),
-    "f64" => format!("{variable}", variable = variable.to_mixed_case()),
+    "i64" => variable.to_mixed_case(),
+    "f64" => variable.to_mixed_case(),
     serialized if !serialized.starts_with("Option<") => format!(
       r#"(){{
       final data = {variable}.bincodeSerialize();

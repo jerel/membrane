@@ -21,12 +21,12 @@ pub fn extract_type_from_option(ty: &syn::Type) -> Option<&syn::Type> {
 
     vec!["Option|", "std|option|Option|", "core|option|Option|"]
       .into_iter()
-      .find(|s| &idents_of_path == *s)
+      .find(|s| idents_of_path == *s)
       .and_then(|_| path.segments.last())
   }
 
   extract_type_path(ty)
-    .and_then(|path| extract_option_segment(path))
+    .and_then(extract_option_segment)
     .and_then(|path_seg| {
       let type_params = &path_seg.arguments;
       match *type_params {
