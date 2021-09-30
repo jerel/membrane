@@ -25,7 +25,7 @@ void main(List<String> arguments) async {
   print('Item: ' + one.toString());
   var updated = await accounts.updateContact(
       id: "1",
-      contact: Contact(id: 1, name: "Alice Smith", status: StatusPendingItem()),
+      contact: Contact(id: 1, name: "Alice Smith", status: Status.pending),
       sendEmail: true);
   print('Updated: ' + updated.toString());
 

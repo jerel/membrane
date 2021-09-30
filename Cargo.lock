@@ -751,7 +751,7 @@ dependencies = [
 [[package]]
 name = "serde-generate"
 version = "0.19.4"
-source = "git+https://github.com/jerel/serde-reflection?rev=d40733c#d40733c2b0d18056da37a555c33564f9f25d10e6"
+source = "git+https://github.com/jerel/serde-reflection?rev=3d835f2#3d835f231cff23b246e0ab0c77e870341364dff1"
 dependencies = [
  "bcs",
  "bincode",
@@ -769,7 +769,7 @@ dependencies = [
 [[package]]
 name = "serde-reflection"
 version = "0.3.4"
-source = "git+https://github.com/jerel/serde-reflection?rev=d40733c#d40733c2b0d18056da37a555c33564f9f25d10e6"
+source = "git+https://github.com/jerel/serde-reflection?rev=3d835f2#3d835f231cff23b246e0ab0c77e870341364dff1"
 dependencies = [
  "once_cell",
  "serde",

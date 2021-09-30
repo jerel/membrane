@@ -58,6 +58,7 @@ pub struct Membrane {
   namespaced_registry: HashMap<String, Tracer>,
   namespaced_fn_registry: HashMap<String, Vec<Function>>,
   generated: bool,
+  c_style_enums: bool,
 }
 
 impl Membrane {
@@ -107,6 +108,7 @@ impl Membrane {
       namespaced_fn_registry,
       namespaces,
       generated: false,
+      c_style_enums: true,
     }
   }
 
@@ -161,7 +163,8 @@ impl Membrane {
 
     for namespace in self.namespaces.iter() {
       let config = serde_generate::CodeGeneratorConfig::new(namespace.to_string())
-        .with_encodings(vec![serde_generate::Encoding::Bincode]);
+        .with_encodings(vec![serde_generate::Encoding::Bincode])
+        .with_c_style_enums(self.c_style_enums);
 
       let tracer = self.namespaced_registry.remove(namespace).unwrap();
       let registry = match tracer.registry() {
@@ -197,6 +200,14 @@ impl Membrane {
       panic!("'dart pub get' returned an error");
     }
 
+    self
+  }
+
+  ///
+  /// When set to `true` (the default) we generate basic Dart enums. When set to `false`
+  /// Dart classes are generated (one for the base case and one for each variant).
+  pub fn with_c_style_enums(&mut self, val: bool) -> &mut Self {
+    self.c_style_enums = val;
     self
   }
 
