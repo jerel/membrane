@@ -9,24 +9,62 @@ env:
 
 jobs:
   build:
-
+    name: build and test
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
     - uses: dart-lang/setup-dart@v1
 
-    - name: Rust build
-      run: cargo build --verbose
     - name: Rust tests
       run: cargo test --verbose
-    - name: Rust generate Dart
+
+    - name: Install llvm
+      run: |
+        sudo apt-get install -y llvm-dev
+        sudo ln -s /usr/lib/llvm-11/lib/libclang.so.1 /usr/lib/llvm-11/lib/libclang.so
+
+    - name: Rust build workspace
+      run: cargo build --verbose
+
+    - name: Rust build example
+      working-directory: ./example
+      run: cargo build --verbose
+
+    - name: Rust generate Dart example
       working-directory: ./example
       run: cargo run
-    - name: Install llvm
-      run: sudo apt-get install -y llvm-dev
-    - name: Dart run
+
+    - name: Dart run example
       working-directory: ./dart_example
       run: |
-        cp ../example/target/debug/libexample.so .
-        dart run
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
+        dart run --enable-asserts
+
+  lint:
+    name: clippy and rustfmt
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings

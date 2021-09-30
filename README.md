@@ -2,6 +2,16 @@
 
 Membrane is an opinionated crate that generates a Dart package from a Rust library. Extremely fast performance with strict typing and zero copy returns over the FFI boundary via bincode.
 
+## Development Environment
+
+* Rust
+  * https://rustup.rs
+* Dart
+  * https://dart.dev/get-dart
+* LLVM (for generating bindings)
+  * Linux apt-get install llvm-dev
+  * MacOS brew install llvm@11
+
 ## Example
 
 First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a tokio style `spawn` function:
