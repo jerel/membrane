@@ -16,13 +16,16 @@ jobs:
     - uses: actions/checkout@v2
     - uses: dart-lang/setup-dart@v1
 
-    - name: Build Lib
+    - name: Rust build
       run: cargo build --verbose
-    - name: Rust Tests
+    - name: Rust tests
       run: cargo test --verbose
-    - name: Generate Dart
+    - name: Rust generate Dart
+      working-directory: ./example
       run: cargo run
-    - name: Dart Run
+    - name: Install llvm
+      run: sudo apt-get install -y llvm-dev
+    - name: Dart run
       working-directory: ./dart_example
       run: |
         cp ../example/target/debug/libexample.so .
