@@ -1,0 +1,29 @@
+name: Rust
+
+on:
+  - push
+  - pull_request
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: dart-lang/setup-dart@v1
+
+    - name: Build Lib
+      run: cargo build --verbose
+    - name: Rust Tests
+      run: cargo test --verbose
+    - name: Generate Dart
+      run: cargo run
+    - name: Dart Run
+      working-directory: ./dart_example
+      run: |
+        cp ../example/target/debug/libexample.so .
+        dart run
