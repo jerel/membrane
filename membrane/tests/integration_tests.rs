@@ -4,10 +4,7 @@ mod test {
   use super::test_utils::*;
   use example;
   use membrane::Membrane;
-  use std::io::Write;
-  use std::path::PathBuf;
-  use std::process::{exit, Command};
-  use std::{fs, fs::read_to_string};
+  use std::fs::read_to_string;
   use tempfile::tempdir;
 
   #[test]
@@ -65,50 +62,10 @@ class Contact {
       "int32_t membrane_accounts_contact(int64_t port, const char *user_id);",
     );
 
-    Command::new("cargo")
-      .arg("build")
-      .arg("-p")
-      .arg("example")
-      .output()
-      .expect("lib could not be compiled for integration tests");
-
-    // link the workspace compiled artifacts to the temp test folder
-    let _ = fs::hard_link("../target/debug/libexample.so", path.join("libexample.so"));
-    let _ = fs::hard_link(
-      "../target/debug/libexample.dylib",
-      path.join("libexample.dylib"),
-    );
-
-    write_dart_tests(&path);
-    run_dart(&path, vec!["pub", "add", "--dev", "test"]);
-    run_dart(&path, vec!["test"]);
-  }
-
-  fn write_dart_tests(path: &PathBuf) {
-    fs::create_dir(path.join("test")).unwrap();
-    fs::write(
-      path.join("test").join("main_test.dart"),
-      DART_TESTS.as_bytes(),
-    )
-    .unwrap();
-  }
-
-  fn run_dart(path: &PathBuf, args: Vec<&str>) {
-    let pub_get = Command::new("dart")
-      .current_dir(&path)
-      .env("LD_LIBRARY_PATH", &path)
-      .arg("--disable-analytics")
-      .args(args)
-      .output()
-      .unwrap();
-
-    println!("dart test output:");
-    std::io::stdout().write_all(&pub_get.stdout).unwrap();
-
-    if pub_get.status.code() != Some(0) {
-      std::io::stderr().write_all(&pub_get.stderr).unwrap();
-      exit(1);
-    }
+    build_lib(&path);
+    write_dart_tests(&path, "main_test.dart", &DART_TESTS);
+    run_dart(&path, vec!["pub", "add", "--dev", "test"], false);
+    run_dart(&path, vec!["test"], true);
   }
 
   static DART_TESTS: &str = r#"
