@@ -19,10 +19,8 @@ jobs:
     - name: Rust tests
       run: cargo test --verbose
 
-    - name: Install llvm
-      run: |
-        sudo apt-get install -y llvm-dev
-        sudo ln -s /usr/lib/llvm-11/lib/libclang.so.1 /usr/lib/llvm-11/lib/libclang.so
+    - name: Install libclang
+      run: sudo apt-get install -y libclang-dev
 
     - name: Rust build workspace
       run: cargo build --verbose

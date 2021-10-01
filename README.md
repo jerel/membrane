@@ -8,10 +8,9 @@ Membrane is an opinionated crate that generates a Dart package from a Rust libra
   * https://rustup.rs
 * Dart
   * https://dart.dev/get-dart
-* LLVM (for generating bindings)
+* libclang (for generating bindings)
   * Linux
-    * `apt-get install llvm-dev`
-    * `ln -s /usr/lib/llvm-11/lib/libclang.so.1 /usr/lib/llvm-11/lib/libclang.so` (dart's ffigen only checks for `libclang.so`)
+    * `apt-get install libclang-dev`
   * MacOS
     * `brew install llvm@11`
 
