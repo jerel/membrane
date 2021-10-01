@@ -37,3 +37,17 @@ impl Default for Contact {
 pub struct Error {
   pub message: String,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct OptionsDemo {
+  pub one: Option<String>,
+  pub two: Option<i64>,
+  pub three: Option<f64>,
+  pub four: Option<bool>,
+  pub five: Option<Arg>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Arg {
+  pub value: i64,
+}

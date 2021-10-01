@@ -1,3 +1,4 @@
+use data::OptionsDemo;
 use membrane::async_dart;
 use tokio_stream::Stream;
 
@@ -34,4 +35,50 @@ pub async fn delete_contact(id: String) -> Result<data::Contact, data::Error> {
   Err(data::Error {
     message: format!("{} cannot be deleted", id),
   })
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn options_demo(
+  one: Option<String>,
+  two: Option<i64>,
+  three: Option<f64>,
+  four: Option<bool>,
+  five: Option<data::Arg>,
+) -> Result<OptionsDemo, data::Error> {
+  Ok(OptionsDemo {
+    one,
+    two,
+    three,
+    four,
+    five,
+  })
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_i64(val: i64) -> Result<i64, String> {
+  assert!(val == 10);
+  Ok(val)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_f64(val: f64) -> Result<f64, String> {
+  assert!(val == 11.1);
+  Ok(val)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_string(val: String) -> Result<String, String> {
+  assert!(val == "hello world");
+  Ok(val)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_bool(val: bool) -> Result<bool, String> {
+  assert!(val == true);
+  Ok(val)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_error() -> Result<bool, String> {
+  Err("an error message".to_string())
 }
