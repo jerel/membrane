@@ -251,12 +251,8 @@ struct ReprDartEnum {
 
 impl Parse for ReprDartEnum {
   fn parse(input: ParseStream) -> Result<Self> {
-    loop {
-      // parse any other macros so that we can get to the enum
-      if input.call(syn::Attribute::parse_outer).is_err() {
-        break;
-      }
-    }
+    // parse and discard any other macros so that we can get to the enum
+    let _ = input.call(syn::Attribute::parse_outer);
     let item_enum = input.parse::<syn::ItemEnum>()?;
 
     Ok(ReprDartEnum {
