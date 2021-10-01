@@ -26,8 +26,9 @@ pub struct Contact {
 impl Default for Contact {
   fn default() -> Self {
     Self {
+      id: 1,
       full_name: "Alice Smith".to_string(),
-      ..Default::default()
+      status: Status::Pending,
     }
   }
 }
