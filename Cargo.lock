@@ -42,6 +42,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansi_term"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -128,7 +137,7 @@ version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
 dependencies = [
- "ansi_term",
+ "ansi_term 0.11.0",
  "atty",
  "bitflags",
  "strsim",
@@ -148,10 +157,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "diff"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
+
+[[package]]
 name = "dtoa"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56899898ce76aaf4a0f24d914c97ea6ed976d42fec6ad33fcbb0a1103e07b2b0"
+
+[[package]]
+name = "example"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "membrane",
+ "once_cell",
+ "serde",
+ "tokio",
+ "tokio-stream",
+]
 
 [[package]]
 name = "failure"
@@ -451,19 +478,19 @@ version = "0.1.0"
 dependencies = [
  "allo-isolate",
  "bincode",
+ "example",
  "ffi_helpers",
  "futures",
  "heck",
  "inventory",
  "membrane_macro",
  "membrane_types",
- "once_cell",
+ "pretty_assertions",
  "regex",
  "serde",
  "serde-generate",
  "serde-reflection",
  "tempfile",
- "tokio",
 ]
 
 [[package]]
@@ -556,6 +583,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
+name = "output_vt100"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53cdc5b785b7a58c5aad8216b3dfa114df64b0b06ae6e1501cef91df2fbdf8f9"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -597,6 +633,18 @@ name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
+
+[[package]]
+name = "pretty_assertions"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec0cfe1b2403f172ba0f234e500906ee0a3e493fb81092dac23ebefe129301cc"
+dependencies = [
+ "ansi_term 0.12.1",
+ "ctor",
+ "diff",
+ "output_vt100",
+]
 
 [[package]]
 name = "proc-macro-error"
@@ -751,7 +799,7 @@ dependencies = [
 [[package]]
 name = "serde-generate"
 version = "0.19.4"
-source = "git+https://github.com/jerel/serde-reflection?rev=3d835f2#3d835f231cff23b246e0ab0c77e870341364dff1"
+source = "git+https://github.com/jerel/serde-reflection?rev=193bc1c#193bc1c9693f7a914989a8e3b46d6a82b3733251"
 dependencies = [
  "bcs",
  "bincode",
@@ -769,7 +817,7 @@ dependencies = [
 [[package]]
 name = "serde-reflection"
 version = "0.3.4"
-source = "git+https://github.com/jerel/serde-reflection?rev=3d835f2#3d835f231cff23b246e0ab0c77e870341364dff1"
+source = "git+https://github.com/jerel/serde-reflection?rev=193bc1c#193bc1c9693f7a914989a8e3b46d6a82b3733251"
 dependencies = [
  "once_cell",
  "serde",
@@ -970,6 +1018,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tokio-stream"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b2f3f698253f03119ac0102beaa64f67a67e08074d03a22d18784104543727f"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]

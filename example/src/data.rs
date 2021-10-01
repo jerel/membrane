@@ -1,3 +1,5 @@
+use std::default::Default;
+
 use membrane::dart_enum;
 use serde::{Deserialize, Serialize};
 
@@ -14,11 +16,20 @@ impl Default for Status {
   }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Contact {
   pub id: u64,
-  pub name: String,
+  pub full_name: String,
   pub status: Status,
+}
+
+impl Default for Contact {
+  fn default() -> Self {
+    Self {
+      full_name: "Alice Smith".to_string(),
+      ..Default::default()
+    }
+  }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
