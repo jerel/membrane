@@ -143,6 +143,7 @@ impl Membrane {
   ///
   /// Write the pub package to the destination set with `package_destination_dir`.
   /// Existing Dart files in this directory may be deleted during this operation.
+  #[allow(unreachable_code)]
   pub fn create_pub_package(&mut self) -> &mut Self {
     use serde_generate::SourceInstaller;
 
