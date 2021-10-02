@@ -116,13 +116,12 @@ void main() {
         equals(high));
   });
 
-  test(
-      'can call a function that returns a scalar value',
-      () async {
+  test('can call a function that returns a scalar value', () async {
     final accounts = AccountsApi();
     expect(await accounts.scalarI64(val: 10), equals(10));
     expect(await accounts.scalarF64(val: 11.1), equals(11.1));
-    expect(await accounts.scalarString(val: "hello world"), equals("hello world"));
+    expect(
+        await accounts.scalarString(val: "hello world"), equals("hello world"));
     expect(await accounts.scalarBool(val: true), equals(true));
   });
 
@@ -130,16 +129,16 @@ void main() {
       'test that a function throws an ApiError instance when an error is returned',
       () async {
     final accounts = AccountsApi();
-    expect(() async => await accounts.scalarError(), throwsA(isA<AccountsApiError>()));
+    expect(() async => await accounts.scalarError(),
+        throwsA(isA<AccountsApiError>()));
   });
 
-  test(
-      'test that a function throws a string when an error is returned',
+  test('test that a function throws a string when an error is returned',
       () async {
     final accounts = AccountsApi();
     try {
       await accounts.scalarError();
-    } on AccountsApiError catch(err) {
+    } on AccountsApiError catch (err) {
       expect(err.e, "an error message");
     }
   });
