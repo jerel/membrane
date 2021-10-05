@@ -143,27 +143,31 @@ void main() {
     }
   });
 
-  test('test that u128 and i128 types are supported', () async {
+  test('test that u8, u32, u64, u128, i8, i32, i64, and i128 types are supported', () async {
     final accounts = AccountsApi();
-    expect(
-        await accounts.moreTypes(),
-        MoreTypes(
-            one: 255,
-            two: 100,
-            // u128 min
-            three: Uint128.parse('0'),
-            // fits in 64 bit
-            four: Uint128.parse('200'),
-            // u128 max
-            five: Uint128.parse('340282366920938463463374607431768211455'),
-            // i128 min
-            six: Int128.parse('-170141183460469231731687303715884105728'),
-            // fits in 64 bit
-            seven: Int128.parse('300'),
-            // fits in 64 bit
-            eight: Int128.parse('-300'),
-            // i128 max
-            nine: Int128.parse('170141183460469231731687303715884105727')));
+    final types = MoreTypes(
+      unsigned8: 255,
+      unsigned16: 65535,
+      unsigned32: 4294967295,
+      unsigned64: 922337203685477580,
+      signed8: 127,
+      signed16: 32767,
+      signed32: 2147483647,
+      signed64: 9223372036854775807,
+      unsigned128Min: Uint128.parse('0'),
+      // fits in 64 bit
+      unsigned12864: Uint128.parse('200'),
+      unsigned128Max: Uint128.parse('34028236692093846346337460743176821'),
+      signed128Min: Int128.parse('-170141183460469231731687303715884105728'),
+      // fits in 64 bit
+      signed12864: Int128.parse('300'),
+      // fits in 64 bit
+      signed128Neg64: Int128.parse('-300'),
+      signed128Max: Int128.parse('170141183460469231731687303715884105727'),
+      float32: 3.140000104904175,
+      float64: 1.7976931348623157e+308);
+
+    expect(await accounts.moreTypes(types: types), types);
   });
 
   test('can pass an enum as a function arg', () async {

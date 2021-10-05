@@ -88,18 +88,30 @@ pub async fn scalar_error() -> Result<bool, String> {
 }
 
 #[async_dart(namespace = "accounts")]
-pub async fn more_types() -> Result<data::MoreTypes, String> {
-  Ok(MoreTypes {
-    one: 255,
-    two: 100,
-    three: u128::MIN,
-    four: 200,
-    five: u128::MAX,
-    six: i128::MIN,
-    seven: 300,
-    eight: -300,
-    nine: i128::MAX,
-  })
+pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, String> {
+  let return_value = MoreTypes {
+    unsigned_8: u8::MAX,
+    unsigned_16: u16::MAX,
+    unsigned_32: u32::MAX,
+    unsigned_64: 922337203685477580,
+    signed_8: i8::MAX,
+    signed_16: i16::MAX,
+    signed_32: i32::MAX,
+    signed_64: i64::MAX,
+    unsigned_128_min: u128::MIN,
+    unsigned_128_64: 200,
+    unsigned_128_max: 34028236692093846346337460743176821,
+    signed_128_min: i128::MIN,
+    signed_128_64: 300,
+    signed_128_neg_64: -300,
+    signed_128_max: i128::MAX,
+    float_32: 3.140000104904175,
+    float_64: f64::MAX,
+  };
+
+  assert!(return_value == types);
+
+  Ok(return_value)
 }
 
 #[async_dart(namespace = "accounts")]

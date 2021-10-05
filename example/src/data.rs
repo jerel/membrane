@@ -52,15 +52,23 @@ pub struct Arg {
   pub value: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct MoreTypes {
-  pub one: u8,
-  pub two: u64,
-  pub three: u128,
-  pub four: u128,
-  pub five: u128,
-  pub six: i128,
-  pub seven: i128,
-  pub eight: i128,
-  pub nine: i128,
+  pub unsigned_8: u8,
+  pub unsigned_16: u16,
+  pub unsigned_32: u32,
+  pub unsigned_64: u64,
+  pub signed_8: i8,
+  pub signed_16: i16,
+  pub signed_32: i32,
+  pub signed_64: i64,
+  pub unsigned_128_min: u128,
+  pub unsigned_128_64: u128,
+  pub unsigned_128_max: u128,
+  pub signed_128_min: i128,
+  pub signed_128_64: i128,
+  pub signed_128_neg_64: i128,
+  pub signed_128_max: i128,
+  pub float_32: f32,
+  pub float_64: f64,
 }
