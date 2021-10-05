@@ -51,3 +51,16 @@ pub struct OptionsDemo {
 pub struct Arg {
   pub value: i64,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MoreTypes {
+  pub one: u8,
+  pub two: u64,
+  pub three: u128,
+  pub four: u128,
+  pub five: u128,
+  pub six: i128,
+  pub seven: i128,
+  pub eight: i128,
+  pub nine: i128,
+}

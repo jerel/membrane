@@ -2,7 +2,7 @@ use data::OptionsDemo;
 use membrane::async_dart;
 use tokio_stream::Stream;
 
-use crate::data;
+use crate::data::{self, MoreTypes};
 
 #[async_dart(namespace = "accounts")]
 pub fn contacts() -> impl Stream<Item = Result<data::Contact, data::Error>> {
@@ -81,4 +81,19 @@ pub async fn scalar_bool(val: bool) -> Result<bool, String> {
 #[async_dart(namespace = "accounts")]
 pub async fn scalar_error() -> Result<bool, String> {
   Err("an error message".to_string())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn more_types() -> Result<data::MoreTypes, String> {
+  Ok(MoreTypes {
+    one: 255,
+    two: 100,
+    three: u128::MIN,
+    four: 200,
+    five: u128::MAX,
+    six: i128::MIN,
+    seven: 300,
+    eight: -300,
+    nine: i128::MAX,
+  })
 }

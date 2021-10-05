@@ -14,6 +14,8 @@ Membrane is an opinionated crate that generates a Dart package from a Rust libra
   * MacOS
     * `brew install llvm@11`
 
+On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you may need to symlink to the version specific library: `ln -s /usr/lib/llvm-11/lib/libclang.so.1 /usr/lib/llvm-11/lib/libclang.so`.
+
 ## Example
 
 First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a tokio style `spawn` function:
@@ -92,3 +94,5 @@ void main(List<String> arguments) async {
   print(await accounts.contact(id: "1"));
 }
 ```
+
+If you get an error on Linux about not being able to load `libexample.so` then add the pub package's path to `LD_LIBRARY_PATH`.
