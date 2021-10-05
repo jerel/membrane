@@ -165,6 +165,20 @@ void main() {
             // i128 max
             nine: Int128.parse('170141183460469231731687303715884105727')));
   });
+
+  test('can pass an enum as a function arg', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.enumArg(status: Status.active)).status, equals(Status.active));
+    expect((await accounts.enumArg(status: Status.pending)).status, isNot(equals(Status.active)));
+    expect((await accounts.enumArg(status: Status.pending)).status, equals(Status.pending));
+  });
+
+  test('can pass an optional enum as a function arg', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.optionalEnumArg()).status, equals(Status.pending));
+    expect((await accounts.optionalEnumArg(status: Status.pending)).status, equals(Status.pending));
+    expect((await accounts.optionalEnumArg(status: Status.active)).status, equals(Status.active));
+  });
 }
 "#;
 }

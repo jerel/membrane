@@ -37,6 +37,10 @@ pub async fn delete_contact(id: String) -> Result<data::Contact, data::Error> {
   })
 }
 
+//
+// Functions below are used by integration tests
+//
+
 #[async_dart(namespace = "accounts")]
 pub async fn options_demo(
   one: Option<String>,
@@ -96,4 +100,25 @@ pub async fn more_types() -> Result<data::MoreTypes, String> {
     eight: -300,
     nine: i128::MAX,
   })
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn enum_arg(status: data::Status) -> Result<data::Contact, String> {
+  Ok(data::Contact {
+    status,
+    ..data::Contact::default()
+  })
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn optional_enum_arg(status: Option<data::Status>) -> Result<data::Contact, String> {
+  match status {
+    Some(status) => Ok(data::Contact {
+      status,
+      ..data::Contact::default()
+    }),
+    _ => Ok(data::Contact {
+      ..data::Contact::default()
+    }),
+  }
 }
