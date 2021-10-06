@@ -16,7 +16,11 @@ pub use serde_reflection;
 use heck::CamelCase;
 use membrane_types::dart::dart_fn_return_type;
 use serde_reflection::{Error, Samples, Tracer, TracerConfig};
-use std::{collections::HashMap, io::Write};
+use std::{
+  collections::HashMap,
+  io::Write,
+  path::{Path, PathBuf},
+};
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -50,9 +54,9 @@ pub struct DeferredEnumTrace {
 inventory::collect!(DeferredTrace);
 inventory::collect!(DeferredEnumTrace);
 
-pub struct Membrane {
+pub struct Membrane<'a> {
   package_name: String,
-  destination: String,
+  destination: &'a Path,
   library: String,
   namespaces: Vec<String>,
   namespaced_registry: HashMap<String, Tracer>,
@@ -61,7 +65,7 @@ pub struct Membrane {
   c_style_enums: bool,
 }
 
-impl Membrane {
+impl<'a> Membrane<'a> {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     let mut namespaces = vec![];
@@ -102,7 +106,7 @@ impl Membrane {
     // incomplete_enums: BTreeSet::new()
     Self {
       package_name: "".to_string(),
-      destination: "./membrane_output".to_string(),
+      destination: Path::new("membrane_output"),
       library: "libmembrane".to_string(),
       namespaced_registry,
       namespaced_fn_registry,
@@ -114,14 +118,13 @@ impl Membrane {
 
   ///
   /// The directory for the pub package output. The basename will be the name of the pub package.
-  pub fn package_destination_dir(&mut self, path: &str) -> &mut Self {
+  pub fn package_destination_dir<P: ?Sized + AsRef<Path>>(&mut self, path: &'a P) -> &mut Self {
     // allowing an empty path could result in data loss in a directory named `lib`
     assert!(
-      !path.is_empty(),
+      !path.as_ref().to_str().unwrap().is_empty(),
       "package_destination_dir() cannot be called with an empty path"
     );
-    self.destination = path.trim_end_matches('/').to_string();
-
+    self.destination = path.as_ref();
     self
   }
 
@@ -154,12 +157,11 @@ impl Membrane {
     return self;
 
     // remove all previously generated type and header files
-    let _ = std::fs::remove_dir_all(self.destination.clone() + "/lib");
-    let _ = std::fs::remove_file(self.destination.clone() + "/pubspec.yaml");
-    std::fs::create_dir_all(self.destination.clone() + "/lib/src").unwrap();
+    let _ = std::fs::remove_dir_all(self.destination.join("lib"));
+    let _ = std::fs::remove_file(self.destination.join("pubspec.yaml"));
+    std::fs::create_dir_all(self.destination.join("lib").join("src")).unwrap();
 
-    let dest_path = std::path::PathBuf::from(self.destination.clone());
-    let installer = serde_generate::dart::Installer::new(dest_path.clone());
+    let installer = serde_generate::dart::Installer::new(self.destination.to_path_buf());
     installer.install_serde_runtime().unwrap();
     installer.install_bincode_runtime().unwrap();
 
@@ -181,14 +183,16 @@ impl Membrane {
         Err(err) => panic!("{}", err),
       };
       let generator = serde_generate::dart::CodeGenerator::new(&config);
-      generator.output(dest_path.clone(), &registry).unwrap();
+      generator
+        .output(self.destination.to_path_buf(), &registry)
+        .unwrap();
     }
 
     self.generated = true;
     self.write_pubspec();
 
     let pub_get = std::process::Command::new("dart")
-      .current_dir(&self.destination)
+      .current_dir(self.destination)
       .arg("--disable-analytics")
       .arg("pub")
       .arg("get")
@@ -251,7 +255,7 @@ impl Membrane {
     self.write_ffigen_config();
 
     let ffigen = std::process::Command::new("dart")
-      .current_dir(&self.destination)
+      .current_dir(self.destination)
       .arg("--disable-analytics")
       .arg("run")
       .arg("ffigen")
@@ -277,17 +281,24 @@ impl Membrane {
     // serde-generate uses the last namespace as the pubspec name and dart doesn't
     // like that so we set a proper package name from the basename or from an explicitly given name
     let package_name = if self.package_name.is_empty() {
-      self.destination.rsplit('/').next().unwrap()
+      self
+        .destination
+        .to_path_buf()
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string()
     } else {
-      self.package_name.as_str()
+      self.package_name.as_str().to_string()
     };
-    let path = self.destination.clone() + "/pubspec.yaml";
+    let path = self.destination.join("pubspec.yaml");
     let re = regex::Regex::new(r"^name:(.*?)\n").unwrap();
     if let Ok(old) = std::fs::read_to_string(&path) {
       let pubspec = re
         .replace(
           old.as_str().trim(),
-          "name: ".to_string() + package_name + "\n",
+          "name: ".to_string() + &package_name + "\n",
         )
         .to_string();
 
@@ -313,9 +324,9 @@ headers:
     - 'lib/src/*/*.h'
 "#;
 
-    let path = self.destination.clone() + "/ffigen.yaml";
+    let path = self.destination.join("ffigen.yaml");
     std::fs::write(&path, config).unwrap_or_else(|_| {
-      panic!("unable to write ffigen config {}", path);
+      panic!("unable to write ffigen config {}", path.to_str().unwrap());
     });
 
     self
@@ -323,7 +334,9 @@ headers:
 
   fn write_header(&mut self, namespace: String) -> &mut Self {
     use std::io::prelude::*;
-    let path = self.namespace_path(namespace.clone()) + "/" + &namespace + ".h";
+    let path = self
+      .namespace_path(namespace.clone())
+      .join(namespace.to_string() + ".h");
     let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
 
     let head = r#"#include <stdarg.h>
@@ -335,7 +348,7 @@ headers:
     let mut buffer =
       std::fs::File::create(path.clone()).expect("header could not be written at namespace path");
     buffer.write_all(head.as_bytes()).unwrap_or_else(|_| {
-      panic!("unable to write C header file {}", path);
+      panic!("unable to write C header file {}", path.to_str().unwrap());
     });
 
     fns.iter().for_each(|x| {
@@ -349,7 +362,7 @@ headers:
   fn format_package(&mut self) -> &mut Self {
     // quietly attempt a code format if dart is installed
     let _ = std::process::Command::new("dart")
-      .current_dir(&self.destination)
+      .current_dir(self.destination)
       .arg("--disable-analytics")
       .arg("format")
       .arg(".")
@@ -398,7 +411,7 @@ final bindings = _load();
       lib = self.library,
     );
 
-    let path = self.destination.clone() + "/lib/src/loader.dart";
+    let path = self.destination.join("lib").join("src").join("loader.dart");
     std::fs::write(path, base_class).unwrap();
 
     self
@@ -406,7 +419,10 @@ final bindings = _load();
 
   fn create_class(&mut self, namespace: String) -> &mut Self {
     use std::io::prelude::*;
-    let path = self.destination.clone() + "/lib/" + &namespace + ".dart";
+    let path = self
+      .destination
+      .join("lib")
+      .join(namespace.to_string() + ".dart");
     let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
 
     let head = format!(
@@ -457,8 +473,8 @@ class {class_name}Api {{
     self
   }
 
-  fn namespace_path(&mut self, namespace: String) -> String {
-    self.destination.clone() + "/lib/src/" + &namespace
+  fn namespace_path(&mut self, namespace: String) -> PathBuf {
+    self.destination.join("lib").join("src").join(&namespace)
   }
 }
 

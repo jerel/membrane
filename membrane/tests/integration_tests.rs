@@ -4,18 +4,17 @@ mod test {
   use super::test_utils::*;
   use example;
   use membrane::Membrane;
-  use std::{fs::read_to_string, path::PathBuf};
+  use std::{fs::read_to_string, path::Path};
 
   #[test]
   fn base_project() {
-    let dir = PathBuf::new();
-    let path = dir.join("../dart_example");
+    let path = Path::new("../dart_example");
 
     // reference the example lib so it doesn't get optimized away
     let _ = example::load();
 
     Membrane::new()
-      .package_destination_dir(path.to_str().unwrap())
+      .package_destination_dir(path)
       .using_lib("libexample")
       .create_pub_package()
       .write_api()
@@ -61,7 +60,7 @@ class Contact {
       "int32_t membrane_accounts_contact(int64_t port, const char *user_id);",
     );
 
-    build_lib(&path);
-    run_dart(&path, vec!["test"], true);
+    build_lib(&path.to_path_buf());
+    run_dart(&path.to_path_buf(), vec!["test"], true);
   }
 }
