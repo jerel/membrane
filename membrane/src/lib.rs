@@ -572,7 +572,7 @@ impl Function {
     let de;
     match ty {
       "String" => "deserializer.deserializeString()",
-      "i64" => "deserializer.deserializeUint64()",
+      "i64" => "deserializer.deserializeInt64()",
       "f64" => "deserializer.deserializeFloat64()",
       "bool" => "deserializer.deserializeBool()",
       ty if ty == "Option" => {

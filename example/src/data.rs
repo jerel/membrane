@@ -18,7 +18,7 @@ impl Default for Status {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Contact {
-  pub id: u64,
+  pub id: i64,
   pub full_name: String,
   pub status: Status,
 }

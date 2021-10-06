@@ -149,7 +149,7 @@ void main() {
       unsigned8: 255,
       unsigned16: 65535,
       unsigned32: 4294967295,
-      unsigned64: 922337203685477580,
+      unsigned64: Uint64.parse('18446744073709551615'),
       signed8: 127,
       signed16: 32767,
       signed32: 2147483647,
@@ -157,7 +157,7 @@ void main() {
       unsigned128Min: Uint128.parse('0'),
       // fits in 64 bit
       unsigned12864: Uint128.parse('200'),
-      unsigned128Max: Uint128.parse('34028236692093846346337460743176821'),
+      unsigned128Max: Uint128.parse('340282366920938463463374607431768211455'),
       signed128Min: Int128.parse('-170141183460469231731687303715884105728'),
       // fits in 64 bit
       signed12864: Int128.parse('300'),
@@ -167,7 +167,8 @@ void main() {
       float32: 3.140000104904175,
       float64: 1.7976931348623157e+308);
 
-    expect(await accounts.moreTypes(types: types), types);
+    final returned = await accounts.moreTypes(types: types);
+    expect(returned.toString(), types.toString());
   });
 
   test('can pass an enum as a function arg', () async {
