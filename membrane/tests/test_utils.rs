@@ -65,8 +65,3 @@ pub fn run_dart(path: &PathBuf, args: Vec<&str>, verbose: bool) {
     exit(1);
   }
 }
-
-pub fn write_dart_tests(path: &PathBuf, name: &str, content: &str) {
-  fs::create_dir(path.join("test")).unwrap();
-  fs::write(path.join("test").join(name), content.as_bytes()).unwrap();
-}

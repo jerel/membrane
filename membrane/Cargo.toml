@@ -31,4 +31,3 @@ serde-reflection = {git = "https://github.com/jerel/serde-reflection", rev = "7a
 [dev-dependencies]
 example = {path = "../example"}
 pretty_assertions = "1.0.0"
-tempfile = "3.2"
