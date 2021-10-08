@@ -177,6 +177,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
         return nullptr;
       }}
       final ptr = calloc<Uint8>();
+      _toFree.add(ptr);
       ptr.asTypedList(1).setAll(0, [{variable} ? 1 : 0]);
       return ptr;
     }}()"#,
@@ -188,6 +189,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
         return nullptr;
       }}
       final ptr = calloc<Int64>();
+      _toFree.add(ptr);
       ptr.asTypedList(1).setAll(0, [{variable}]);
       return ptr;
     }}()"#,
@@ -199,6 +201,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
         return nullptr;
       }}
       final ptr = calloc<Double>();
+      _toFree.add(ptr);
       ptr.asTypedList(1).setAll(0, [{variable}]);
       return ptr;
     }}()"#,
@@ -229,11 +232,12 @@ fn unsupported_type_error(ty: &str, variable: &str, new_ty: &str) -> String {
 }
 
 fn serialization_partial() -> &'static str {
-  r#"final blob = calloc<Uint8>(data.length + 8);
-final blobBytes = blob.asTypedList(data.length + 8);
+  r#"final ptr = calloc<Uint8>(data.length + 8);
+_toFree.add(ptr);
+final blobBytes = ptr.asTypedList(data.length + 8);
 final payloadLength = Int64List(1);
 payloadLength.setAll(0, [data.length + 8]);
 blobBytes.setAll(0, payloadLength);
 blobBytes.setAll(8, data);
-return blob;"#
+return ptr;"#
 }

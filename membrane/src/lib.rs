@@ -516,11 +516,16 @@ impl Function {
 
   pub fn body(&mut self, namespace: &str) -> &mut Self {
     self.output += format!(
-      r#" {{{fn_transforms}
+      r#" {{
+    final List<Pointer> _toFree = [];{fn_transforms}
     final port = ReceivePort()..timeout(const Duration(milliseconds: 1000));
 
-    if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{dart_inner_args}) < 1) {{
-      throw {class_name}ApiError('Call to C failed');
+    try {{
+      if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{dart_inner_args}) < 1) {{
+        throw {class_name}ApiError('Call to C failed');
+      }}
+    }} finally {{
+      _toFree.forEach((ptr) => calloc.free(ptr));
     }}
 "#,
       fn_transforms = if self.dart_transforms.is_empty() {
