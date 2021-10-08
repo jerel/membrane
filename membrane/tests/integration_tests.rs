@@ -61,6 +61,7 @@ class Contact {
     );
 
     build_lib(&path.to_path_buf());
+    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
     run_dart(&path.to_path_buf(), vec!["test"], true);
   }
 }

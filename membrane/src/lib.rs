@@ -307,7 +307,6 @@ impl<'a> Membrane<'a> {
 
 dev_dependencies:
   ffigen: ^3.0.0
-  test: ^1.18.2
 "#;
       std::fs::write(path, pubspec + extra_deps).expect("pubspec could not be written");
     }
