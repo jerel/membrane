@@ -15,6 +15,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: dart-lang/setup-dart@v1
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
 
     - name: Install libclang
       run: sudo apt-get install -y libclang-dev
@@ -36,8 +39,15 @@ jobs:
     - name: Dart run example
       working-directory: ./dart_example
       run: |
+        dart compile exe -D --enable-asserts bin/dart_example.dart
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
-        dart run --enable-asserts
+        ./bin/dart_example.exe
+
+    - name: Test binary via Valgrind
+      working-directory: ./dart_example
+      run: |
+        sudo apt install -y valgrind
+        ../.github/workflows/valgrind.py ./bin/dart_example.exe
 
   lint:
     name: clippy and rustfmt
