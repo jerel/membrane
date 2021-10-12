@@ -133,12 +133,12 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
       match result {
           Ok(value) => {
               if let Ok(buffer) = ::membrane::bincode::serialize(&(true, value)) {
-                  isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
+                  _isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
               }
           }
           Err(err) => {
               if let Ok(buffer) = ::membrane::bincode::serialize(&(false, err)) {
-                  isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
+                  _isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
               }
           }
       };
@@ -147,6 +147,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let return_statement = match output_style {
     OutputStyle::StreamSerialized => {
       quote! {
+        async move {
           use ::membrane::futures::stream::StreamExt;
           let mut stream = #fn_name(#(#rust_inner_args),*);
           ::membrane::futures::pin_mut!(stream);
@@ -154,11 +155,14 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
               let result: ::std::result::Result<#output, #error> = result;
               #serializer
           }
+        }
       }
     }
     OutputStyle::Serialized => quote! {
+      async move {
         let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
         #serializer
+      }
     },
   };
 
@@ -170,19 +174,21 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #extern_c_fn_name(port: i64, #(#rust_outer_params),*) -> i32 {
+      pub extern "C" fn #extern_c_fn_name(_port: i64, #(#rust_outer_params),*) -> *const ::membrane::TaskHandle {
           use crate::RUNTIME;
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
-          let isolate = ::membrane::allo_isolate::Isolate::new(port);
+          let _isolate = ::membrane::allo_isolate::Isolate::new(_port);
+          let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
 
           #(#rust_transforms)*
-          RUNTIME.spawn(async move {
-              #return_statement
-          });
+          RUNTIME.spawn(
+            ::futures::future::Abortable::new(#return_statement, membrane_future_registration)
+          );
 
-          1
+          let handle = ::std::boxed::Box::new(::membrane::TaskHandle(membrane_future_handle));
+          ::std::boxed::Box::into_raw(handle)
       }
   };
 

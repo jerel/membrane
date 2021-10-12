@@ -2,6 +2,14 @@ import 'package:test/test.dart';
 import 'package:dart_example/accounts.dart';
 
 void main() {
+  test('can take one item from a stream', () async {
+    final accounts = AccountsApi();
+    expect(
+        await accounts.contacts().take(1).toList(),
+        equals(
+            [Contact(id: 1, fullName: "Alice Smith", status: Status.pending)]));
+  });
+
   test('can get a contact from Rust by String arg', () async {
     final accounts = AccountsApi();
     expect(
