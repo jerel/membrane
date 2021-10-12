@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use data::OptionsDemo;
 use membrane::async_dart;
 use tokio_stream::Stream;
@@ -59,9 +61,26 @@ pub async fn options_demo(
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn scalar_empty() -> Result<(), String> {
+  Ok(())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_i32(val: i64) -> Result<i32, String> {
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn scalar_i64(val: i64) -> Result<i64, String> {
   assert!(val == 10);
   Ok(val)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_f32(val: f64) -> Result<f32, String> {
+  assert!(val == 21.1);
+  Ok(21.1)
 }
 
 #[async_dart(namespace = "accounts")]

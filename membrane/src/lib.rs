@@ -650,9 +650,12 @@ impl Function {
     let de;
     match ty {
       "String" => "deserializer.deserializeString()",
+      "i32" => "deserializer.deserializeInt32()",
       "i64" => "deserializer.deserializeInt64()",
+      "f32" => "deserializer.deserializeFloat32()",
       "f64" => "deserializer.deserializeFloat64()",
       "bool" => "deserializer.deserializeBool()",
+      "()" => "null",
       ty if ty == "Option" => {
         panic!(
           "Option is not supported as a bare return type. Return the inner type from {} instead",

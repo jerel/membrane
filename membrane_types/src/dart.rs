@@ -74,9 +74,12 @@ impl From<DartArgs> for Vec<String> {
 pub fn dart_fn_return_type(str_ty: &str) -> &str {
   match str_ty {
     "String" => "String",
+    "i32" => "int",
     "i64" => "int",
+    "f32" => "double",
     "f64" => "double",
     "bool" => "bool",
+    "()" => "void",
     _ => str_ty,
   }
 }

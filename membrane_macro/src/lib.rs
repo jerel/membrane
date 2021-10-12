@@ -37,7 +37,7 @@ struct ReprDart {
   fn_name: Ident,
   inputs: Vec<Input>,
   output_style: OutputStyle,
-  output: Path,
+  output: Expr,
   error: Path,
 }
 
@@ -61,7 +61,7 @@ impl Parse for ReprDart {
       input.parse::<Token![=]>()?;
       input.parse::<Ident>()?;
       input.parse::<Token![<]>()?;
-      let t = input.parse::<Path>()?;
+      let t = input.parse::<Expr>()?;
       input.parse::<Token![,]>()?;
       let e = input.parse::<Path>()?;
       input.parse::<Token![>]>()?;
@@ -70,7 +70,12 @@ impl Parse for ReprDart {
     } else {
       input.parse::<Ident>()?;
       input.parse::<Token![<]>()?;
-      let t = input.parse::<Path>()?;
+      // handle the empty unit () type
+      let t = if input.peek(syn::token::Paren) && input.peek(syn::token::Paren) {
+        Expr::Tuple(input.parse::<syn::ExprTuple>()?)
+      } else {
+        Expr::Path(input.parse::<syn::ExprPath>()?)
+      };
       input.parse::<Token![,]>()?;
       let e = input.parse::<Path>()?;
       input.parse::<Token![>]>()?;
@@ -198,7 +203,11 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let c_header_types = c_header_types.join(", ");
   let name = fn_name.to_string().to_mixed_case();
   let is_stream = output_style == OutputStyle::StreamSerialized;
-  let return_type = output.segments.last().unwrap().ident.to_string();
+  let return_type = match &output {
+    Expr::Tuple(_expr) => "()".to_string(),
+    Expr::Path(expr) => expr.path.segments.last().unwrap().ident.to_string(),
+    _ => unreachable!(),
+  };
   let error_type = error.segments.last().unwrap().ident.to_string();
   let rust_arg_types = inputs
     .iter()
