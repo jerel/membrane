@@ -145,7 +145,11 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     //
     "String" => {
       format!(
-        "{variable}.toNativeUtf8().cast<Int8>()",
+        r#"(){{
+          final ptr = {variable}.toNativeUtf8().cast<Int8>();
+          _toFree.add(ptr);
+          return ptr;
+        }}()"#,
         variable = variable.to_mixed_case()
       )
     }
@@ -166,7 +170,9 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
       if ({variable} == null) {{
         return nullptr;
       }}
-      return {variable}.toNativeUtf8().cast<Int8>();
+      final ptr = {variable}.toNativeUtf8().cast<Int8>();
+      _toFree.add(ptr);
+      return ptr;
     }}()"#,
         variable = variable.to_mixed_case()
       )
