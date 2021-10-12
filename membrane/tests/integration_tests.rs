@@ -57,10 +57,11 @@ class Contact {
 
     assert_contains_part(
       &headers,
-      "int32_t membrane_accounts_contact(int64_t port, const char *user_id);",
+      "TaskHandle *membrane_accounts_contact(int64_t port, const char *user_id);",
     );
 
     build_lib(&path.to_path_buf());
+    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
     run_dart(&path.to_path_buf(), vec!["test"], true);
   }
 }

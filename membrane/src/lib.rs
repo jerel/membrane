@@ -239,6 +239,7 @@ impl<'a> Membrane<'a> {
 
     if self.generated {
       self.create_loader();
+      self.create_extensions();
       self.format_package();
     }
 
@@ -307,7 +308,6 @@ impl<'a> Membrane<'a> {
 
 dev_dependencies:
   ffigen: ^3.0.0
-  test: ^1.18.2
 "#;
       std::fs::write(path, pubspec + extra_deps).expect("pubspec could not be written");
     }
@@ -343,6 +343,10 @@ headers:
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+typedef TaskHandle;
+
+int32_t membrane_cancel_membrane_task(const TaskHandle *task_handle);
 "#;
 
     let mut buffer =
@@ -417,6 +421,45 @@ final bindings = _load();
     self
   }
 
+  fn create_extensions(&mut self) -> &mut Self {
+    let base_class = r#"import 'dart:async';
+
+extension DoOnCancel<T> on Stream<T> {
+  Stream<T> doOnCancel(void Function() onCancel) {
+    return transform(
+      StreamTransformer<T, T>((input, cancelOnError) {
+        final controller = StreamController<T>(sync: true);
+        controller.onListen = () {
+          final subscription = input.listen(
+            controller.add,
+            onError: controller.addError,
+            onDone: controller.close,
+            cancelOnError: cancelOnError,
+          );
+          controller
+            ..onPause = subscription.pause
+            ..onResume = subscription.resume
+            ..onCancel = () {
+              onCancel();
+              return subscription.cancel();
+            };
+          };
+          return controller.stream.listen(null);
+        }),
+      );
+    }
+  }"#;
+
+    let path = self
+      .destination
+      .join("lib")
+      .join("src")
+      .join("extensions.dart");
+    std::fs::write(path, base_class).unwrap();
+
+    self
+  }
+
   fn create_class(&mut self, namespace: String) -> &mut Self {
     use std::io::prelude::*;
     let path = self
@@ -432,6 +475,7 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 
+import './src/extensions.dart';
 import './src/loader.dart' as loader;
 import './src/bincode/bincode.dart';
 import './src/{ns}/{ns}.dart';
@@ -502,7 +546,7 @@ impl Function {
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "int32_t {extern_c_fn_name}(int64_t port{extern_c_fn_types});",
+      "TaskHandle *{extern_c_fn_name}(int64_t port{extern_c_fn_types});",
       extern_c_fn_name = self.extern_c_fn_name,
       extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
         String::new()
@@ -518,10 +562,12 @@ impl Function {
     self.output += format!(
       r#" {{
     final List<Pointer> _toFree = [];{fn_transforms}
-    final port = ReceivePort()..timeout(const Duration(milliseconds: 1000));
+    final _port = ReceivePort()..timeout(const Duration(milliseconds: 1000));
 
+    Pointer<Int32>? _taskHandle;
     try {{
-      if (_bindings.{extern_c_fn_name}(port.sendPort.nativePort{dart_inner_args}) < 1) {{
+      _taskHandle = _bindings.{extern_c_fn_name}(_port.sendPort.nativePort{dart_inner_args});
+      if (_taskHandle == null) {{
         throw {class_name}ApiError('Call to C failed');
       }}
     }} finally {{
@@ -549,12 +595,16 @@ impl Function {
     self.output += if self.is_stream {
       format!(
         r#"
-    return port.map((input) {{
+    return _port.map((input) {{
       final deserializer = BincodeDeserializer(input as Uint8List);
       if (deserializer.deserializeBool()) {{
         return {return_de};
       }}
       throw {class_name}ApiError({error_de});
+    }}).doOnCancel(() {{
+      if (_bindings.membrane_cancel_membrane_task(_taskHandle) < 1) {{
+        throw {class_name}ApiError('Cancelation call to C failed');
+      }}
     }});"#,
         return_de = self.deserializer(&self.return_type),
         error_de = self.deserializer(&self.error_type),
@@ -563,11 +613,17 @@ impl Function {
     } else {
       format!(
         r#"
-    final deserializer = BincodeDeserializer(await port.first as Uint8List);
-    if (deserializer.deserializeBool()) {{
-      return {return_de};
-    }}
-    throw {class_name}ApiError({error_de});"#,
+    try {{
+      final deserializer = BincodeDeserializer(await _port.first as Uint8List);
+      if (deserializer.deserializeBool()) {{
+        return {return_de};
+      }}
+      throw {class_name}ApiError({error_de});
+    }} finally {{
+      if (_bindings.membrane_cancel_membrane_task(_taskHandle) < 1) {{
+        throw {class_name}ApiError('Cancelation call to C failed');
+      }}
+    }}"#,
         return_de = self.deserializer(&self.return_type),
         error_de = self.deserializer(&self.error_type),
         class_name = namespace.to_camel_case()
@@ -613,10 +669,23 @@ impl Function {
 }
 
 #[doc(hidden)]
+pub struct TaskHandle(pub ::futures::future::AbortHandle);
+
+#[doc(hidden)]
+#[no_mangle]
+pub unsafe extern "C" fn membrane_cancel_membrane_task(task_handle: *mut TaskHandle) -> i32 {
+  // turn the pointer back into a box and Rust will drop it when it goes out of scope
+  let handle = Box::from_raw(task_handle);
+  handle.0.abort();
+
+  1
+}
+
+#[doc(hidden)]
 #[macro_export]
 macro_rules! error {
   ($result:expr) => {
-    error!($result, 0);
+    error!($result, ::std::ptr::null());
   };
   ($result:expr, $error:expr) => {
     match $result {
@@ -633,7 +702,7 @@ macro_rules! error {
 #[macro_export]
 macro_rules! cstr {
   ($ptr:expr) => {
-    cstr!($ptr, 0)
+    cstr!($ptr, ::std::ptr::null())
   };
   ($ptr:expr, $error:expr) => {{
     ::membrane::ffi_helpers::null_pointer_check!($ptr);

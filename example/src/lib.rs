@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use once_cell::sync::Lazy;
 use tokio::runtime::{Builder, Runtime};
 

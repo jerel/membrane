@@ -35,6 +35,9 @@ pub fn build_lib(path: &PathBuf) {
     .output()
     .expect("lib could not be compiled for integration tests");
 
+  // unlink the symlinks because they might be stale
+  let _ = fs::remove_file(path.join("libexample.so"));
+  let _ = fs::remove_file(path.join("libexample.dylib"));
   // link the workspace compiled artifacts to the temp test folder
   let _ = fs::hard_link("../target/debug/libexample.so", path.join("libexample.so"));
   let _ = fs::hard_link(
