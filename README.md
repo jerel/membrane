@@ -1,6 +1,20 @@
-# Membrane
+<h1 align="center">Membrane</h1>
+<div align="center">
+  Membrane is an opinionated crate that generates a Dart package from a Rust library. Extremely fast performance with strict typing and zero copy returns over the FFI boundary via bincode.
+</div>
 
-Membrane is an opinionated crate that generates a Dart package from a Rust library. Extremely fast performance with strict typing and zero copy returns over the FFI boundary via bincode.
+<br />
+
+<div align="center">
+  <a href="https://github.com/jerel/membrane">
+    <img src="https://github.com/jerel/membrane/workflows/Clippy%20%26%20Format/badge.svg"
+      alt="Lints" />
+  </a>
+  <a href="https://github.com/jerel/membrane">
+    <img src="https://github.com/jerel/membrane/workflows/Valgrind%20Memory%20Check/badge.svg"
+      alt="Valgrind Memory Check" />
+  </a>
+</div>
 
 ## Development Environment
 
