@@ -57,11 +57,6 @@ if len(output) > 0 and output[0].startswith("** VALGRIND_ROOT="):
     output = output[3:]
 sys.stdout.writelines(output)
 
-# If Valgrind produced an error, we report that to the user.
-if code != 0:
-    sys.stderr.writelines(errors)
-    sys.exit(code)
-
 # Look through the leak details and make sure that we don't have
 # any definitely or indirectly lost bytes. We allow possibly lost
 # bytes to lower the risk of false positives.
@@ -69,7 +64,12 @@ LEAK_RE = r"(?:definitely|indirectly) lost:"
 LEAK_LINE_MATCHER = re.compile(LEAK_RE)
 LEAK_OKAY_MATCHER = re.compile(r"lost: 0 bytes in 0 blocks")
 leaks = []
-for line in errors:
+lines = []
+for error in errors:
+    for line in error.split('\n'):
+        lines.append(line)
+
+for line in lines:
     if LEAK_LINE_MATCHER.search(line):
         leaks.append(line)
         if not LEAK_OKAY_MATCHER.search(line):
