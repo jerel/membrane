@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:dart_example/accounts.dart';
+import 'package:dart_example/locations.dart';
 
 void main() {
   test('can take one item from a stream', () async {
@@ -132,5 +133,16 @@ void main() {
         equals(Status.pending));
     expect((await accounts.optionalEnumArg(status: Status.active)).status,
         equals(Status.active));
+  });
+
+  test('can fetch a vector from a separate namespace', () async {
+    final locations = LocationsApi();
+    expect(
+        (await locations.getLocation(id: 10)).polylineCoords,
+        equals([
+          [-104.0185546875, 43.004647127794435],
+          [-104.0625, 37.78808138412046],
+          [-94.130859375, 37.85750715625203]
+        ]));
   });
 }

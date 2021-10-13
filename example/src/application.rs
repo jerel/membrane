@@ -153,3 +153,16 @@ pub async fn optional_enum_arg(status: Option<data::Status>) -> Result<data::Con
     }),
   }
 }
+
+#[async_dart(namespace = "locations")]
+pub async fn get_location(id: i64) -> Result<data::Location, String> {
+  let _id = id;
+
+  Ok(data::Location {
+    polyline_coords: vec![
+      (-104.0185546875, 43.004647127794435),
+      (-104.0625, 37.78808138412046),
+      (-94.130859375, 37.85750715625203),
+    ],
+  })
+}

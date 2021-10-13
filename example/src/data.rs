@@ -72,3 +72,8 @@ pub struct MoreTypes {
   pub float_32: f32,
   pub float_64: f64,
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct Location {
+  pub polyline_coords: Vec<(f64, f64)>,
+}
