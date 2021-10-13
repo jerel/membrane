@@ -1,11 +1,15 @@
 <h1 align="center">Membrane</h1>
 <div align="center">
-  Membrane is an opinionated crate that generates a Dart package from a Rust library. Extremely fast performance with strict typing and zero copy returns over the FFI boundary via bincode.
+  Membrane is an opinionated crate that generates a Dart package from your Rust library. Extremely fast performance with strict typing, automatic memory safety, and zero copy returns over the FFI boundary via bincode.
 </div>
 
 <br />
 
 <div align="center">
+  <a href="https://github.com/jerel/membrane">
+    <img src="https://github.com/jerel/membrane/workflows/Tests/badge.svg"
+      alt="Tests" />
+  </a>
   <a href="https://github.com/jerel/membrane">
     <img src="https://github.com/jerel/membrane/workflows/Clippy%20%26%20Format/badge.svg"
       alt="Lints" />
@@ -32,7 +36,7 @@ On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you 
 
 ## Example
 
-First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a tokio style `spawn` function:
+First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a `spawn` function, in this case we're using `tokio`:
 ``` rust
 use once_cell::sync::Lazy;
 use tokio::runtime::{Builder, Runtime};
@@ -46,7 +50,7 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
 });
 ```
 
-Then write some code that is annotated with the `#[async_dart]` macro. The functions can be anywhere in your program and may return either an async `Result<T, E>` or a `Stream<Item = Result<T, E>>`:
+Then write some code that is annotated with the `#[async_dart]` macro. No need to use C types here, just use Rust `String`, `i64`, `f64`, `bool`, structs, or enums as usual. The functions can be anywhere in your program and may return either an async `Result<T, E>` or an `impl Stream<Item = Result<T, E>>`:
 
 ``` rust
 use membrane::async_dart;
@@ -92,10 +96,10 @@ fn main() {
 If everything went as planned you can now call Rust from Dart with:
 
 ``` bash
-cd example &&
-cargo build &&
-cd ../dart_example &&
-cp ../example/target/debug/libexample.dylib . &&
+cd example
+cargo build
+cd ../dart_example
+cp ../example/target/debug/libexample.dylib .
 dart --enable-asserts run
 ```
 (`--enable-asserts` enables a pretty print `toString()` in the generated classes)
