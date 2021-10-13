@@ -55,7 +55,9 @@ code = process.wait()
 # by certain versions of Valgrind.
 if len(output) > 0 and output[0].startswith("** VALGRIND_ROOT="):
     output = output[3:]
+
 sys.stdout.writelines(output)
+sys.stderr.writelines(errors)
 
 # Look through the leak details and make sure that we don't have
 # any definitely or indirectly lost bytes. We allow possibly lost
@@ -73,14 +75,14 @@ for line in lines:
     if LEAK_LINE_MATCHER.search(line):
         leaks.append(line)
         if not LEAK_OKAY_MATCHER.search(line):
-            sys.stderr.writelines(errors)
+            sys.stderr.write('\n\n#### Valgrind found memory leaks.\n#### Exiting.\n')
             sys.exit(1)
 
 # Make sure we found the right number of leak lines.
 if not len(leaks) in [0, 2, 3]:
-    sys.stderr.writelines(errors)
     sys.stderr.write('\n\n#### Malformed Valgrind output.\n#### Exiting.\n')
     sys.exit(1)
 
 # Success.
+sys.stdout.write('\n\n#### Valgrind found no definite or indirect memory leaks.\n')
 sys.exit(0)
