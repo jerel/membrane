@@ -50,7 +50,7 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
 });
 ```
 
-Then write some code that is annotated with the `#[async_dart]` macro. No need to use C types here, just use Rust `String`, `i64`, `f64`, `bool`, structs, or enums as usual. The functions can be anywhere in your program and may return either an async `Result<T, E>` or an `impl Stream<Item = Result<T, E>>`:
+Then write some code that is annotated with the `#[async_dart]` macro. No need to use C types here, just use Rust `String`, `i64`, `f64`, `bool`, structs, or enums as usual (or with `Option`). The functions can be anywhere in your program and may return either an async `Result<T, E>` or an `impl Stream<Item = Result<T, E>>`:
 
 ``` rust
 use membrane::async_dart;
