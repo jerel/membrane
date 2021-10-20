@@ -348,7 +348,7 @@ headers:
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef TaskHandle;
+typedef int TaskHandle;
 
 int32_t membrane_cancel_membrane_task(const TaskHandle *task_handle);
 "#;
