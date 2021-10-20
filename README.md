@@ -38,9 +38,11 @@
 
 On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you may need to symlink to the version specific library: `ln -s /usr/lib/llvm-11/lib/libclang.so.1 /usr/lib/llvm-11/lib/libclang.so`.
 
-## Example
+## Usage
 
-First create a `lib.rs` that exposes a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a `spawn` function, in this case we're using `tokio`:
+_View the [example](https://github.com/jerel/membrane/tree/main/example) directory for a runnable example._
+
+In your crate's `lib.rs` add a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a `spawn` function, in this case we're using `tokio`:
 ``` rust
 use once_cell::sync::Lazy;
 use tokio::runtime::{Builder, Runtime};
@@ -86,10 +88,14 @@ fn main() {
 
   let mut project = membrane::Membrane::new();
   project
-    // name the output pub package
+    // name the output pub directory
     .package_destination_dir("../dart_example")
-    // give the name of the .so or .dylib that your Rust program provides
+    // the pub package name, if different than the directory
+    .package_name("example")
+    // give the basename of the .so or .dylib that your Rust program provides
     .using_lib("libexample")
+    // use Dart enums instead of class enums
+    .with_c_style_enums(true)
     .create_pub_package()
     .write_api()
     .write_c_headers()
