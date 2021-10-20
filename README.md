@@ -1,6 +1,6 @@
 <h1 align="center">Membrane</h1>
 <div align="center">
-  Membrane is an opinionated crate that generates a Dart package from your Rust library. Extremely fast performance with strict typing, automatic memory safety, and zero copy returns over the FFI boundary via bincode.
+  Membrane is an opinionated crate that generates a Dart package from your Rust library. It provides extremely fast performance with strict typing, automatic memory management, and zero copy returns over the FFI boundary via bincode.
 </div>
 
 <br />
@@ -19,6 +19,10 @@
       alt="Valgrind Memory Check" />
   </a>
 </div>
+
+<h1 align="center"></h1>
+
+![Membrane diagram](https://user-images.githubusercontent.com/322706/138164299-6a29158e-3d52-4981-a7b6-a3bfc0368823.png)
 
 ## Development Environment
 
@@ -72,7 +76,7 @@ pub async fn contact(id: String) -> Result<data::Contact, data::Error> {
 }
 ```
 
-And now you are ready to generate the Dart package. Note that this goes in a `bin/generator.rs` or similar to be ran with `cargo run` rather than in a `build.rs` (which only runs before compilation):
+And now you are ready to generate the Dart package. Note that this code goes in a `bin/generator.rs` or similar to be ran with `cargo run` or a build task rather than in `build.rs` (which only runs before compilation):
 
 ``` rust
 fn main() {
@@ -97,6 +101,7 @@ If everything went as planned you can now call Rust from Dart with:
 
 ``` bash
 cd example
+cargo run
 cargo build
 cd ../dart_example
 cp ../example/target/debug/libexample.dylib .
