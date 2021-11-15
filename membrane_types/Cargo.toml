@@ -1,5 +1,7 @@
 [package]
+description = "A companion crate for `membrane`"
 edition = "2018"
+license = "Apache-2.0"
 name = "membrane_types"
 version = "0.3.0"
 

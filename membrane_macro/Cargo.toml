@@ -1,6 +1,8 @@
 [package]
 authors = ["Jerel Unruh <mail@unruhdesigns.com>"]
+description = "A companion crate for `membrane`"
 edition = "2018"
+license = "Apache-2.0"
 name = "membrane_macro"
 version = "0.3.0"
 
@@ -14,4 +16,4 @@ skip-generate = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-membrane_types = {path = "../membrane_types"}
+membrane_types = {version = "^0.3", path = "../membrane_types"}
