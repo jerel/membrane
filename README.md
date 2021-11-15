@@ -34,7 +34,7 @@
   * Linux
     * `apt-get install libclang-dev`
   * MacOS
-    * `brew install llvm@11`
+    * `brew install llvm`
 
 On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you may need to symlink to the version specific library: `ln -s /usr/lib/llvm-11/lib/libclang.so.1 /usr/lib/llvm-11/lib/libclang.so`.
 

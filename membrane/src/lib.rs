@@ -1,3 +1,63 @@
+//!
+//! ## Overview
+//! Membrane works by inspecting public functions and their types at
+//! compile time, then generating corresponding Dart code and C bindings capable of
+//! calling those functions and representing their data. To mark a Rust function as accessible to Dart we
+//! just apply the `#[async_dart]` macro, Membrane handles everything else.
+//!
+//! Functions published to Dart use Rust types for their parameters including scalar types, structs, or enums -
+//! no need to work with C types in your Rust code.
+//! Both async functions and streams are supported, return values are handled via a zero-copy buffer
+//! using the bincode encoding (bincode is very efficient because it encodes data only as opposed to structure + data).
+//! Membrane is being used by a large project with stringent performance
+//! requirements and with this zero-copy encoding approach we were able to achieve zero
+//! frame drops in Flutter while transferring significant amounts of data from Rust.
+//!
+//! ### Usage
+//! Since Membrane needs to compile the project and then run code to inspect types we need
+//! a "post build" task to run Membrane, separate from your `cargo build` step. This can
+//! be accomplished by adding a `generator.rs` (or similar) bin file to your project.
+//!
+//! Example:
+//! ```
+//! // lib.rs
+//! #[async_dart(namespace = "accounts")]
+//! pub async fn update_user(id: i64, user: User) -> Result<User, String> {
+//!   todo!()
+//! }
+//!
+//! #[async_dart(namespace = "accounts")]
+//! pub fn users() -> impl Stream<Item = Result<User, MyError>> {
+//!   futures::stream::iter(vec![Ok(User::default())])
+//! }
+//! ```
+//!
+//! ```
+//! // bin.rs
+//! fn main() {
+//!   let mut project = membrane::Membrane::new();
+//!   project
+//!     .package_destination_dir("../dart_example")
+//!     .package_name("example")
+//!     .using_lib("libexample")
+//!     .create_pub_package()
+//!     .write_api()
+//!     .write_c_headers()
+//!     .write_bindings();
+//! }
+//! ```
+//! For a runnable example see the [`example`](https://github.com/jerel/membrane/tree/main/example) directory
+//! and run `cargo run` to inspect the Dart output in the `dart_example` directory.
+//!
+//! By default Membrane stores metadata during the compile step whenever the project is
+//! compiled in debug mode. This has two implications:
+//! 1. `cargo run --bin generator --release` won't work.
+//! 1. A library compiled in `release` mode will have no Membrane metadata in the resulting binary.
+//!
+//! If you need to force a different behavior the feature flags `skip-generate` and `generate` are
+//! available to override the default behavior.
+//!
+
 #[doc(hidden)]
 pub use allo_isolate;
 #[doc(hidden)]
@@ -117,7 +177,7 @@ impl<'a> Membrane<'a> {
   }
 
   ///
-  /// The directory for the pub package output. The basename will be the name of the pub package.
+  /// The directory for the pub package output. The basename will be the name of the pub package unless `package_name` is used.
   pub fn package_destination_dir<P: ?Sized + AsRef<Path>>(&mut self, path: &'a P) -> &mut Self {
     // allowing an empty path could result in data loss in a directory named `lib`
     assert!(
@@ -129,14 +189,14 @@ impl<'a> Membrane<'a> {
   }
 
   ///
-  /// The name of the generate package.
+  /// The name of the generated package.
   pub fn package_name(&mut self, name: &str) -> &mut Self {
     self.package_name = name.to_string();
     self
   }
 
   ///
-  /// The name of the dylib or so that the Rust project produces. Membrane
+  /// The name (without the extension) of the `dylib` or `so` that the Rust project produces. Membrane
   /// generated code will load this library at runtime.
   pub fn using_lib(&mut self, name: &str) -> &mut Self {
     self.library = name.to_string();

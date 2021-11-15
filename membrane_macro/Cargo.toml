@@ -2,7 +2,7 @@
 authors = ["Jerel Unruh <mail@unruhdesigns.com>"]
 edition = "2018"
 name = "membrane_macro"
-version = "0.1.0"
+version = "0.3.0"
 
 [lib]
 proc-macro = true
