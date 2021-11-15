@@ -45,6 +45,7 @@
 //!     .write_c_headers()
 //!     .write_bindings();
 //! }
+//! # static SILENCE_CLIPPY_MAIN = 1;
 //! ```
 //! For a runnable example see the [`example`](https://github.com/jerel/membrane/tree/main/example) directory
 //! and run `cargo run` to inspect the Dart output in the `dart_example` directory.
