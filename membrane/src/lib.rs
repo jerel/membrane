@@ -76,7 +76,7 @@ pub use serde_reflection;
 
 use heck::CamelCase;
 use membrane_types::dart::dart_fn_return_type;
-use serde_reflection::{Error, Samples, Tracer, TracerConfig};
+use serde_reflection::{ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig};
 use std::{
   collections::HashMap,
   io::Write,
@@ -121,7 +121,7 @@ pub struct Membrane {
   library: String,
   llvm_paths: Vec<String>,
   namespaces: Vec<String>,
-  namespaced_registry: HashMap<String, Tracer>,
+  namespaced_enum_registry: HashMap<String, serde_reflection::Result<Registry>>,
   namespaced_fn_registry: HashMap<String, Vec<Function>>,
   generated: bool,
   c_style_enums: bool,
@@ -131,11 +131,11 @@ impl<'a> Membrane {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     let mut namespaces = vec![];
-    let mut namespaced_registry = HashMap::new();
+    let mut namespaced_enum_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
     for item in inventory::iter::<DeferredEnumTrace> {
-      let entry = namespaced_registry
+      let entry = namespaced_enum_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
@@ -145,7 +145,7 @@ impl<'a> Membrane {
     for item in inventory::iter::<DeferredTrace> {
       namespaces.push(item.namespace.clone());
 
-      let entry = namespaced_registry
+      let entry = namespaced_enum_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
@@ -186,7 +186,10 @@ impl<'a> Membrane {
           .collect(),
         None => vec![],
       },
-      namespaced_registry,
+      namespaced_enum_registry: namespaced_enum_registry
+        .into_iter()
+        .map(|(key, val)| (key, val.registry()))
+        .collect(),
       namespaced_fn_registry,
       namespaces,
       generated: false,
@@ -275,8 +278,7 @@ impl<'a> Membrane {
         .with_encodings(vec![serde_generate::Encoding::Bincode])
         .with_c_style_enums(self.c_style_enums);
 
-      let tracer = self.namespaced_registry.remove(namespace).unwrap();
-      let registry = match tracer.registry() {
+      let registry = match self.namespaced_enum_registry.get(namespace).unwrap() {
         Ok(reg) => reg,
         Err(Error::MissingVariants(names)) => {
           panic!(
@@ -289,7 +291,7 @@ impl<'a> Membrane {
       };
       let generator = serde_generate::dart::CodeGenerator::new(&config);
       generator
-        .output(self.destination.to_path_buf(), &registry)
+        .output(self.destination.to_path_buf(), registry)
         .unwrap();
     }
 
@@ -551,6 +553,12 @@ final bindings = _load();
       .join("lib")
       .join(namespace.to_string() + ".dart");
     let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
+    let enum_registry = self
+      .namespaced_enum_registry
+      .get(&namespace)
+      .unwrap()
+      // we've already inspected the registry for incomplete enums, now we'll have only valid ones
+      .as_ref().unwrap();
 
     let head = format!(
       r#"// AUTO GENERATED FILE, DO NOT EDIT
@@ -593,7 +601,7 @@ class {class_name}Api {{
         .begin()
         .signature()
         .body(&namespace)
-        .body_return(&namespace)
+        .body_return(&namespace, enum_registry, self)
         .end()
         .write(&buffer);
     });
@@ -677,7 +685,12 @@ impl Function {
     self
   }
 
-  pub fn body_return(&mut self, namespace: &str) -> &mut Self {
+  pub fn body_return(
+    &mut self,
+    namespace: &str,
+    enum_tracer_registry: &Registry,
+    config: &Membrane,
+  ) -> &mut Self {
     self.output += if self.is_stream {
       format!(
         r#"
@@ -694,8 +707,8 @@ impl Function {
         throw {class_name}ApiError('Cancelation call to C failed');
       }}
     }}"#,
-        return_de = self.deserializer(&self.return_type),
-        error_de = self.deserializer(&self.error_type),
+        return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
+        error_de = self.deserializer(&self.error_type, enum_tracer_registry, config),
         class_name = namespace.to_camel_case()
       )
     } else {
@@ -712,8 +725,8 @@ impl Function {
         throw {class_name}ApiError('Cancelation call to C failed');
       }}
     }}"#,
-        return_de = self.deserializer(&self.return_type),
-        error_de = self.deserializer(&self.error_type),
+        return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
+        error_de = self.deserializer(&self.error_type, enum_tracer_registry, config),
         class_name = namespace.to_camel_case()
       )
     }
@@ -734,7 +747,7 @@ impl Function {
     self
   }
 
-  fn deserializer(&self, ty: &str) -> String {
+  fn deserializer(&self, ty: &str, enum_tracer_registry: &Registry, config: &Membrane) -> String {
     let de;
     match ty {
       "String" => "deserializer.deserializeString()",
@@ -751,7 +764,12 @@ impl Function {
         )
       }
       _ => {
-        de = format!("{}.deserialize(deserializer)", ty);
+        de = match enum_tracer_registry.get(ty) {
+          Some(ContainerFormat::Enum { .. }) if config.c_style_enums => {
+            format!("{}Extension.deserialize(deserializer)", ty)
+          }
+          _ => format!("{}.deserialize(deserializer)", ty),
+        };
         &de
       }
     }

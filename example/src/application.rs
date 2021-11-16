@@ -154,6 +154,11 @@ pub async fn optional_enum_arg(status: Option<data::Status>) -> Result<data::Con
   }
 }
 
+#[async_dart(namespace = "accounts")]
+pub async fn enum_return(status: data::Status) -> Result<data::Status, String> {
+  Ok(status)
+}
+
 #[async_dart(namespace = "locations")]
 pub async fn get_location(id: i64) -> Result<data::Location, String> {
   let _id = id;

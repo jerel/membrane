@@ -135,6 +135,14 @@ void main() {
         equals(Status.active));
   });
 
+  test('can receive an enum as the only returned value', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.enumReturn(status: Status.active)),
+        equals(Status.active));
+    expect((await accounts.enumReturn(status: Status.pending)),
+        isNot(equals(Status.active)));
+  });
+
   test('can fetch a vector from a separate namespace', () async {
     final locations = LocationsApi();
     expect(
