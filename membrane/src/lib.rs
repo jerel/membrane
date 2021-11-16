@@ -115,10 +115,11 @@ pub struct DeferredEnumTrace {
 inventory::collect!(DeferredTrace);
 inventory::collect!(DeferredEnumTrace);
 
-pub struct Membrane<'a> {
+pub struct Membrane {
   package_name: String,
-  destination: &'a Path,
+  destination: PathBuf,
   library: String,
+  llvm_paths: Vec<String>,
   namespaces: Vec<String>,
   namespaced_registry: HashMap<String, Tracer>,
   namespaced_fn_registry: HashMap<String, Vec<Function>>,
@@ -126,7 +127,7 @@ pub struct Membrane<'a> {
   c_style_enums: bool,
 }
 
-impl<'a> Membrane<'a> {
+impl<'a> Membrane {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
     let mut namespaces = vec![];
@@ -163,12 +164,28 @@ impl<'a> Membrane<'a> {
     namespaces.sort();
     namespaces.dedup();
 
-    // this might be useful for printing warnings
-    // incomplete_enums: BTreeSet::new()
     Self {
-      package_name: "".to_string(),
-      destination: Path::new("membrane_output"),
-      library: "libmembrane".to_string(),
+      package_name: match std::env::var_os("MEMBRANE_PACKAGE_NAME") {
+        Some(name) => name.into_string().unwrap(),
+        None => "".to_string(),
+      },
+      destination: match std::env::var_os("MEMBRANE_DESTINATION") {
+        Some(dest) => PathBuf::from(dest),
+        None => PathBuf::from("membrane_output"),
+      },
+      library: match std::env::var_os("MEMBRANE_LIBRARY") {
+        Some(library) => library.into_string().unwrap(),
+        None => "libmembrane".to_string(),
+      },
+      llvm_paths: match std::env::var_os("MEMBRANE_LLVM_PATHS") {
+        Some(config) => config
+          .into_string()
+          .unwrap()
+          .split(&[',', ' '][..])
+          .map(|x| x.to_string())
+          .collect(),
+        None => vec![],
+      },
       namespaced_registry,
       namespaced_fn_registry,
       namespaces,
@@ -179,28 +196,55 @@ impl<'a> Membrane<'a> {
 
   ///
   /// The directory for the pub package output. The basename will be the name of the pub package unless `package_name` is used.
+  ///
+  /// Can be overridden with the environment variable `MEMBRANE_DESTINATION`.
   pub fn package_destination_dir<P: ?Sized + AsRef<Path>>(&mut self, path: &'a P) -> &mut Self {
     // allowing an empty path could result in data loss in a directory named `lib`
     assert!(
       !path.as_ref().to_str().unwrap().is_empty(),
       "package_destination_dir() cannot be called with an empty path"
     );
-    self.destination = path.as_ref();
+    if self.destination == PathBuf::from("membrane_output") {
+      self.destination = path.as_ref().to_path_buf();
+    }
     self
   }
 
   ///
   /// The name of the generated package.
+  ///
+  /// Can be overridden with the environment variable `MEMBRANE_PACKAGE_NAME`.
   pub fn package_name(&mut self, name: &str) -> &mut Self {
-    self.package_name = name.to_string();
+    if self.package_name.is_empty() {
+      self.package_name = name.to_string();
+    }
+    self
+  }
+
+  ///
+  /// Paths to search (at build time) for the libclang library.
+  ///
+  /// Can be overridden with the environment variable `MEMBRANE_LLVM_PATHS`. Takes a comma or space separated list.
+  pub fn llvm_paths(&mut self, paths: Vec<&str>) -> &mut Self {
+    assert!(
+      !paths.is_empty(),
+      "llvm_paths() cannot be called with no paths"
+    );
+    if self.llvm_paths.is_empty() {
+      self.llvm_paths = paths.iter().map(|x| x.to_string()).collect();
+    }
     self
   }
 
   ///
   /// The name (without the extension) of the `dylib` or `so` that the Rust project produces. Membrane
   /// generated code will load this library at runtime.
+  ///
+  /// Can be overridden with the environment variable `MEMBRANE_LIBRARY`.
   pub fn using_lib(&mut self, name: &str) -> &mut Self {
-    self.library = name.to_string();
+    if self.library == "libmembrane" {
+      self.library = name.to_string();
+    }
     self
   }
 
@@ -253,7 +297,7 @@ impl<'a> Membrane<'a> {
     self.write_pubspec();
 
     let pub_get = std::process::Command::new("dart")
-      .current_dir(self.destination)
+      .current_dir(&self.destination)
       .arg("--disable-analytics")
       .arg("pub")
       .arg("get")
@@ -316,7 +360,7 @@ impl<'a> Membrane<'a> {
     self.write_ffigen_config();
 
     let ffigen = std::process::Command::new("dart")
-      .current_dir(self.destination)
+      .current_dir(&self.destination)
       .arg("--disable-analytics")
       .arg("run")
       .arg("ffigen")
@@ -376,13 +420,27 @@ dev_dependencies:
   }
 
   fn write_ffigen_config(&mut self) -> &mut Self {
-    let config = r#"name: 'NativeLibrary'
+    let config = format!(
+      r#"name: 'NativeLibrary'
 description: 'Auto generated bindings for Dart types'
 output: './lib/src/ffi_bindings.dart'
 headers:
   entry-points:
     - 'lib/src/*/*.h'
-"#;
+{}
+"#,
+      if !self.llvm_paths.is_empty() {
+        "llvm-path:".to_string()
+          + &self
+            .llvm_paths
+            .iter()
+            .map(|p| "\n  - '".to_string() + p + "'")
+            .collect::<Vec<String>>()
+            .join("")
+      } else {
+        "".to_string()
+      }
+    );
 
     let path = self.destination.join("ffigen.yaml");
     std::fs::write(&path, config).unwrap_or_else(|_| {
@@ -428,7 +486,7 @@ int32_t membrane_cancel_membrane_task(const TaskHandle *task_handle);
   fn format_package(&mut self) -> &mut Self {
     // quietly attempt a code format if dart is installed
     let _ = std::process::Command::new("dart")
-      .current_dir(self.destination)
+      .current_dir(&self.destination)
       .arg("--disable-analytics")
       .arg("format")
       .arg(".")
@@ -741,4 +799,40 @@ macro_rules! cstr {
     ::membrane::ffi_helpers::null_pointer_check!($ptr);
     error!(unsafe { CStr::from_ptr($ptr).to_str() }, $error)
   }};
+}
+
+#[cfg(test)]
+mod tests {
+  use std::env::{remove_var, set_var};
+  use std::path::PathBuf;
+
+  use crate::Membrane;
+
+  #[test]
+  fn test_envars_are_used() {
+    let project = Membrane::new();
+    assert_eq!(project.package_name, "");
+    assert_eq!(project.destination, PathBuf::from("membrane_output"));
+    assert_eq!(project.library, "libmembrane");
+    assert!(project.llvm_paths.is_empty());
+
+    set_var("MEMBRANE_PACKAGE_NAME", "a_package");
+    set_var("MEMBRANE_DESTINATION", "./this_dir");
+    set_var("MEMBRANE_LIBRARY", "libcustom");
+    set_var("MEMBRANE_LLVM_PATHS", "/usr/lib/opt/foo,/usr/lib/opt/bar");
+
+    let project2 = Membrane::new();
+    assert_eq!(project2.package_name, "a_package");
+    assert_eq!(project2.destination, PathBuf::from("./this_dir"));
+    assert_eq!(project2.library, "libcustom");
+    assert_eq!(
+      project2.llvm_paths,
+      vec!["/usr/lib/opt/foo", "/usr/lib/opt/bar"]
+    );
+
+    remove_var("MEMBRANE_PACKAGE_NAME");
+    remove_var("MEMBRANE_DESTINATION");
+    remove_var("MEMBRANE_LIBRARY");
+    remove_var("MEMBRANE_LLVM_PATHS");
+  }
 }
