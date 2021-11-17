@@ -28,9 +28,12 @@ dependencies = [
 
 [[package]]
 name = "allo-isolate"
-version = "0.1.9"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc2dd9f3ef4b4bab19ace228cdeffc1748d72f3dbcff9a05b2d2a7b1b5341740"
+checksum = "e13e2dba4602fed6c46f7d5cae67fe0fb9a6af1ce01848228f7533a8450c73be"
+dependencies = [
+ "atomic",
+]
 
 [[package]]
 name = "ansi_term"
@@ -46,6 +49,15 @@ name = "anyhow"
 version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61604a8f862e1d5c3229fdd78f8b02c68dcf73a4c4b05fd636d12240aaa242c1"
+
+[[package]]
+name = "atomic"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b88d82667eca772c4aa12f0f1348b3ae643424c8876448f3f7bd5787032e234c"
+dependencies = [
+ "autocfg",
+]
 
 [[package]]
 name = "atty"
@@ -448,7 +460,7 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "membrane"
-version = "0.1.0"
+version = "0.3.2"
 dependencies = [
  "allo-isolate",
  "bincode",
@@ -466,14 +478,14 @@ dependencies = [
 
 [[package]]
 name = "membrane_macro"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "membrane_types",
 ]
 
 [[package]]
 name = "membrane_types"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -693,8 +705,9 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.20.2"
-source = "git+https://github.com/jerel/serde-reflection?rev=33b2775#33b2775542f8576cf2c5d49626bb2fdb86eba810"
+version = "0.20.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11cf232a3d6896ed5040b28e1772e08db7cb031db200b2f3b954c70f3ec185c6"
 dependencies = [
  "bcs",
  "bincode",
@@ -712,7 +725,8 @@ dependencies = [
 [[package]]
 name = "serde-reflection"
 version = "0.3.5"
-source = "git+https://github.com/jerel/serde-reflection?rev=33b2775#33b2775542f8576cf2c5d49626bb2fdb86eba810"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "167450ba550f903a2b35a81ba3ca387585189e2430e3df6b94b95f3bec2f26bd"
 dependencies = [
  "once_cell",
  "serde",

@@ -4,9 +4,11 @@ mod test {
   use super::test_utils::*;
   use example;
   use membrane::Membrane;
+  use serial_test::serial;
   use std::{fs::read_to_string, path::Path};
 
   #[test]
+  #[serial]
   fn base_project() {
     let path = Path::new("../dart_example");
 
@@ -62,6 +64,36 @@ class Contact {
 
     build_lib(&path.to_path_buf());
     run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
-    run_dart(&path.to_path_buf(), vec!["test"], true);
+    run_dart(
+      &path.to_path_buf(),
+      vec!["test", "test/main_test.dart"],
+      true,
+    );
+  }
+
+  #[test]
+  #[serial]
+  fn test_class_enums() {
+    let path = Path::new("../dart_example");
+
+    // reference the example lib so it doesn't get optimized away
+    let _ = example::load();
+
+    Membrane::new()
+      .with_c_style_enums(false)
+      .package_destination_dir(path)
+      .using_lib("libexample")
+      .create_pub_package()
+      .write_api()
+      .write_c_headers()
+      .write_bindings();
+
+    build_lib(&path.to_path_buf());
+    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
+    run_dart(
+      &path.to_path_buf(),
+      vec!["test", "test/enum_test.dart"],
+      true,
+    );
   }
 }
