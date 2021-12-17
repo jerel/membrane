@@ -11,6 +11,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, Block, Error, Expr, Ident, LitStr, Path, Token, Type};
 
+mod parsers;
+
 struct ReprDartAttrs {
   namespace: String,
 }
@@ -54,32 +56,9 @@ impl Parse for ReprDart {
     syn::parenthesized!(arg_buffer in input);
     input.parse::<Token![->]>()?;
     let (output_style, ret_type, err_type) = if input.peek(Token![impl]) {
-      input.parse::<Token![impl]>()?;
-      input.parse::<Ident>()?;
-      input.parse::<Token![<]>()?;
-      input.parse::<Ident>()?;
-      input.parse::<Token![=]>()?;
-      input.parse::<Ident>()?;
-      input.parse::<Token![<]>()?;
-      let t = input.parse::<Expr>()?;
-      input.parse::<Token![,]>()?;
-      let e = input.parse::<Path>()?;
-      input.parse::<Token![>]>()?;
-      input.parse::<Token![>]>()?;
-      (OutputStyle::StreamSerialized, t, e)
+      parsers::parse_stream_return_type(input)?
     } else {
-      input.parse::<Ident>()?;
-      input.parse::<Token![<]>()?;
-      // handle the empty unit () type
-      let t = if input.peek(syn::token::Paren) && input.peek(syn::token::Paren) {
-        Expr::Tuple(input.parse::<syn::ExprTuple>()?)
-      } else {
-        Expr::Path(input.parse::<syn::ExprPath>()?)
-      };
-      input.parse::<Token![,]>()?;
-      let e = input.parse::<Path>()?;
-      input.parse::<Token![>]>()?;
-      (OutputStyle::Serialized, t, e)
+      parsers::parse_return_type(input)?
     };
     input.parse::<Block>()?;
 

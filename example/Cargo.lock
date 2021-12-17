@@ -460,7 +460,7 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "membrane"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "allo-isolate",
  "bincode",
