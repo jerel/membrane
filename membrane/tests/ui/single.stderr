@@ -1,0 +1,29 @@
+error: expected enum `Result`
+  --> tests/ui/single.rs:17:29
+   |
+17 | pub async fn no_result() -> i32 {}
+   |                             ^^^
+
+error: expected enum `Result`
+  --> tests/ui/single.rs:20:38
+   |
+20 | pub async fn no_result_bare_vec() -> Vec<i32> {}
+   |                                      ^^^
+
+error: A vector may not be returned from an `async_dart` function. If a vector is needed return a struct containing the vector.
+  --> tests/ui/single.rs:23:35
+   |
+23 | pub async fn bare_vec() -> Result<Vec<i32>, String> {}
+   |                                   ^^^
+
+error: A tuple may not be returned from an `async_dart` function. If a tuple is needed return a struct containing the tuple.
+  --> tests/ui/single.rs:26:37
+   |
+26 | pub async fn bare_tuple() -> Result<(i32, i32), String> {}
+   |                                     ^
+
+error: expected a struct or scalar type
+  --> tests/ui/single.rs:29:33
+   |
+29 | pub async fn option() -> Result<Option<i32>, String> {}
+   |                                 ^^^^^^
