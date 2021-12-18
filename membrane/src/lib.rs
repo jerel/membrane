@@ -135,17 +135,19 @@ impl<'a> Membrane {
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
     for item in inventory::iter::<DeferredEnumTrace> {
-      let entry = namespaced_enum_registry
+      namespaces.push(item.namespace.clone());
+
+      let tracer = namespaced_enum_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
-      (item.trace)(entry);
+      (item.trace)(tracer);
     }
 
     for item in inventory::iter::<DeferredTrace> {
       namespaces.push(item.namespace.clone());
 
-      let entry = namespaced_enum_registry
+      let tracer = namespaced_enum_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
@@ -153,7 +155,7 @@ impl<'a> Membrane {
         .entry(item.namespace.clone())
         .or_insert_with(Samples::new);
 
-      (item.trace)(entry, samples);
+      (item.trace)(tracer, samples);
 
       namespaced_fn_registry
         .entry(item.namespace.clone())
@@ -552,6 +554,12 @@ final bindings = _load();
       .destination
       .join("lib")
       .join(namespace.to_string() + ".dart");
+
+    // perhaps this namespace has only enums in it and no functions
+    if self.namespaced_fn_registry.get(&namespace).is_none() {
+      return self;
+    }
+
     let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
     let enum_registry = self
       .namespaced_enum_registry
