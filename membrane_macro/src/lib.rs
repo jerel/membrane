@@ -25,7 +25,6 @@ struct Options {
 fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options {
   let option = match input.pop() {
     Some(NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. }))) => {
-      let path = path.clone();
       let ident = path.get_ident().unwrap().clone();
       Some((ident, lit))
     }

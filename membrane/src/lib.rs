@@ -93,6 +93,7 @@ pub struct Function {
   pub return_type: String,
   pub error_type: String,
   pub namespace: String,
+  pub disable_logging: bool,
   pub output: String,
   pub dart_outer_params: String,
   pub dart_transforms: String,
@@ -681,7 +682,7 @@ impl Function {
 
   pub fn body(&mut self, namespace: &str) -> &mut Self {
     self.output += format!(
-      r#" {{
+      r#" {{{disable_logging}
     final List<Pointer> _toFree = [];{fn_transforms}
     final _port = ReceivePort()..timeout(const Duration(milliseconds: 1000));
 
@@ -701,6 +702,11 @@ impl Function {
       }}
     }}
 "#,
+      disable_logging = if self.disable_logging {
+        "final _loggingDisabled = true;"
+      } else {
+        ""
+      },
       fn_transforms = if self.dart_transforms.is_empty() {
         String::new()
       } else {
