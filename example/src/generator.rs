@@ -18,8 +18,16 @@ fn main() {
 
 static RUNNABLE_EXAMPLE: &str = r#"
 import 'package:dart_example/accounts.dart';
+import 'package:logging/logging.dart';
 
 void main(List<String> arguments) async {
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((event) {
+    print(event);
+  });
+
+  Logger('example').info('Starting dart_example application');
+
   var accounts = AccountsApi();
   var one = await accounts.contact(userId: "1");
   print('Item: ' + one.toString());
