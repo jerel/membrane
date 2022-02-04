@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'package:dart_example/accounts.dart';
 import 'package:dart_example/locations.dart';
@@ -152,5 +155,32 @@ void main() {
           [-104.0625, 37.78808138412046],
           [-94.130859375, 37.85750715625203]
         ]));
+  });
+
+  test('calling a function emits a log event', () async {
+    var logs = [];
+    Logger.root.level = Level.ALL;
+    Logger('membrane').onRecord.listen((event) {
+      logs.add(event.toString());
+    });
+
+    final locations = LocationsApi();
+    await locations.getLocation(id: 1);
+
+    expect(logs.first, contains('[FINE] membrane:'));
+  });
+
+  test('calling a function with its logging disabled does not emit a log event',
+      () async {
+    var logs = [];
+    Logger.root.level = Level.ALL;
+    Logger('membrane').onRecord.listen((event) {
+      logs.add(event.toString());
+    });
+
+    final accounts = AccountsApi();
+    await accounts.scalarEmpty();
+
+    expect(logs, equals([]));
   });
 }

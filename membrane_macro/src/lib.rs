@@ -9,29 +9,51 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, Block, Error, Expr, Ident, LitStr, Path, Token, Type};
+use syn::{
+  parse_macro_input, AttributeArgs, Block, Expr, Ident, Lit, Meta, MetaNameValue, NestedMeta, Path,
+  Token, Type,
+};
 
 mod parsers;
 
-struct ReprDartAttrs {
+#[derive(Debug, Default)]
+struct Options {
   namespace: String,
+  disable_logging: bool,
 }
 
-impl Parse for ReprDartAttrs {
-  fn parse(input: ParseStream) -> Result<Self> {
-    let name_token: Ident = input.parse()?;
-    if name_token != "namespace" {
-      return Err(Error::new(
-        name_token.span(),
-        "#[async_dart] expects a `namespace` attribute",
-      ));
+fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options {
+  let option = match input.pop() {
+    Some(NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. }))) => {
+      let ident = path.get_ident().unwrap().clone();
+      Some((ident, lit))
     }
-    input.parse::<Token![=]>()?;
-    let s: LitStr = input.parse()?;
-    Ok(ReprDartAttrs {
-      namespace: s.value(),
-    })
-  }
+    _ => None,
+  };
+
+  let options = match option {
+    Some((ident, Lit::Str(val))) if ident == "namespace" => {
+      options.namespace = val.value();
+      options
+    }
+    Some((ident, Lit::Bool(val))) if ident == "disable_logging" => {
+      options.disable_logging = val.value();
+      options
+    }
+    Some(_) => {
+      panic!(r#"#[async_dart] only `namespace=""` and `disable_logging=true` are valid options"#);
+    }
+    None => {
+      // we've iterated over all options and didn't find a namespace (required)
+      if options.namespace.is_empty() {
+        panic!("#[async_dart] expects a `namespace` attribute");
+      }
+
+      return options;
+    }
+  };
+
+  extract_options(input, options)
 }
 
 #[derive(Debug)]
@@ -89,7 +111,13 @@ impl Parse for ReprDart {
 
 #[proc_macro_attribute]
 pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
-  let ReprDartAttrs { namespace } = parse_macro_input!(attrs as ReprDartAttrs);
+  let Options {
+    namespace,
+    disable_logging,
+  } = extract_options(
+    parse_macro_input!(attrs as AttributeArgs),
+    Options::default(),
+  );
 
   let mut functions = TokenStream::new();
   functions.extend(input.clone());
@@ -209,6 +237,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
                 return_type: #return_type.to_string(),
                 error_type: #error_type.to_string(),
                 namespace: #namespace.to_string(),
+                disable_logging: #disable_logging,
                 dart_outer_params: #dart_outer_params.to_string(),
                 dart_transforms: #dart_transforms.to_string(),
                 dart_inner_args: #dart_inner_args.to_string(),
@@ -257,7 +286,10 @@ impl Parse for ReprDartEnum {
 
 #[proc_macro_attribute]
 pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
-  let ReprDartAttrs { namespace } = parse_macro_input!(attrs as ReprDartAttrs);
+  let Options { namespace, .. } = extract_options(
+    parse_macro_input!(attrs as AttributeArgs),
+    Options::default(),
+  );
 
   let mut variants = TokenStream::new();
   variants.extend(input.clone());

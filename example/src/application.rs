@@ -60,7 +60,7 @@ pub async fn options_demo(
   })
 }
 
-#[async_dart(namespace = "accounts")]
+#[async_dart(namespace = "accounts", disable_logging = true)]
 pub async fn scalar_empty() -> Result<(), String> {
   Ok(())
 }
