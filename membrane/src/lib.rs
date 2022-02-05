@@ -486,9 +486,7 @@ headers:
  */
 #include <stdint.h>
 
-typedef int TaskHandle;
-
-int32_t membrane_cancel_membrane_task(const TaskHandle *task_handle);
+int32_t membrane_cancel_membrane_task(const int32_t *task_handle);
 "#;
 
     let mut buffer =
@@ -684,7 +682,7 @@ impl Function {
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "TaskHandle *{extern_c_fn_name}(int64_t port{extern_c_fn_types});",
+      "int32_t *{extern_c_fn_name}(int64_t port{extern_c_fn_types});",
       extern_c_fn_name = self.extern_c_fn_name,
       extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
         String::new()

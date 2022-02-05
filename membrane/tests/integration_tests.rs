@@ -59,7 +59,7 @@ class Contact {
 
     assert_contains_part(
       &headers,
-      "TaskHandle *membrane_accounts_contact(int64_t port, const char *user_id);",
+      "int32_t *membrane_accounts_contact(int64_t port, const char *user_id);",
     );
 
     build_lib(&path.to_path_buf());
