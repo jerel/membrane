@@ -430,6 +430,21 @@ dev_dependencies:
       r#"name: 'NativeLibrary'
 description: 'Auto generated bindings for Dart types'
 output: './lib/src/ffi_bindings.dart'
+enums:
+  include:
+    - __none__
+macros:
+  include:
+    - __none__
+structs:
+  include:
+    - __none__
+unions:
+  include:
+    - __none__
+unnamed-enums:
+  include:
+    - __none__
 headers:
   entry-points:
     - 'lib/src/*/*.h'
