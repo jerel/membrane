@@ -430,6 +430,7 @@ dev_dependencies:
       r#"name: 'NativeLibrary'
 description: 'Auto generated bindings for Dart types'
 output: './lib/src/ffi_bindings.dart'
+sort: true
 enums:
   include:
     - __none__
