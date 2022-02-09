@@ -627,7 +627,7 @@ class {class_name}ApiError implements Exception {{
 
 @immutable
 class {class_name}Api {{
-  static final _log = Logger('membrane');
+  static final _log = Logger('membrane.{ns}');
   const {class_name}Api();
 "#,
       ns = &namespace,

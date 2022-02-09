@@ -167,7 +167,7 @@ void main() {
     final locations = LocationsApi();
     await locations.getLocation(id: 1);
 
-    expect(logs.first, contains('[FINE] membrane:'));
+    expect(logs.first, contains('[FINE] membrane.locations:'));
   });
 
   test('calling a function with its logging disabled does not emit a log event',
