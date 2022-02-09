@@ -134,6 +134,17 @@ pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, Strin
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn filter_arg(filter: data::Filter) -> Result<data::Contacts, String> {
+  println!("[Rust] Received filter: {:?}", filter);
+
+  Ok(data::Contacts {
+    data: vec![data::Contact::default()],
+    count: 1,
+    total: 1,
+  })
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn enum_arg(status: data::Status) -> Result<data::Contact, String> {
   Ok(data::Contact {
     status,

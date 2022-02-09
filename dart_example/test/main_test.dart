@@ -119,6 +119,17 @@ void main() {
     expect(returned.toString(), types.toString());
   });
 
+  test('can pass a tuple arg containing a vec of structs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.filterArg(
+            filter:
+                Filter(value: [Match(field: 'name', value: 'Alice Smith')]))),
+        equals(Contacts(data: [
+          Contact(id: 1, fullName: 'Alice Smith', status: Status.pending)
+        ], count: 1, total: 1)));
+  });
+
   test('can pass an enum as a function arg', () async {
     final accounts = AccountsApi();
     expect((await accounts.enumArg(status: Status.active)).status,

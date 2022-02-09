@@ -52,6 +52,22 @@ pub struct Arg {
   pub value: i64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Filter(pub Vec<Match>);
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Match {
+  field: String,
+  value: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Contacts {
+  pub data: Vec<Contact>,
+  pub count: i32,
+  pub total: i32,
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct MoreTypes {
   pub unsigned_8: u8,
