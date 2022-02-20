@@ -1,6 +1,5 @@
 import 'package:test/test.dart';
 import 'package:dart_example/accounts.dart';
-import 'package:dart_example/locations.dart';
 
 void main() {
   test('can handle a class enum', () async {
