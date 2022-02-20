@@ -11,7 +11,7 @@ name = "generator"
 path = "src/generator.rs"
 
 [lib]
-crate-type = ["lib", "cdylib", "staticlib"]
+crate-type = ["lib", "cdylib", "staticlib", "dylib"]
 
 [features]
 codegen = ["membrane/generate"]
