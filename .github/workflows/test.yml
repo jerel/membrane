@@ -16,6 +16,9 @@ jobs:
     - uses: actions/checkout@v2
     - uses: dart-lang/setup-dart@v1
 
+    - name: Update apt
+      run: sudo apt-get update
+
     - name: Install libclang
       run: sudo apt-get install -y libclang-dev
 
@@ -39,64 +42,3 @@ jobs:
         dart compile exe -D --enable-asserts bin/dart_example.dart
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
         ./bin/dart_example.exe
-
-  valgrind:
-    name: valgrind
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - uses: dart-lang/setup-dart@v1
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-
-    - name: Install libclang
-      run: sudo apt-get install -y libclang-dev
-
-    - name: Rust build example
-      working-directory: ./example
-      run: cargo build --verbose
-
-    - name: Rust generate Dart example
-      working-directory: ./example
-      run: cargo run
-
-    - name: Dart compile example
-      working-directory: ./dart_example
-      run: dart compile exe -D --enable-asserts bin/dart_example.dart
-
-    - name: Test binary via Valgrind
-      working-directory: ./dart_example
-      run: |
-        sudo apt install -y valgrind
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
-        ../.github/workflows/valgrind.py ./bin/dart_example.exe
-
-  lint:
-    name: clippy and rustfmt
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: rustfmt, clippy
-
-      - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
