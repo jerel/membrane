@@ -170,6 +170,33 @@ pub async fn enum_return(status: data::Status) -> Result<data::Status, String> {
   Ok(status)
 }
 
+#[async_dart(namespace = "accounts", timeout = 100)]
+pub async fn slow_function(sleep_for: i64) -> Result<(), String> {
+  use tokio::time::{sleep, Duration};
+  sleep(Duration::from_millis(sleep_for as u64)).await;
+  Ok(())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn slow_function_two(sleep_for: i64) -> Result<(), String> {
+  use tokio::time::{sleep, Duration};
+  sleep(Duration::from_millis(sleep_for as u64)).await;
+  Ok(())
+}
+
+#[async_dart(namespace = "accounts", timeout = 50)]
+pub fn slow_stream(sleep_for: i64) -> impl Stream<Item = Result<i32, String>> {
+  use async_stream::stream;
+  use tokio::time::{sleep, Duration};
+
+  stream! {
+    for i in 0..3 {
+      sleep(Duration::from_millis(sleep_for as u64)).await;
+      yield Ok(i);
+    }
+  }
+}
+
 #[async_dart(namespace = "locations")]
 pub async fn get_location(id: i64) -> Result<data::Location, String> {
   let _id = id;

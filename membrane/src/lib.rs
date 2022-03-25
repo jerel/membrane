@@ -94,6 +94,7 @@ pub struct Function {
   pub error_type: String,
   pub namespace: String,
   pub disable_logging: bool,
+  pub timeout: Option<i32>,
   pub output: String,
   pub dart_outer_params: String,
   pub dart_transforms: String,
@@ -126,6 +127,7 @@ pub struct Membrane {
   namespaced_fn_registry: HashMap<String, Vec<Function>>,
   generated: bool,
   c_style_enums: bool,
+  timeout: Option<i32>,
 }
 
 impl<'a> Membrane {
@@ -197,6 +199,7 @@ impl<'a> Membrane {
       namespaces,
       generated: false,
       c_style_enums: true,
+      timeout: None,
     }
   }
 
@@ -324,6 +327,18 @@ impl<'a> Membrane {
   /// Dart classes are generated (one for the base case and one for each variant).
   pub fn with_c_style_enums(&mut self, val: bool) -> &mut Self {
     self.c_style_enums = val;
+    self
+  }
+
+  ///
+  /// Configures the global timeout for non-stream receive ports.
+  /// Streams do not use the global timeout as it is unusual to want a stream to timeout
+  /// between events. All timeouts can be set at the function level by passing
+  /// `timeout = 5000` as an option to `async_dart`.
+  ///
+  /// Default: 1000ms
+  pub fn timeout(&mut self, val: i32) -> &mut Self {
+    self.timeout = Some(val);
     self
   }
 
@@ -698,7 +713,7 @@ impl Function {
     self.output += format!(
       r#" {{{disable_logging}
     final List<Pointer> _toFree = [];{fn_transforms}
-    final _port = ReceivePort()..timeout(const Duration(milliseconds: 1000));
+    final _port = ReceivePort();
 
     Pointer<Int32>? _taskHandle;
     try {{
@@ -749,7 +764,7 @@ impl Function {
       format!(
         r#"
     try {{
-      yield* _port.map((input) {{
+      yield* _port{timeout}.map((input) {{
         if (!_loggingDisabled) {{
           _log.fine('Deserializing data from {fn_name}');
         }}
@@ -767,7 +782,15 @@ impl Function {
         return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
         error_de = self.deserializer(&self.error_type, enum_tracer_registry, config),
         class_name = namespace.to_camel_case(),
-        fn_name = self.fn_name
+        fn_name = self.fn_name,
+        timeout = if let Some(val) = self.timeout {
+          // check the async_dart option configured timeout
+          format!(".timeout(const Duration(milliseconds: {}))", val)
+        } else {
+          // we default to no timeout even if a global timeout is configured because
+          // having all streams auto-disconnect after a pause in events is not desirable
+          "".to_string()
+        },
       )
     } else {
       format!(
@@ -776,7 +799,7 @@ impl Function {
       if (!_loggingDisabled) {{
         _log.fine('Deserializing data from {fn_name}');
       }}
-      final deserializer = BincodeDeserializer(await _port.first as Uint8List);
+      final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
       if (deserializer.deserializeBool()) {{
         return {return_de};
       }}
@@ -789,7 +812,17 @@ impl Function {
         return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
         error_de = self.deserializer(&self.error_type, enum_tracer_registry, config),
         class_name = namespace.to_camel_case(),
-        fn_name = self.fn_name
+        fn_name = self.fn_name,
+        timeout = if let Some(val) = self.timeout {
+          // check the async_dart option configured timeout first
+          format!(".timeout(const Duration(milliseconds: {}))", val)
+        } else if let Some(val) = config.timeout {
+          // fall back to global timeout
+          format!(".timeout(const Duration(milliseconds: {}))", val)
+        } else {
+          // and by default we won't time out at all
+          "".to_string()
+        },
       )
     }
     .as_str();
