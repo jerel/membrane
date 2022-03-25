@@ -580,8 +580,17 @@ _load() {{
   Logger('membrane').fine('Initializing Dart_PostCObject');
   storeDartPostCobject(NativeApi.postCObject);
 
+  bindingsLoaded = true;
   return bindings;
 }}
+
+// Prefer using `bindings` without checking `bindingsLoaded` for most cases.
+// This boolean is for special cases where the Dart application needs to
+// perform differently until another part of the application needs to load
+// the bindings. For example if debug logs are sent to Rust via FFI then you
+// may want to log locally in Dart until bindings are loaded and at that time
+// begin sending logs over the FFI boundary.
+bool bindingsLoaded = false;
 
 final bindings = _load();
 "#,
