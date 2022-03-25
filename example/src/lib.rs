@@ -10,6 +10,7 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
   Builder::new_multi_thread()
     .worker_threads(2)
     .thread_name("example")
+    .enable_time()
     .build()
     .unwrap()
 });

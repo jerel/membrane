@@ -16,6 +16,7 @@ mod test {
     let _ = example::load();
 
     Membrane::new()
+      .timeout(200)
       .package_destination_dir(path)
       .using_lib("libexample")
       .create_pub_package()

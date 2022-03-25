@@ -194,4 +194,40 @@ void main() {
 
     expect(logs, equals([]));
   });
+
+  test(
+      'test that a slow function will throw a timeout at its #[async_dart(timeout=100)] configured duration',
+      () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.slowFunction(sleepFor: 150);
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 100);
+      expect(err.message, "Future not completed");
+    }
+  });
+
+  test(
+      'test that a slow function will throw a timeout at its globally configured (200) timeout duration',
+      () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.slowFunctionTwo(sleepFor: 250);
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 200);
+      expect(err.message, "Future not completed");
+    }
+  });
+
+  test(
+      'test that a stream with a timeout will disconnect if the time between events exceeds set timeout',
+      () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.slowStream(sleepFor: 100).take(2).toList();
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 50);
+      expect(err.message, "No stream event");
+    }
+  });
 }

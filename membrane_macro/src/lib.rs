@@ -20,6 +20,7 @@ mod parsers;
 struct Options {
   namespace: String,
   disable_logging: bool,
+  timeout: Option<i32>,
 }
 
 fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options {
@@ -40,8 +41,14 @@ fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options 
       options.disable_logging = val.value();
       options
     }
+    Some((ident, Lit::Int(val))) if ident == "timeout" => {
+      options.timeout = Some(val.base10_parse().unwrap());
+      options
+    }
     Some(_) => {
-      panic!(r#"#[async_dart] only `namespace=""` and `disable_logging=true` are valid options"#);
+      panic!(
+        r#"#[async_dart] only `namespace=""`, `disable_logging=true`, and `timeout=1000` are valid options"#
+      );
     }
     None => {
       // we've iterated over all options and didn't find a namespace (required)
@@ -114,6 +121,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let Options {
     namespace,
     disable_logging,
+    timeout,
   } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
@@ -224,6 +232,11 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let dart_outer_params = dart_outer_params.join(", ");
   let dart_transforms = dart_transforms.join(";\n    ");
   let dart_inner_args = dart_inner_args.join(", ");
+  let timeout = if let Some(val) = timeout {
+    quote! { Some(#val) }
+  } else {
+    quote! { None }
+  };
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
@@ -238,6 +251,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
                 error_type: #error_type.to_string(),
                 namespace: #namespace.to_string(),
                 disable_logging: #disable_logging,
+                timeout: #timeout,
                 dart_outer_params: #dart_outer_params.to_string(),
                 dart_transforms: #dart_transforms.to_string(),
                 dart_inner_args: #dart_inner_args.to_string(),
