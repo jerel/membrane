@@ -488,7 +488,7 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "membrane"
-version = "0.5.1"
+version = "0.6.1"
 dependencies = [
  "allo-isolate",
  "bincode",
@@ -510,7 +510,7 @@ dependencies = [
 
 [[package]]
 name = "membrane_macro"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "membrane_types",
 ]
