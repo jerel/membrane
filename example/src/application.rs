@@ -91,7 +91,7 @@ pub async fn scalar_f64(val: f64) -> Result<f64, String> {
 
 #[async_dart(namespace = "accounts")]
 pub async fn scalar_string(val: String) -> Result<String, String> {
-  assert!(val == "hello world");
+  assert!(val == "hello world / ダミーテキスト");
   Ok(val)
 }
 
@@ -109,6 +109,7 @@ pub async fn scalar_error() -> Result<bool, String> {
 #[async_dart(namespace = "accounts")]
 pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, String> {
   let return_value = MoreTypes {
+    string: "hello world / ダミーテキスト".to_string(),
     unsigned_8: u8::MAX,
     unsigned_16: u16::MAX,
     unsigned_32: u32::MAX,

@@ -64,8 +64,8 @@ void main() {
     expect((await accounts.scalarF32(val: 21.1)).toStringAsFixed(1),
         equals('21.1'));
     expect(await accounts.scalarF64(val: 11.1), equals(11.1));
-    expect(
-        await accounts.scalarString(val: "hello world"), equals("hello world"));
+    expect(await accounts.scalarString(val: "hello world / ダミーテキスト"),
+        equals("hello world / ダミーテキスト"));
     expect(await accounts.scalarBool(val: true), equals(true));
     expect(() async => await accounts.scalarEmpty(), returnsNormally);
   });
@@ -89,10 +89,11 @@ void main() {
   });
 
   test(
-      'test that u8, u32, u64, u128, i8, i32, i64, and i128 types are supported',
+      'test that UTF-8, u8, u32, u64, u128, i8, i32, i64, and i128 types are supported',
       () async {
     final accounts = AccountsApi();
     final types = MoreTypes(
+        string: "hello world / ダミーテキスト",
         unsigned8: 255,
         unsigned16: 65535,
         unsigned32: 4294967295,

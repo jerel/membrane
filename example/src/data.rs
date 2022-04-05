@@ -70,6 +70,7 @@ pub struct Contacts {
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct MoreTypes {
+  pub string: String,
   pub unsigned_8: u8,
   pub unsigned_16: u16,
   pub unsigned_32: u32,
