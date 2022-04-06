@@ -244,9 +244,7 @@ fn serialization_partial() -> &'static str {
   r#"final ptr = calloc<Uint8>(data.length + 8);
 _toFree.add(ptr);
 final blobBytes = ptr.asTypedList(data.length + 8);
-final payloadLength = Int64List(1);
-payloadLength.setAll(0, [data.length + 8]);
-blobBytes.setAll(0, payloadLength);
+blobBytes.buffer.asUint64List(0, 1)[0] = data.length + 8;
 blobBytes.setAll(8, data);
 return ptr;"#
 }

@@ -107,6 +107,11 @@ pub async fn scalar_error() -> Result<bool, String> {
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn vec(v: data::VecWrapper) -> Result<data::VecWrapper, String> {
+  Ok(v)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, String> {
   let return_value = MoreTypes {
     string: "hello world / ダミーテキスト".to_string(),

@@ -88,6 +88,12 @@ void main() {
     }
   });
 
+  test('test that a vec with a large number of elements is handled', () async {
+    final accounts = AccountsApi();
+    final elements = List.filled(3000, 1.0);
+    expect((await accounts.vec(v: VecWrapper(data: elements))).data, elements);
+  });
+
   test(
       'test that UTF-8, u8, u32, u64, u128, i8, i32, i64, and i128 types are supported',
       () async {

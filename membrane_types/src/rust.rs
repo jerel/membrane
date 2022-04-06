@@ -185,9 +185,14 @@ fn deserialize(variable: Ident, variable_name: &str, ty: &Type, str_ty: &str) ->
   q! {
     let data = unsafe {
       // read the first 8 bytes to get the length of the full payload (which includes the length byte)
-      let length = ::std::slice::from_raw_parts::<u8>(#variable, 1 as usize)[0];
-      // read the payload from the pointer
-      ::std::slice::from_raw_parts(#variable, length as usize)
+      let bytes = ::std::slice::from_raw_parts::<u8>(#variable, 8);
+      // deserialize the bytes to an unsigned integer
+      let length = ::membrane::bincode::deserialize::<u64>(&bytes).expect(
+        format!("Unable to read the payload length for variable '{}' of type '{}'", #variable_name, #str_ty).as_str()
+      );
+      let elements: usize = length.try_into().expect("Unable to fit payload length in a usize, are you on 64bit architecture?");
+      // return the rest of the bytes for deserialization
+      ::std::slice::from_raw_parts(#variable, elements)
     };
     // deserialize, skipping the known 8 byte length field
     ::membrane::bincode::deserialize::<#ty>(&data[8..]).expect(
