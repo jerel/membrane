@@ -184,6 +184,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
 fn deserialize(variable: Ident, variable_name: &str, ty: &Type, str_ty: &str) -> TokenStream2 {
   q! {
     let data = unsafe {
+      use std::convert::TryInto;
       // read the first 8 bytes to get the length of the full payload (which includes the length byte)
       let bytes = ::std::slice::from_raw_parts::<u8>(#variable, 8);
       // deserialize the bytes to an unsigned integer
