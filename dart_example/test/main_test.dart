@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
@@ -120,7 +121,9 @@ void main() {
         signed128Neg64: Int128.parse('-300'),
         signed128Max: Int128.parse('170141183460469231731687303715884105727'),
         float32: 3.140000104904175,
-        float64: 1.7976931348623157e+308);
+        float64: 1.7976931348623157e+308,
+        blob: Bytes(Uint8List.fromList(
+            [104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100])));
 
     final returned = await accounts.moreTypes(types: types);
     expect(returned.toString(), types.toString());

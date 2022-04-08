@@ -93,6 +93,8 @@ pub struct MoreTypes {
   pub signed_128_max: i128,
   pub float_32: f32,
   pub float_64: f64,
+  #[serde(with = "serde_bytes")]
+  pub blob: Vec<u8>,
 }
 
 #[derive(Deserialize, Serialize)]

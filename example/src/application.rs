@@ -132,8 +132,10 @@ pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, Strin
     signed_128_max: i128::MAX,
     float_32: 3.140000104904175,
     float_64: f64::MAX,
+    blob: vec![104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100],
   };
 
+  assert!(types.blob == b"hello world");
   assert!(return_value == types);
 
   Ok(return_value)
