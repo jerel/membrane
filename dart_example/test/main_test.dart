@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
@@ -64,8 +65,8 @@ void main() {
     expect((await accounts.scalarF32(val: 21.1)).toStringAsFixed(1),
         equals('21.1'));
     expect(await accounts.scalarF64(val: 11.1), equals(11.1));
-    expect(
-        await accounts.scalarString(val: "hello world"), equals("hello world"));
+    expect(await accounts.scalarString(val: "hello world / ダミーテキスト"),
+        equals("hello world / ダミーテキスト"));
     expect(await accounts.scalarBool(val: true), equals(true));
     expect(() async => await accounts.scalarEmpty(), returnsNormally);
   });
@@ -88,11 +89,18 @@ void main() {
     }
   });
 
+  test('test that a vec with a large number of elements is handled', () async {
+    final accounts = AccountsApi();
+    final elements = List.filled(3000, 1.0);
+    expect((await accounts.vec(v: VecWrapper(data: elements))).data, elements);
+  });
+
   test(
-      'test that u8, u32, u64, u128, i8, i32, i64, and i128 types are supported',
+      'test that UTF-8, u8, u32, u64, u128, i8, i32, i64, and i128 types are supported',
       () async {
     final accounts = AccountsApi();
     final types = MoreTypes(
+        string: "hello world / ダミーテキスト",
         unsigned8: 255,
         unsigned16: 65535,
         unsigned32: 4294967295,
@@ -113,7 +121,9 @@ void main() {
         signed128Neg64: Int128.parse('-300'),
         signed128Max: Int128.parse('170141183460469231731687303715884105727'),
         float32: 3.140000104904175,
-        float64: 1.7976931348623157e+308);
+        float64: 1.7976931348623157e+308,
+        blob: Bytes(Uint8List.fromList(
+            [104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100])));
 
     final returned = await accounts.moreTypes(types: types);
     expect(returned.toString(), types.toString());

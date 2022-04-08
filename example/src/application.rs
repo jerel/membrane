@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use data::OptionsDemo;
 use membrane::async_dart;
 use tokio_stream::Stream;
@@ -67,6 +65,8 @@ pub async fn scalar_empty() -> Result<(), String> {
 
 #[async_dart(namespace = "accounts")]
 pub async fn scalar_i32(val: i64) -> Result<i32, String> {
+  use std::convert::TryInto;
+
   assert!(val == 123);
   Ok(val.try_into().unwrap())
 }
@@ -91,7 +91,7 @@ pub async fn scalar_f64(val: f64) -> Result<f64, String> {
 
 #[async_dart(namespace = "accounts")]
 pub async fn scalar_string(val: String) -> Result<String, String> {
-  assert!(val == "hello world");
+  assert!(val == "hello world / ダミーテキスト");
   Ok(val)
 }
 
@@ -107,8 +107,14 @@ pub async fn scalar_error() -> Result<bool, String> {
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn vec(v: data::VecWrapper) -> Result<data::VecWrapper, String> {
+  Ok(v)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, String> {
   let return_value = MoreTypes {
+    string: "hello world / ダミーテキスト".to_string(),
     unsigned_8: u8::MAX,
     unsigned_16: u16::MAX,
     unsigned_32: u32::MAX,
@@ -126,8 +132,10 @@ pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, Strin
     signed_128_max: i128::MAX,
     float_32: 3.140000104904175,
     float_64: f64::MAX,
+    blob: vec![104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100],
   };
 
+  assert!(types.blob == b"hello world");
   assert!(return_value == types);
 
   Ok(return_value)

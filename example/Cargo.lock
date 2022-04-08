@@ -482,7 +482,7 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "membrane"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "allo-isolate",
  "bincode",
@@ -727,9 +727,8 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.20.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11cf232a3d6896ed5040b28e1772e08db7cb031db200b2f3b954c70f3ec185c6"
+version = "0.20.6"
+source = "git+https://github.com/jerel/serde-reflection?rev=13d7005#13d7005ca249f21a07d900f68031b6aca0c7dd4a"
 dependencies = [
  "bcs",
  "bincode",
@@ -747,8 +746,7 @@ dependencies = [
 [[package]]
 name = "serde-reflection"
 version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "167450ba550f903a2b35a81ba3ca387585189e2430e3df6b94b95f3bec2f26bd"
+source = "git+https://github.com/jerel/serde-reflection?rev=13d7005#13d7005ca249f21a07d900f68031b6aca0c7dd4a"
 dependencies = [
  "once_cell",
  "serde",

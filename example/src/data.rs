@@ -68,8 +68,14 @@ pub struct Contacts {
   pub total: i32,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct VecWrapper {
+  pub data: Vec<f64>,
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct MoreTypes {
+  pub string: String,
   pub unsigned_8: u8,
   pub unsigned_16: u16,
   pub unsigned_32: u32,
@@ -87,6 +93,8 @@ pub struct MoreTypes {
   pub signed_128_max: i128,
   pub float_32: f32,
   pub float_64: f64,
+  #[serde(with = "serde_bytes")]
+  pub blob: Vec<u8>,
 }
 
 #[derive(Deserialize, Serialize)]
