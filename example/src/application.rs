@@ -160,8 +160,11 @@ pub async fn enum_arg(status: data::Status) -> Result<data::Contact, String> {
   })
 }
 
+// test the handling of types with no path
+use data::Status;
+
 #[async_dart(namespace = "accounts")]
-pub async fn optional_enum_arg(status: Option<data::Status>) -> Result<data::Contact, String> {
+pub async fn optional_enum_arg(status: Option<Status>) -> Result<data::Contact, String> {
   match status {
     Some(status) => Ok(data::Contact {
       status,

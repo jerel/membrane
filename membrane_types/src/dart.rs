@@ -92,7 +92,10 @@ fn dart_type(str_ty: &str) -> String {
     "f64" => "required double",
     "bool" => "required bool",
     serialized if !serialized.starts_with("Option<") => {
-      ser_type = format!("required {} ", str_ty.split("::").last().unwrap().trim());
+      ser_type = format!(
+        "required {} ",
+        str_ty.split(&['<', ':']).last().unwrap().trim()
+      );
       &ser_type
     }
     "Option<String>" => "String?",
@@ -103,7 +106,7 @@ fn dart_type(str_ty: &str) -> String {
       ser_type = format!(
         "{}? ",
         str_ty
-          .split("::")
+          .split(&['<', ':'])
           .last()
           .unwrap()
           .trim_end_matches(|c| c == ' ' || c == '>')
