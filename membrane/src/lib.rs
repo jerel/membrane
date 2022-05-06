@@ -73,6 +73,10 @@ pub use inventory;
 pub use membrane_macro::{async_dart, dart_enum, sync_dart};
 #[doc(hidden)]
 pub use serde_reflection;
+pub use utils::Callback;
+
+#[doc(hidden)]
+pub mod utils;
 
 use heck::CamelCase;
 use membrane_types::dart::dart_fn_return_type;

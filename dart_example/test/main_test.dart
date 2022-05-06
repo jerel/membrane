@@ -39,6 +39,14 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
+  test('can call C in os thread and get contact async via callback', () async {
+    final accounts = AccountsApi();
+    expect(
+        await accounts.contactCAsync(userId: "1"),
+        equals(
+            Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
+  });
+
   test(
       'can call a function with optional args with none of the args or all of the args',
       () async {

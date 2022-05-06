@@ -22,6 +22,7 @@ struct Options {
   disable_logging: bool,
   timeout: Option<i32>,
   os_thread: bool,
+  callback: bool,
 }
 
 fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options {
@@ -50,9 +51,13 @@ fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options 
       options.os_thread = val.value();
       options
     }
+    Some((ident, Lit::Bool(val))) if ident == "callback" => {
+      options.callback = val.value();
+      options
+    }
     Some(_) => {
       panic!(
-        r#"#[async_dart] only `namespace=""`, `disable_logging=true`, `timeout=1000`, and `os_thread=true` are valid options"#
+        r#"#[async_dart] only `namespace=""`, `callback=true`, `disable_logging=true`, `timeout=1000`, and `os_thread=true` are valid options"#
       );
     }
     None => {
@@ -137,6 +142,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     disable_logging,
     timeout,
     os_thread,
+    callback,
   } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
@@ -150,9 +156,15 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     output_style,
     output,
     error,
-    inputs,
+    mut inputs,
     ..
   } = parse_macro_input!(input as ReprDart);
+
+  // we automatically provide the callback as the first argument to the user's
+  // function and we enforce the type so here we drop the first parameter
+  if callback == true && !inputs.is_empty() {
+    inputs.remove(0);
+  };
 
   let rust_outer_params: Vec<TokenStream2> = RustExternParams::from(&inputs).into();
   let rust_transforms: Vec<TokenStream2> = RustTransforms::from(&inputs).into();
@@ -164,21 +176,6 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let dart_transforms: Vec<String> = DartTransforms::from(&inputs).into();
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
-  let serializer = quote! {
-      match result {
-          Ok(value) => {
-              if let Ok(buffer) = ::membrane::bincode::serialize(&(true, value)) {
-                  _isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
-              }
-          }
-          Err(err) => {
-              if let Ok(buffer) = ::membrane::bincode::serialize(&(false, err)) {
-                  _isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
-              }
-          }
-      };
-  };
-
   let return_statement = match output_style {
     OutputStyle::StreamSerialized if sync == true => quote! {
       ::futures::executor::block_on_stream(
@@ -187,9 +184,10 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
             use ::membrane::futures::stream::StreamExt;
             let mut stream = #fn_name(#(#rust_inner_args),*);
             ::membrane::futures::pin_mut!(stream);
+            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
             while let Some(result) = stream.next().await {
               let result: ::std::result::Result<#output, #error> = result;
-              #serializer
+              ::membrane::utils::send::<#output, #error>(isolate, result);
             }
           }, membrane_future_registration)
         ).unwrap()
@@ -201,19 +199,31 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
             use ::membrane::futures::stream::StreamExt;
             let mut stream = #fn_name(#(#rust_inner_args),*);
             ::membrane::futures::pin_mut!(stream);
+            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
             while let Some(result) = stream.next().await {
               let result: ::std::result::Result<#output, #error> = result;
-              #serializer
+              ::membrane::utils::send::<#output, #error>(isolate, result);
             }
           }, membrane_future_registration)
         )
     },
-    OutputStyle::Serialized if sync == true => quote! {
+    OutputStyle::Serialized if sync == true && callback == false => quote! {
       ::futures::executor::block_on(
         ::futures::future::Abortable::new(
           async move {
             let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
-            #serializer
+            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+            ::membrane::utils::send::<#output, #error>(isolate, result);
+          }, membrane_future_registration)
+        ).unwrap()
+    },
+    OutputStyle::Serialized if callback == true => quote! {
+      ::futures::executor::block_on(
+        ::futures::future::Abortable::new(
+          async move {
+            let callback = ::membrane::utils::send_callback::<#output, #error>(_port);
+            // let _: () = #fn_name(#(#rust_inner_args),*);
+            let _: ::std::result::Result<#output, #error> = #fn_name(callback, #(#rust_inner_args),*);
           }, membrane_future_registration)
         ).unwrap()
     },
@@ -222,7 +232,8 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
         // Abortable no-ops here because OS threads can't be canceled
         move || {
           let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
-          #serializer
+          let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+          ::membrane::utils::send::<#output, #error>(isolate, result);
         }
       )
     },
@@ -231,7 +242,8 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
         ::futures::future::Abortable::new(
           async move {
             let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-            #serializer
+            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+            ::membrane::utils::send::<#output, #error>(isolate, result);
           }, membrane_future_registration)
         )
     },
@@ -249,7 +261,6 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
-          let _isolate = ::membrane::allo_isolate::Isolate::new(_port);
           let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
 
           #(#rust_transforms)*
