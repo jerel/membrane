@@ -21,6 +21,7 @@ struct Options {
   namespace: String,
   disable_logging: bool,
   timeout: Option<i32>,
+  os_thread: bool,
 }
 
 fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options {
@@ -45,9 +46,13 @@ fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options 
       options.timeout = Some(val.base10_parse().unwrap());
       options
     }
+    Some((ident, Lit::Bool(val))) if ident == "os_thread" => {
+      options.os_thread = val.value();
+      options
+    }
     Some(_) => {
       panic!(
-        r#"#[async_dart] only `namespace=""`, `disable_logging=true`, and `timeout=1000` are valid options"#
+        r#"#[async_dart] only `namespace=""`, `disable_logging=true`, `timeout=1000`, and `os_thread=true` are valid options"#
       );
     }
     None => {
@@ -117,11 +122,21 @@ impl Parse for ReprDart {
 }
 
 #[proc_macro_attribute]
+pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
+  dart_impl(attrs, input, true)
+}
+
+#[proc_macro_attribute]
 pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
+  dart_impl(attrs, input, false)
+}
+
+fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream {
   let Options {
     namespace,
     disable_logging,
     timeout,
+    os_thread,
   } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
@@ -165,24 +180,60 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   };
 
   let return_statement = match output_style {
-    OutputStyle::StreamSerialized => {
-      quote! {
-        async move {
-          use ::membrane::futures::stream::StreamExt;
-          let mut stream = #fn_name(#(#rust_inner_args),*);
-          ::membrane::futures::pin_mut!(stream);
-          while let Some(result) = stream.next().await {
+    OutputStyle::StreamSerialized if sync == true => quote! {
+      ::futures::executor::block_on_stream(
+        ::futures::future::Abortable::new(
+          async move {
+            use ::membrane::futures::stream::StreamExt;
+            let mut stream = #fn_name(#(#rust_inner_args),*);
+            ::membrane::futures::pin_mut!(stream);
+            while let Some(result) = stream.next().await {
               let result: ::std::result::Result<#output, #error> = result;
               #serializer
-          }
+            }
+          }, membrane_future_registration)
+        ).unwrap()
+    },
+    OutputStyle::StreamSerialized => quote! {
+      crate::RUNTIME.spawn(
+        ::futures::future::Abortable::new(
+          async move {
+            use ::membrane::futures::stream::StreamExt;
+            let mut stream = #fn_name(#(#rust_inner_args),*);
+            ::membrane::futures::pin_mut!(stream);
+            while let Some(result) = stream.next().await {
+              let result: ::std::result::Result<#output, #error> = result;
+              #serializer
+            }
+          }, membrane_future_registration)
+        )
+    },
+    OutputStyle::Serialized if sync == true => quote! {
+      ::futures::executor::block_on(
+        ::futures::future::Abortable::new(
+          async move {
+            let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
+            #serializer
+          }, membrane_future_registration)
+        ).unwrap()
+    },
+    OutputStyle::Serialized if os_thread == true => quote! {
+      crate::RUNTIME.spawn_blocking(
+        // Abortable no-ops here because OS threads can't be canceled
+        move || {
+          let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
+          #serializer
         }
-      }
-    }
+      )
+    },
     OutputStyle::Serialized => quote! {
-      async move {
-        let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-        #serializer
-      }
+      crate::RUNTIME.spawn(
+        ::futures::future::Abortable::new(
+          async move {
+            let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
+            #serializer
+          }, membrane_future_registration)
+        )
     },
   };
 
@@ -195,7 +246,6 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
       pub extern "C" fn #extern_c_fn_name(_port: i64, #(#rust_outer_params),*) -> *const ::membrane::TaskHandle {
-          use crate::RUNTIME;
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
@@ -203,9 +253,7 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
           let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
 
           #(#rust_transforms)*
-          RUNTIME.spawn(
-            ::futures::future::Abortable::new(#return_statement, membrane_future_registration)
-          );
+          #return_statement;
 
           let handle = ::std::boxed::Box::new(::membrane::TaskHandle(membrane_future_handle));
           ::std::boxed::Box::into_raw(handle)

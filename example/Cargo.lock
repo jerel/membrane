@@ -195,6 +195,7 @@ dependencies = [
  "membrane",
  "once_cell",
  "serde",
+ "serde_bytes",
  "tokio",
  "tokio-stream",
 ]

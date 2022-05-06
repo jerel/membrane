@@ -1,5 +1,5 @@
 use data::OptionsDemo;
-use membrane::async_dart;
+use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
 use crate::data::{self, MoreTypes};
@@ -11,6 +11,25 @@ pub fn contacts() -> impl Stream<Item = Result<data::Contact, data::Error>> {
 
 #[async_dart(namespace = "accounts")]
 pub async fn contact(user_id: String) -> Result<data::Contact, data::Error> {
+  println!("async {:?}", std::thread::current().id());
+  Ok(data::Contact {
+    id: user_id.parse().unwrap(),
+    ..data::Contact::default()
+  })
+}
+
+#[async_dart(namespace = "accounts", os_thread = true)]
+pub fn contact_os_thread(user_id: String) -> Result<data::Contact, data::Error> {
+  println!("os thread {:?}", std::thread::current().id());
+  Ok(data::Contact {
+    id: user_id.parse().unwrap(),
+    ..data::Contact::default()
+  })
+}
+
+#[sync_dart(namespace = "accounts")]
+pub fn contact_sync(user_id: String) -> Result<data::Contact, data::Error> {
+  println!("sync {:?}", std::thread::current().id());
   Ok(data::Contact {
     id: user_id.parse().unwrap(),
     ..data::Contact::default()
