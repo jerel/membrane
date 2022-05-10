@@ -73,7 +73,7 @@ pub use inventory;
 pub use membrane_macro::{async_dart, dart_enum, sync_dart};
 #[doc(hidden)]
 pub use serde_reflection;
-pub use utils::Callback;
+pub use utils::{Callback, Callback as StreamCallback};
 
 #[doc(hidden)]
 pub mod utils;

@@ -1,10 +1,10 @@
 use crate::quote::quote;
-use membrane_types::{syn, Input};
+use membrane_types::{syn, Input, OutputStyle};
 use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::{Error, Expr, Ident, Path, Token};
 
-pub fn parse_stream_return_type(input: ParseStream) -> Result<(Expr, Path)> {
+pub fn parse_stream_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
   input.parse::<Token![impl]>()?;
   let span = input.span();
   let stream_ident = input.parse::<Ident>()?;
@@ -19,15 +19,15 @@ pub fn parse_stream_return_type(input: ParseStream) -> Result<(Expr, Path)> {
   let (t, e) = parse_type(input)?;
   input.parse::<Token![>]>()?;
 
-  Ok((t, e))
+  Ok((OutputStyle::StreamSerialized, t, e))
 }
 
-pub fn parse_return_type(input: ParseStream) -> Result<(Expr, Path)> {
+pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
   let (t, e) = parse_type(input)?;
-  Ok((t, e))
+  Ok((OutputStyle::Serialized, t, e))
 }
 
-pub fn parse_type_from_callback(input: ParseStream) -> Result<(Expr, Path)> {
+pub fn parse_type_from_callback(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
   let buffer;
   syn::parenthesized!(buffer in input);
 
@@ -35,15 +35,22 @@ pub fn parse_type_from_callback(input: ParseStream) -> Result<(Expr, Path)> {
   buffer.parse::<Token![:]>()?;
   buffer.parse::<Token![impl]>()?;
   let span = buffer.span();
-  let name = buffer.parse::<Ident>()?;
-  if !name.to_string().contains("Callback") {
+  let name = buffer.parse::<Ident>()?.to_string();
+  buffer.parse::<Token![<]>()?;
+
+  let output_style = if name == "Callback" {
+    OutputStyle::CallbackSerialized
+  } else if name == "StreamCallback" {
+    OutputStyle::CallbackStreamSerialized
+  } else {
     return Err(Error::new(
       span,
-      "expected `impl membrane::Callback<Result<T, E>>`",
+      "expected `impl membrane::Callback<Result<T, E>>` or `impl membrane::StreamCallback<Result<T, E>>`",
     ));
-  }
-  buffer.parse::<Token![<]>()?;
-  Ok(parse_type(&buffer)?)
+  };
+
+  let (t, e) = parse_type(&buffer)?;
+  Ok((output_style, t, e))
 }
 
 pub fn parse_type(input: ParseStream) -> Result<(Expr, Path)> {

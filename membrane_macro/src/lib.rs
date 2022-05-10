@@ -95,47 +95,22 @@ impl Parse for ReprDart {
     let callback_input = input.fork();
     syn::parenthesized!(arg_buffer in input);
 
-    let (inputs, output_style, ret_type, err_type) =
-      match input.fork().parse::<syn::ReturnType>()? {
-        syn::ReturnType::Default => {
-          let (t, e) = parsers::parse_type_from_callback(&callback_input)?;
-          (
-            parsers::parse_args(arg_buffer)?,
-            OutputStyle::CallbackSerialized,
-            t,
-            e,
-          )
+    let (output_style, ret_type, err_type) = match input.fork().parse::<syn::ReturnType>()? {
+      syn::ReturnType::Default => parsers::parse_type_from_callback(&callback_input)?,
+      syn::ReturnType::Type(_, tp) => {
+        input.parse::<Token![->]>()?;
+        match *tp {
+          syn::Type::ImplTrait(_) => parsers::parse_stream_return_type(input)?,
+          _path => parsers::parse_return_type(input)?,
         }
-        syn::ReturnType::Type(_, tp) => {
-          input.parse::<Token![->]>()?;
-          match *tp {
-            syn::Type::ImplTrait(_) => {
-              let (t, e) = parsers::parse_stream_return_type(input)?;
-              (
-                parsers::parse_args(arg_buffer)?,
-                OutputStyle::StreamSerialized,
-                t,
-                e,
-              )
-            }
-            _path => {
-              let (t, e) = parsers::parse_return_type(input)?;
-              (
-                parsers::parse_args(arg_buffer)?,
-                OutputStyle::Serialized,
-                t,
-                e,
-              )
-            }
-          }
-        }
-      };
+      }
+    };
 
     input.parse::<Block>()?;
 
     Ok(ReprDart {
       fn_name,
-      inputs,
+      inputs: parsers::parse_args(arg_buffer)?,
       output_style,
       output: ret_type,
       error: err_type,
@@ -194,27 +169,12 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
   let return_statement = match output_style {
-    OutputStyle::CallbackSerialized => quote! {
+    OutputStyle::CallbackSerialized | OutputStyle::CallbackStreamSerialized => quote! {
       ::futures::executor::block_on(
         ::futures::future::Abortable::new(
           async move {
             let callback = ::membrane::utils::send_callback::<#output, #error>(_port);
             let _: () = #fn_name(callback, #(#rust_inner_args),*);
-          }, membrane_future_registration)
-        ).unwrap()
-    },
-    OutputStyle::CallbackStreamSerialized => quote! {
-      ::futures::executor::block_on_stream(
-        ::futures::future::Abortable::new(
-          async move {
-            use ::membrane::futures::stream::StreamExt;
-            let mut stream = #fn_name(#(#rust_inner_args),*);
-            ::membrane::futures::pin_mut!(stream);
-            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-            while let Some(result) = stream.next().await {
-              let result: ::std::result::Result<#output, #error> = result;
-              ::membrane::utils::send::<#output, #error>(isolate, result);
-            }
           }, membrane_future_registration)
         ).unwrap()
     },
@@ -292,7 +252,11 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let c_name = extern_c_fn_name.to_string();
   let c_header_types = c_header_types.join(", ");
   let name = fn_name.to_string().to_mixed_case();
-  let is_stream = output_style == OutputStyle::StreamSerialized;
+  let is_stream = [
+    OutputStyle::StreamSerialized,
+    OutputStyle::CallbackStreamSerialized,
+  ]
+  .contains(&output_style);
   let return_type = match &output {
     Expr::Tuple(_expr) => "()".to_string(),
     Expr::Path(expr) => expr.path.segments.last().unwrap().ident.to_string(),

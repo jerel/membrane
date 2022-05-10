@@ -1,5 +1,5 @@
 use data::OptionsDemo;
-use membrane::{async_dart, sync_dart, Callback};
+use membrane::{async_dart, sync_dart, Callback, StreamCallback};
 use tokio_stream::Stream;
 
 use crate::data::{self, MoreTypes};
@@ -59,6 +59,41 @@ pub fn contact_c_async(send: impl Callback<Result<data::Contact, data::Error>>, 
   });
 
   println!("\n[CAsync] sync Rust function is returning");
+}
+
+#[sync_dart(namespace = "accounts", callback = true, timeout = 2500)]
+pub fn contact_c_async_stream(
+  send: impl StreamCallback<Result<data::Contact, data::Error>>,
+  user_id: String,
+) {
+  println!(
+    "\n[CAsyncStream] sync Rust function {:?}",
+    std::thread::current().id()
+  );
+
+  let contact_one = Ok(data::Contact {
+    id: user_id.parse().unwrap(),
+    ..data::Contact::default()
+  });
+
+  let contact_two = Ok(data::Contact {
+    id: 2,
+    full_name: "Bob Smith".to_string(),
+    ..data::Contact::default()
+  });
+
+  std::thread::spawn(move || {
+    println!(
+      "\n[CAsyncStream] spawned thread is starting {:?}",
+      std::thread::current().id()
+    );
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    (send)(contact_one);
+    (send)(contact_two);
+    println!("\n[CAsyncStream] spawned thread has sent response, shutting down");
+  });
+
+  println!("\n[CAsyncStream] sync Rust function is returning");
 }
 
 #[async_dart(namespace = "accounts")]
