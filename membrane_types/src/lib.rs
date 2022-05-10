@@ -19,6 +19,8 @@ pub struct Input {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum OutputStyle {
+  CallbackSerialized,
+  CallbackStreamSerialized,
   StreamSerialized,
   Serialized,
 }

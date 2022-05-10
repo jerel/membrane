@@ -1,8 +1,10 @@
-use membrane_types::{syn, OutputStyle};
-use syn::parse::{ParseStream, Result};
+use crate::quote::quote;
+use membrane_types::{syn, Input};
+use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
+use syn::punctuated::Punctuated;
 use syn::{Error, Expr, Ident, Path, Token};
 
-pub fn parse_stream_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
+pub fn parse_stream_return_type(input: ParseStream) -> Result<(Expr, Path)> {
   input.parse::<Token![impl]>()?;
   let span = input.span();
   let stream_ident = input.parse::<Ident>()?;
@@ -17,15 +19,34 @@ pub fn parse_stream_return_type(input: ParseStream) -> Result<(OutputStyle, Expr
   let (t, e) = parse_type(input)?;
   input.parse::<Token![>]>()?;
 
-  Ok((OutputStyle::StreamSerialized, t, e))
+  Ok((t, e))
 }
 
-pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
+pub fn parse_return_type(input: ParseStream) -> Result<(Expr, Path)> {
   let (t, e) = parse_type(input)?;
-  Ok((OutputStyle::Serialized, t, e))
+  Ok((t, e))
 }
 
-fn parse_type(input: ParseStream) -> Result<(Expr, Path)> {
+pub fn parse_type_from_callback(input: ParseStream) -> Result<(Expr, Path)> {
+  let buffer;
+  syn::parenthesized!(buffer in input);
+
+  buffer.parse::<Ident>()?;
+  buffer.parse::<Token![:]>()?;
+  buffer.parse::<Token![impl]>()?;
+  let span = buffer.span();
+  let name = buffer.parse::<Ident>()?;
+  if !name.to_string().contains("Callback") {
+    return Err(Error::new(
+      span,
+      "expected `impl membrane::Callback<Result<T, E>>`",
+    ));
+  }
+  buffer.parse::<Token![<]>()?;
+  Ok(parse_type(&buffer)?)
+}
+
+pub fn parse_type(input: ParseStream) -> Result<(Expr, Path)> {
   let outer_span = input.span();
   match input.parse::<Ident>()? {
     ident if ident == "Result" => (),
@@ -76,4 +97,23 @@ fn parse_type(input: ParseStream) -> Result<(Expr, Path)> {
   input.parse::<Token![>]>()?;
 
   Ok((t, e))
+}
+
+pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
+  let args: Punctuated<Expr, Token![,]> = arg_buffer.parse_terminated(Expr::parse)?;
+  let inputs = args
+    .iter()
+    .map(|arg| match arg {
+      Expr::Type(syn::ExprType { ty, expr: var, .. }) => Input {
+        variable: quote!(#var).to_string(),
+        rust_type: quote!(#ty).to_string().split_whitespace().collect(),
+        ty: *ty.clone(),
+      },
+      _ => {
+        panic!("self is not supported in #[async_dart] functions");
+      }
+    })
+    .collect();
+
+  Ok(inputs)
 }

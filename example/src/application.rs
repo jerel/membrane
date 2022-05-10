@@ -36,35 +36,29 @@ pub fn contact_sync(user_id: String) -> Result<data::Contact, data::Error> {
   })
 }
 
-#[sync_dart(namespace = "accounts", callback = true, timeout = 2000)]
-pub fn contact_c_async(
-  callback: impl Callback<Result<data::Contact, data::Error>>,
-  user_id: String,
-) -> Result<data::Contact, data::Error> {
+#[sync_dart(namespace = "accounts", callback = true, timeout = 2500)]
+pub fn contact_c_async(send: impl Callback<Result<data::Contact, data::Error>>, user_id: String) {
   println!(
     "\n[CAsync] sync Rust function {:?}",
     std::thread::current().id()
   );
 
-  let foo = Ok(data::Contact {
+  let contact = Ok(data::Contact {
     id: user_id.parse().unwrap(),
     ..data::Contact::default()
   });
 
-  let bar = foo.clone();
   std::thread::spawn(move || {
     println!(
       "\n[CAsync] spawned thread is starting {:?}",
       std::thread::current().id()
     );
     std::thread::sleep(std::time::Duration::from_secs(2));
-    (callback)(bar);
+    (send)(contact);
     println!("\n[CAsync] spawned thread has sent response, shutting down");
   });
 
   println!("\n[CAsync] sync Rust function is returning");
-
-  foo
 }
 
 #[async_dart(namespace = "accounts")]

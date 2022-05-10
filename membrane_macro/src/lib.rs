@@ -8,7 +8,6 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::punctuated::Punctuated;
 use syn::{
   parse_macro_input, AttributeArgs, Block, Expr, Ident, Lit, Meta, MetaNameValue, NestedMeta, Path,
   Token, Type,
@@ -92,33 +91,51 @@ impl Parse for ReprDart {
     }
     input.parse::<Token![fn]>()?;
     let fn_name = input.parse::<Ident>()?;
+
+    let callback_input = input.fork();
     syn::parenthesized!(arg_buffer in input);
-    input.parse::<Token![->]>()?;
-    let (output_style, ret_type, err_type) = if input.peek(Token![impl]) {
-      parsers::parse_stream_return_type(input)?
-    } else {
-      parsers::parse_return_type(input)?
-    };
+
+    let (inputs, output_style, ret_type, err_type) =
+      match input.fork().parse::<syn::ReturnType>()? {
+        syn::ReturnType::Default => {
+          let (t, e) = parsers::parse_type_from_callback(&callback_input)?;
+          (
+            parsers::parse_args(arg_buffer)?,
+            OutputStyle::CallbackSerialized,
+            t,
+            e,
+          )
+        }
+        syn::ReturnType::Type(_, tp) => {
+          input.parse::<Token![->]>()?;
+          match *tp {
+            syn::Type::ImplTrait(_) => {
+              let (t, e) = parsers::parse_stream_return_type(input)?;
+              (
+                parsers::parse_args(arg_buffer)?,
+                OutputStyle::StreamSerialized,
+                t,
+                e,
+              )
+            }
+            _path => {
+              let (t, e) = parsers::parse_return_type(input)?;
+              (
+                parsers::parse_args(arg_buffer)?,
+                OutputStyle::Serialized,
+                t,
+                e,
+              )
+            }
+          }
+        }
+      };
+
     input.parse::<Block>()?;
 
     Ok(ReprDart {
       fn_name,
-      inputs: {
-        let args: Punctuated<Expr, Token![,]> = arg_buffer.parse_terminated(Expr::parse)?;
-        args
-          .iter()
-          .map(|arg| match arg {
-            Expr::Type(syn::ExprType { ty, expr: var, .. }) => Input {
-              variable: quote!(#var).to_string(),
-              rust_type: quote!(#ty).to_string().split_whitespace().collect(),
-              ty: *ty.clone(),
-            },
-            _ => {
-              panic!("self is not supported in #[async_dart] functions");
-            }
-          })
-          .collect()
-      },
+      inputs,
       output_style,
       output: ret_type,
       error: err_type,
@@ -177,7 +194,16 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
   let return_statement = match output_style {
-    OutputStyle::StreamSerialized if sync == true => quote! {
+    OutputStyle::CallbackSerialized => quote! {
+      ::futures::executor::block_on(
+        ::futures::future::Abortable::new(
+          async move {
+            let callback = ::membrane::utils::send_callback::<#output, #error>(_port);
+            let _: () = #fn_name(callback, #(#rust_inner_args),*);
+          }, membrane_future_registration)
+        ).unwrap()
+    },
+    OutputStyle::CallbackStreamSerialized => quote! {
       ::futures::executor::block_on_stream(
         ::futures::future::Abortable::new(
           async move {
@@ -207,23 +233,13 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
           }, membrane_future_registration)
         )
     },
-    OutputStyle::Serialized if sync == true && callback == false => quote! {
+    OutputStyle::Serialized if sync == true => quote! {
       ::futures::executor::block_on(
         ::futures::future::Abortable::new(
           async move {
             let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
             let isolate = ::membrane::allo_isolate::Isolate::new(_port);
             ::membrane::utils::send::<#output, #error>(isolate, result);
-          }, membrane_future_registration)
-        ).unwrap()
-    },
-    OutputStyle::Serialized if callback == true => quote! {
-      ::futures::executor::block_on(
-        ::futures::future::Abortable::new(
-          async move {
-            let callback = ::membrane::utils::send_callback::<#output, #error>(_port);
-            // let _: () = #fn_name(#(#rust_inner_args),*);
-            let _: ::std::result::Result<#output, #error> = #fn_name(callback, #(#rust_inner_args),*);
           }, membrane_future_registration)
         ).unwrap()
     },
