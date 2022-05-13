@@ -85,7 +85,7 @@ pub fn contact_c_async(send: impl Callback<Result<data::Contact, data::Error>>, 
   println!("\n[CAsync] sync Rust function is returning");
 }
 
-#[sync_dart(namespace = "accounts", callback = true, timeout = 2500)]
+#[sync_dart(namespace = "accounts", callback = true, timeout = 500)]
 pub fn contact_c_async_stream(
   send: impl StreamCallback<Result<data::Contact, data::Error>>,
   user_id: String,
@@ -111,7 +111,7 @@ pub fn contact_c_async_stream(
       "\n[CAsyncStream] spawned thread is starting {:?}",
       std::thread::current().id()
     );
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    std::thread::sleep(std::time::Duration::from_millis(200));
     (send)(contact_one);
     (send)(contact_two);
     println!("\n[CAsyncStream] spawned thread has sent response, shutting down");
