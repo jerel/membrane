@@ -194,22 +194,21 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
         )
     },
     OutputStyle::Serialized if sync == true => quote! {
-      ::futures::executor::block_on(
-        ::futures::future::Abortable::new(
-          async move {
-            let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
-            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-            ::membrane::utils::send::<#output, #error>(isolate, result);
-          }, membrane_future_registration)
-        ).unwrap()
+      let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
+      let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+      ::membrane::utils::send::<#output, #error>(isolate, result);
     },
     OutputStyle::Serialized if os_thread == true => quote! {
       crate::RUNTIME.spawn_blocking(
-        // Abortable no-ops here because OS threads can't be canceled
         move || {
-          let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
-          let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-          ::membrane::utils::send::<#output, #error>(isolate, result);
+          ::futures::executor::block_on(
+            ::futures::future::Abortable::new(
+              async move {
+                let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
+                let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+                ::membrane::utils::send::<#output, #error>(isolate, result);
+              }, membrane_future_registration)
+          )
         }
       )
     },

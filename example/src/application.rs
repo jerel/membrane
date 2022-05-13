@@ -18,8 +18,32 @@ pub async fn contact(user_id: String) -> Result<data::Contact, data::Error> {
   })
 }
 
+#[async_dart(namespace = "accounts")]
+pub async fn update_contact(
+  id: String,
+  contact: data::Contact,
+  send_email: Option<bool>,
+) -> Result<data::Contact, data::Error> {
+  println!(
+    "Rust received id {} with send_email flag {:?}: {:?}",
+    id, send_email, contact
+  );
+  Ok(contact)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn delete_contact(id: String) -> Result<data::Contact, data::Error> {
+  Err(data::Error {
+    message: format!("{} cannot be deleted", id),
+  })
+}
+
+//
+// Functions below are used by integration tests
+//
+
 #[async_dart(namespace = "accounts", os_thread = true)]
-pub fn contact_os_thread(user_id: String) -> Result<data::Contact, data::Error> {
+pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::Error> {
   println!("os thread {:?}", std::thread::current().id());
   Ok(data::Contact {
     id: user_id.parse().unwrap(),
@@ -95,30 +119,6 @@ pub fn contact_c_async_stream(
 
   println!("\n[CAsyncStream] sync Rust function is returning");
 }
-
-#[async_dart(namespace = "accounts")]
-pub async fn update_contact(
-  id: String,
-  contact: data::Contact,
-  send_email: Option<bool>,
-) -> Result<data::Contact, data::Error> {
-  println!(
-    "Rust received id {} with send_email flag {:?}: {:?}",
-    id, send_email, contact
-  );
-  Ok(contact)
-}
-
-#[async_dart(namespace = "accounts")]
-pub async fn delete_contact(id: String) -> Result<data::Contact, data::Error> {
-  Err(data::Error {
-    message: format!("{} cannot be deleted", id),
-  })
-}
-
-//
-// Functions below are used by integration tests
-//
 
 #[async_dart(namespace = "accounts")]
 pub async fn options_demo(
