@@ -154,7 +154,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
 
   // we automatically provide the callback as the first argument to the user's
   // function and we enforce the type so here we drop the first parameter
-  if callback == true && !inputs.is_empty() {
+  if callback && !inputs.is_empty() {
     inputs.remove(0);
   };
 
@@ -193,12 +193,12 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
           }, membrane_future_registration)
         )
     },
-    OutputStyle::Serialized if sync == true => quote! {
+    OutputStyle::Serialized if sync => quote! {
       let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
       let isolate = ::membrane::allo_isolate::Isolate::new(_port);
       ::membrane::utils::send::<#output, #error>(isolate, result);
     },
-    OutputStyle::Serialized if os_thread == true => quote! {
+    OutputStyle::Serialized if os_thread => quote! {
       crate::RUNTIME.spawn_blocking(
         move || {
           ::futures::executor::block_on(

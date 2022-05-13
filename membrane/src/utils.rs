@@ -1,9 +1,6 @@
 use allo_isolate::Isolate;
+use membrane_types::Callback;
 use serde::ser::Serialize;
-
-pub trait Callback<T>: Fn(T) -> () + std::marker::Send + 'static {}
-
-impl<F, T> Callback<T> for F where F: Fn(T) -> () + std::marker::Send + 'static {}
 
 pub fn send_callback<T: Serialize, E: Serialize>(port: i64) -> impl Callback<Result<T, E>> {
   move |result: Result<T, E>| {
