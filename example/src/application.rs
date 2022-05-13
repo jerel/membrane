@@ -51,16 +51,7 @@ pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::E
   })
 }
 
-#[sync_dart(namespace = "accounts")]
-pub fn contact_sync(user_id: String) -> Result<data::Contact, data::Error> {
-  println!("sync {:?}", std::thread::current().id());
-  Ok(data::Contact {
-    id: user_id.parse().unwrap(),
-    ..data::Contact::default()
-  })
-}
-
-#[sync_dart(namespace = "accounts", callback = true, timeout = 2500)]
+#[async_dart(namespace = "accounts", callback = true, timeout = 2500)]
 pub fn contact_c_async(send: impl Callback<Result<data::Contact, data::Error>>, user_id: String) {
   println!(
     "\n[CAsync] sync Rust function {:?}",
@@ -85,7 +76,7 @@ pub fn contact_c_async(send: impl Callback<Result<data::Contact, data::Error>>, 
   println!("\n[CAsync] sync Rust function is returning");
 }
 
-#[sync_dart(namespace = "accounts", callback = true, timeout = 500)]
+#[async_dart(namespace = "accounts", callback = true, timeout = 500)]
 pub fn contact_c_async_stream(
   send: impl StreamCallback<Result<data::Contact, data::Error>>,
   user_id: String,
@@ -118,6 +109,15 @@ pub fn contact_c_async_stream(
   });
 
   println!("\n[CAsyncStream] sync Rust function is returning");
+}
+
+#[sync_dart(namespace = "accounts")]
+pub fn contact_sync(user_id: String) -> Result<data::Contact, data::Error> {
+  println!("sync {:?}", std::thread::current().id());
+  Ok(data::Contact {
+    id: user_id.parse().unwrap(),
+    ..data::Contact::default()
+  })
 }
 
 #[async_dart(namespace = "accounts")]

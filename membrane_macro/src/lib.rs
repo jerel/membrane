@@ -24,7 +24,7 @@ struct Options {
   callback: bool,
 }
 
-fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options {
+fn extract_options(mut input: Vec<NestedMeta>, mut options: Options, sync: bool) -> Options {
   let option = match input.pop() {
     Some(NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. }))) => {
       let ident = path.get_ident().unwrap().clone();
@@ -47,29 +47,51 @@ fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options 
       options
     }
     Some((ident, Lit::Bool(val))) if ident == "os_thread" => {
+      if sync {
+        invalid_option("sync_dart", "os_thread=true");
+      }
       options.os_thread = val.value();
       options
     }
     Some((ident, Lit::Bool(val))) if ident == "callback" => {
+      if sync {
+        invalid_option("sync_dart", "callback=true");
+      }
       options.callback = val.value();
       options
     }
+    Some(_) if sync => {
+      panic!(
+        r#"#[sync_dart] only `namespace=""`, `disable_logging=true`, and `timeout=1000` are valid options"#
+      );
+    }
     Some(_) => {
       panic!(
-        r#"#[async_dart] only `namespace=""`, `callback=true`, `disable_logging=true`, `timeout=1000`, and `os_thread=true` are valid options"#
+        r#"#[async_dart] only `namespace=""`, `callback=true`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#
       );
     }
     None => {
       // we've iterated over all options and didn't find a namespace (required)
       if options.namespace.is_empty() {
-        panic!("#[async_dart] expects a `namespace` attribute");
+        panic!(
+          "#[{}] expects a `namespace` attribute",
+          if sync { "sync_dart" } else { "async_dart" }
+        );
       }
 
       return options;
     }
   };
 
-  extract_options(input, options)
+  extract_options(input, options, sync)
+}
+
+fn invalid_option(macr: &str, opt: &str) {
+  panic!(
+    "#[{m}] `{opt}` is not a valid option for `{m}`",
+    m = macr,
+    opt = opt
+  );
 }
 
 #[derive(Debug)]
@@ -138,6 +160,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
+    sync,
   );
 
   let mut functions = TokenStream::new();
@@ -341,6 +364,7 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let Options { namespace, .. } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
+    false,
   );
 
   let mut variants = TokenStream::new();
