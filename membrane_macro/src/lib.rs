@@ -4,95 +4,15 @@ use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
 use membrane_types::heck::MixedCase;
 use membrane_types::rust::{RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
+use options::{extract_options, Options};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{
-  parse_macro_input, AttributeArgs, Block, Expr, Ident, Lit, Meta, MetaNameValue, NestedMeta, Path,
-  Token, Type,
-};
+use syn::{parse_macro_input, AttributeArgs, Block, Expr, Ident, Path, Token, Type};
 
+mod options;
 mod parsers;
-
-#[derive(Debug, Default)]
-struct Options {
-  namespace: String,
-  disable_logging: bool,
-  timeout: Option<i32>,
-  os_thread: bool,
-  callback: bool,
-}
-
-fn extract_options(mut input: Vec<NestedMeta>, mut options: Options, sync: bool) -> Options {
-  let option = match input.pop() {
-    Some(NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. }))) => {
-      let ident = path.get_ident().unwrap().clone();
-      Some((ident, lit))
-    }
-    _ => None,
-  };
-
-  let options = match option {
-    Some((ident, Lit::Str(val))) if ident == "namespace" => {
-      options.namespace = val.value();
-      options
-    }
-    Some((ident, Lit::Bool(val))) if ident == "disable_logging" => {
-      options.disable_logging = val.value();
-      options
-    }
-    Some((ident, Lit::Int(val))) if ident == "timeout" => {
-      options.timeout = Some(val.base10_parse().unwrap());
-      options
-    }
-    Some((ident, Lit::Bool(val))) if ident == "os_thread" => {
-      if sync {
-        invalid_option("sync_dart", "os_thread=true");
-      }
-      options.os_thread = val.value();
-      options
-    }
-    Some((ident, Lit::Bool(val))) if ident == "callback" => {
-      if sync {
-        invalid_option("sync_dart", "callback=true");
-      }
-      options.callback = val.value();
-      options
-    }
-    Some(_) if sync => {
-      panic!(
-        r#"#[sync_dart] only `namespace=""`, `disable_logging=true`, and `timeout=1000` are valid options"#
-      );
-    }
-    Some(_) => {
-      panic!(
-        r#"#[async_dart] only `namespace=""`, `callback=true`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#
-      );
-    }
-    None => {
-      // we've iterated over all options and didn't find a namespace (required)
-      if options.namespace.is_empty() {
-        panic!(
-          "#[{}] expects a `namespace` attribute",
-          if sync { "sync_dart" } else { "async_dart" }
-        );
-      }
-
-      return options;
-    }
-  };
-
-  extract_options(input, options, sync)
-}
-
-fn invalid_option(macr: &str, opt: &str) {
-  panic!(
-    "#[{m}] `{opt}` is not a valid option for `{m}`",
-    m = macr,
-    opt = opt
-  );
-}
 
 #[derive(Debug)]
 struct ReprDart {
