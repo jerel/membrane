@@ -19,8 +19,8 @@ pub struct Input {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum OutputStyle {
-  CallbackSerialized,
-  CallbackStreamSerialized,
+  EmitterSerialized,
+  EmitterStreamSerialized,
   StreamSerialized,
   Serialized,
 }
@@ -30,7 +30,3 @@ impl fmt::Display for OutputStyle {
     write!(f, "{:?}", self)
   }
 }
-
-pub trait Callback<T>: Fn(T) + std::marker::Send + 'static {}
-
-impl<F, T> Callback<T> for F where F: Fn(T) + std::marker::Send + 'static {}

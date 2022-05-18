@@ -112,12 +112,21 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
   let return_statement = match output_style {
-    OutputStyle::CallbackSerialized | OutputStyle::CallbackStreamSerialized => quote! {
+    OutputStyle::EmitterSerialized => quote! {
       ::futures::executor::block_on(
         ::futures::future::Abortable::new(
           async move {
-            let callback = ::membrane::utils::send_callback::<#output, #error>(_port);
-            let _: () = #fn_name(callback, #(#rust_inner_args),*);
+            let emitter = ::membrane::emitter::Handle::new(_port);
+            let _: () = #fn_name(emitter, #(#rust_inner_args),*);
+          }, membrane_future_registration)
+        ).unwrap()
+    },
+    OutputStyle::EmitterStreamSerialized => quote! {
+      ::futures::executor::block_on(
+        ::futures::future::Abortable::new(
+          async move {
+            let emitter = ::membrane::emitter::StreamHandle::new(_port);
+            let _: () = #fn_name(emitter, #(#rust_inner_args),*);
           }, membrane_future_registration)
         ).unwrap()
     },
@@ -196,7 +205,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let name = fn_name.to_string().to_mixed_case();
   let is_stream = [
     OutputStyle::StreamSerialized,
-    OutputStyle::CallbackStreamSerialized,
+    OutputStyle::EmitterStreamSerialized,
   ]
   .contains(&output_style);
   let return_type = match &output {

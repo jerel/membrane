@@ -38,14 +38,14 @@ pub fn parse_type_from_callback(input: ParseStream) -> Result<(OutputStyle, Expr
   let name = buffer.parse::<Ident>()?.to_string();
   buffer.parse::<Token![<]>()?;
 
-  let output_style = if name == "Callback" {
-    OutputStyle::CallbackSerialized
-  } else if name == "StreamCallback" {
-    OutputStyle::CallbackStreamSerialized
+  let output_style = if name == "Emitter" {
+    OutputStyle::EmitterSerialized
+  } else if name == "StreamEmitter" {
+    OutputStyle::EmitterStreamSerialized
   } else {
     return Err(Error::new(
       span,
-      "expected `impl membrane::Callback<Result<T, E>>` or `impl membrane::StreamCallback<Result<T, E>>`",
+      "expected `impl membrane::Emitter<Result<T, E>>` or `impl membrane::StreamEmitter<Result<T, E>>`",
     ));
   };
 
