@@ -1,93 +1,175 @@
 pub use emitter_impl::{Emitter, Emitter as StreamEmitter};
-use std::cell::Cell;
+use std::fmt;
+use std::marker::PhantomData;
+use std::sync::{Arc, Mutex};
 
-#[derive(PartialEq, Debug)]
-pub enum State {
-  Closed,
-  Open,
-  Sent,
+type FinalizerCallback = Arc<Mutex<Option<Box<dyn Fn() + Send + 'static>>>>;
+
+#[derive(Debug)]
+pub struct Ended;
+
+impl fmt::Display for Ended {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "End of Stream")
+  }
 }
 
+impl std::error::Error for Ended {}
+
+#[doc(hidden)]
 pub struct Handle<T, E> {
-  _type: Option<Result<T, E>>,
-  isolate: allo_isolate::Isolate,
-  pub is_done: Cell<bool>,
+  data: EmitterData<T, E>,
 }
 
+#[doc(hidden)]
 pub struct StreamHandle<T, E> {
-  _type: Option<Result<T, E>>,
+  data: EmitterData<T, E>,
+}
+
+#[doc(hidden)]
+struct EmitterData<T, E> {
+  // pass the types through so that we know what we're serializing
+  _type: PhantomData<Result<T, E>>,
   isolate: allo_isolate::Isolate,
-  pub is_done: Cell<bool>,
+  is_done: Arc<Mutex<bool>>,
+  on_done_callback: FinalizerCallback,
 }
 
 mod emitter_impl {
-  use crate::emitter::Handle;
-  use crate::emitter::State;
-  use crate::emitter::StreamHandle;
+  use super::Ended;
+  use super::PhantomData;
+  use super::{Arc, Mutex};
+  use crate::emitter::{EmitterData, Handle, StreamHandle};
   use serde::Serialize;
-  use std::cell::Cell;
+
+  //
+  // Shared emitter implementation
+  //
+  pub trait Emitter<T>: Send + 'static {
+    #[doc(hidden)]
+    fn new(_: i64) -> Self;
+    #[doc(hidden)]
+    fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static>;
+    fn call(&self, _: T) -> Result<(), Ended>;
+    fn is_done(&self) -> bool;
+    fn on_done(&self, _: Box<dyn Fn() + Send + 'static>);
+  }
+
+  #[allow(clippy::mutex_atomic)]
+  impl<T: Serialize + Send + 'static, E: Serialize + Send + 'static> Emitter<Result<T, E>>
+    for EmitterData<T, E>
+  {
+    fn new(port: i64) -> Self {
+      let isolate = allo_isolate::Isolate::new(port);
+      EmitterData::<T, E> {
+        _type: PhantomData,
+        is_done: Arc::new(Mutex::new(false)),
+        isolate,
+        on_done_callback: Arc::new(Mutex::new(None)),
+      }
+    }
+
+    fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
+      let is_done = self.is_done.clone();
+      let finalizer = self.on_done_callback.clone();
+      Box::new(move || {
+        let mut done = is_done.lock().unwrap();
+        *done = true;
+        let func = finalizer.lock().unwrap();
+        if let Some(func) = &*func {
+          (func)();
+        }
+      })
+    }
+
+    fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
+      if self.is_done() {
+        return Err(Ended);
+      }
+      crate::utils::send::<T, E>(self.isolate, result);
+      Ok(())
+    }
+
+    fn is_done(&self) -> bool {
+      let is_done = self.is_done.lock().unwrap();
+      *is_done
+    }
+
+    fn on_done(&self, func: Box<dyn Fn() + Send + 'static>) {
+      let mut on_done = self.on_done_callback.lock().unwrap();
+      *on_done = Some(func);
+    }
+  }
 
   //
   // Oneshot implementation
-  //
-  pub trait Emitter<T>: Send + 'static {
-    fn new(_: i64) -> Self;
-    fn call(&self, _: T) -> State;
-    #[doc(hidden)]
-    fn done(&self);
-  }
-
+  ///
+  #[allow(clippy::mutex_atomic)]
   impl<T: Serialize + Send + 'static, E: Serialize + Send + 'static> Emitter<Result<T, E>>
     for Handle<T, E>
   {
     fn new(port: i64) -> Self {
       let isolate = allo_isolate::Isolate::new(port);
       Handle::<T, E> {
-        _type: None,
-        is_done: Cell::from(false),
-        isolate,
+        data: EmitterData::<T, E> {
+          _type: PhantomData,
+          is_done: Arc::new(Mutex::new(false)),
+          isolate,
+          on_done_callback: Arc::new(Mutex::new(None)),
+        },
       }
     }
 
-    fn call(&self, result: Result<T, E>) -> State {
-      if self.is_done.get() {
-        return State::Closed;
-      }
-      crate::utils::send::<T, E>(self.isolate, result);
-      self.done();
-      State::Sent
+    fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
+      self.data.abort_handle()
     }
 
-    fn done(&self) {
-      self.is_done.set(true);
+    fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
+      self.data.call(result)
+    }
+
+    fn is_done(&self) -> bool {
+      self.data.is_done()
+    }
+
+    fn on_done(&self, func: Box<dyn Fn() + Send + 'static>) {
+      self.data.on_done(func)
     }
   }
 
   //
   // Stream implementation
   ///
+  #[allow(clippy::mutex_atomic)]
   impl<T: Serialize + Send + 'static, E: Serialize + Send + 'static> Emitter<Result<T, E>>
     for StreamHandle<T, E>
   {
     fn new(port: i64) -> Self {
       let isolate = allo_isolate::Isolate::new(port);
       StreamHandle::<T, E> {
-        _type: None,
-        is_done: Cell::from(false),
-        isolate,
+        data: EmitterData::<T, E> {
+          _type: PhantomData,
+          is_done: Arc::new(Mutex::new(false)),
+          isolate,
+          on_done_callback: Arc::new(Mutex::new(None)),
+        },
       }
     }
 
-    fn call(&self, result: Result<T, E>) -> State {
-      if self.is_done.get() {
-        return State::Closed;
-      }
-      crate::utils::send::<T, E>(self.isolate, result);
-      State::Open
+    fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
+      self.data.abort_handle()
     }
 
-    fn done(&self) {
-      self.is_done.set(true);
+    fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
+      self.data.call(result)
+    }
+
+    fn is_done(&self) -> bool {
+      self.data.is_done()
+    }
+
+    fn on_done(&self, func: Box<dyn Fn() + Send + 'static>) {
+      self.data.on_done(func)
     }
   }
 }

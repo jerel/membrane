@@ -887,14 +887,14 @@ impl Function {
 }
 
 #[doc(hidden)]
-pub struct TaskHandle(pub ::futures::future::AbortHandle);
+pub struct TaskHandle(pub Box<dyn Fn()>);
 
 #[doc(hidden)]
 #[no_mangle]
 pub unsafe extern "C" fn membrane_cancel_membrane_task(task_handle: *mut TaskHandle) -> i32 {
   // turn the pointer back into a box and Rust will drop it when it goes out of scope
   let handle = Box::from_raw(task_handle);
-  handle.0.abort();
+  (handle.0)();
 
   1
 }

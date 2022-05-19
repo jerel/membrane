@@ -113,24 +113,22 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
 
   let return_statement = match output_style {
     OutputStyle::EmitterSerialized => quote! {
-      ::futures::executor::block_on(
-        ::futures::future::Abortable::new(
-          async move {
-            let emitter = ::membrane::emitter::Handle::new(_port);
-            let _: () = #fn_name(emitter, #(#rust_inner_args),*);
-          }, membrane_future_registration)
-        ).unwrap()
+      let membrane_emitter = ::membrane::emitter::Handle::new(_port);
+      let membrane_emitter_handle = membrane_emitter.abort_handle();
+      let _: () = #fn_name(membrane_emitter, #(#rust_inner_args),*);
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_emitter_handle));
     },
-    OutputStyle::EmitterStreamSerialized => quote! {
-      ::futures::executor::block_on(
-        ::futures::future::Abortable::new(
-          async move {
-            let emitter = ::membrane::emitter::StreamHandle::new(_port);
-            let _: () = #fn_name(emitter, #(#rust_inner_args),*);
-          }, membrane_future_registration)
-        ).unwrap()
+    OutputStyle::StreamEmitterSerialized => quote! {
+      let membrane_emitter = ::membrane::emitter::StreamHandle::new(_port);
+      let membrane_emitter_handle = membrane_emitter.abort_handle();
+      let _: () = #fn_name(membrane_emitter, #(#rust_inner_args),*);
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_emitter_handle));
     },
     OutputStyle::StreamSerialized => quote! {
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
       crate::RUNTIME.spawn(
         ::futures::future::Abortable::new(
           async move {
@@ -143,14 +141,22 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
               ::membrane::utils::send::<#output, #error>(isolate, result);
             }
           }, membrane_future_registration)
-        )
+        );
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
     },
     OutputStyle::Serialized if sync => quote! {
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
       let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
       let isolate = ::membrane::allo_isolate::Isolate::new(_port);
       ::membrane::utils::send::<#output, #error>(isolate, result);
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
     },
     OutputStyle::Serialized if os_thread => quote! {
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
       crate::RUNTIME.spawn_blocking(
         move || {
           ::futures::executor::block_on(
@@ -162,9 +168,13 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
               }, membrane_future_registration)
           )
         }
-      )
+      );
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
     },
     OutputStyle::Serialized => quote! {
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
       crate::RUNTIME.spawn(
         ::futures::future::Abortable::new(
           async move {
@@ -172,7 +182,9 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
             let isolate = ::membrane::allo_isolate::Isolate::new(_port);
             ::membrane::utils::send::<#output, #error>(isolate, result);
           }, membrane_future_registration)
-        )
+        );
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
     },
   };
 
@@ -188,13 +200,10 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
-          let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
-
           #(#rust_transforms)*
-          #return_statement;
+          #return_statement
 
-          let handle = ::std::boxed::Box::new(::membrane::TaskHandle(membrane_future_handle));
-          ::std::boxed::Box::into_raw(handle)
+          ::std::boxed::Box::into_raw(Box::new(handle))
       }
   };
 
@@ -205,7 +214,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let name = fn_name.to_string().to_mixed_case();
   let is_stream = [
     OutputStyle::StreamSerialized,
-    OutputStyle::EmitterStreamSerialized,
+    OutputStyle::StreamEmitterSerialized,
   ]
   .contains(&output_style);
   let return_type = match &output {

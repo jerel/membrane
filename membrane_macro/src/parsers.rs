@@ -41,7 +41,7 @@ pub fn parse_type_from_callback(input: ParseStream) -> Result<(OutputStyle, Expr
   let output_style = if name == "Emitter" {
     OutputStyle::EmitterSerialized
   } else if name == "StreamEmitter" {
-    OutputStyle::EmitterStreamSerialized
+    OutputStyle::StreamEmitterSerialized
   } else {
     return Err(Error::new(
       span,

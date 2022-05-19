@@ -20,7 +20,7 @@ pub struct Input {
 #[derive(Debug, PartialEq, Eq)]
 pub enum OutputStyle {
   EmitterSerialized,
-  EmitterStreamSerialized,
+  StreamEmitterSerialized,
   StreamSerialized,
   Serialized,
 }
