@@ -94,7 +94,7 @@ fn dart_type(str_ty: &str) -> String {
     serialized if !serialized.starts_with("Option<") => {
       ser_type = format!(
         "required {} ",
-        str_ty.split(&['<', ':']).last().unwrap().trim()
+        str_ty.split(['<', ':'].as_ref()).last().unwrap().trim()
       );
       &ser_type
     }
@@ -106,7 +106,7 @@ fn dart_type(str_ty: &str) -> String {
       ser_type = format!(
         "{}? ",
         str_ty
-          .split(&['<', ':'])
+          .split(['<', ':'].as_ref())
           .last()
           .unwrap()
           .trim_end_matches(|c| c == ' ' || c == '>')
