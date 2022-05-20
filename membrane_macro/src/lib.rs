@@ -34,11 +34,11 @@ impl Parse for ReprDart {
     input.parse::<Token![fn]>()?;
     let fn_name = input.parse::<Ident>()?;
 
-    let callback_input = input.fork();
+    let emitter_input = input.fork();
     syn::parenthesized!(arg_buffer in input);
 
     let (output_style, ret_type, err_type) = match input.fork().parse::<syn::ReturnType>()? {
-      syn::ReturnType::Default => parsers::parse_type_from_callback(&callback_input)?,
+      syn::ReturnType::Default => parsers::parse_type_from_emitter(&emitter_input)?,
       syn::ReturnType::Type(_, tp) => {
         input.parse::<Token![->]>()?;
         match *tp {
@@ -76,7 +76,6 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     disable_logging,
     timeout,
     os_thread,
-    callback,
   } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
@@ -95,9 +94,14 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     ..
   } = parse_macro_input!(input as ReprDart);
 
-  // we automatically provide the callback as the first argument to the user's
+  // we automatically provide the emitter as the first argument to the user's
   // function and we enforce the type so here we drop the first parameter
-  if callback && !inputs.is_empty() {
+  if [
+    OutputStyle::EmitterSerialized,
+    OutputStyle::StreamEmitterSerialized,
+  ]
+  .contains(&output_style)
+  {
     inputs.remove(0);
   };
 

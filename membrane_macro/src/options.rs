@@ -7,7 +7,6 @@ pub(crate) struct Options {
   pub disable_logging: bool,
   pub timeout: Option<i32>,
   pub os_thread: bool,
-  pub callback: bool,
 }
 
 pub(crate) fn extract_options(
@@ -41,11 +40,6 @@ pub(crate) fn extract_options(
     }
     Some((ident, Lit::Bool(val))) if ident == "os_thread" => {
       options.os_thread = val.value();
-      options
-    }
-    Some((ident, _)) if ident == "callback" && sync => invalid_option("sync_dart", "callback=true"),
-    Some((ident, Lit::Bool(val))) if ident == "callback" => {
-      options.callback = val.value();
       options
     }
     Some(_) if sync => {

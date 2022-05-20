@@ -55,7 +55,7 @@ pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::E
   })
 }
 
-#[async_dart(namespace = "accounts", callback = true)]
+#[async_dart(namespace = "accounts")]
 pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>, user_id: String) {
   print!(
     "\n[contact_c_async] sync Rust function {:?}",
@@ -100,7 +100,7 @@ pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>
   print!("\n[contact_c_async] sync Rust function is returning");
 }
 
-#[async_dart(namespace = "accounts", callback = true)]
+#[async_dart(namespace = "accounts")]
 pub fn contact_c_async_stream(
   stream: impl StreamEmitter<Result<data::Contact, data::Error>> + Clone,
   _user_id: String,

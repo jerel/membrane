@@ -27,7 +27,7 @@ pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)
   Ok((OutputStyle::Serialized, t, e))
 }
 
-pub fn parse_type_from_callback(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
+pub fn parse_type_from_emitter(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
   let buffer;
   syn::parenthesized!(buffer in input);
 
