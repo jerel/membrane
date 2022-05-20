@@ -100,6 +100,8 @@ pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>
   print!("\n[contact_c_async] sync Rust function is returning");
 }
 
+// the Clone constraint on the data types here is optional,
+// it allows the `stream` handle to be sent to multiple threads
 #[async_dart(namespace = "accounts")]
 pub fn contact_c_async_stream(
   stream: impl StreamEmitter<Result<data::Contact, data::Error>> + Clone,

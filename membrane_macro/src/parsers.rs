@@ -133,8 +133,7 @@ pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
 fn handle_binop_add(left: &Expr, right: &Expr) -> Input {
   match (left, right) {
     (Expr::Type(syn::ExprType { ty, expr: var, .. }), Expr::Path(syn::ExprPath { path, .. }))
-      if path.segments.last().is_some()
-        && path.segments.last().unwrap().ident.to_string() == "Clone".to_string() =>
+      if path.segments.last().is_some() && path.segments.last().unwrap().ident == "Clone" =>
     {
       Input {
         variable: quote!(#var).to_string(),
