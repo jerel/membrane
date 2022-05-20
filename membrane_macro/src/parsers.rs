@@ -116,6 +116,11 @@ pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
         rust_type: quote!(#ty).to_string().split_whitespace().collect(),
         ty: *ty.clone(),
       },
+      Expr::Binary(syn::ExprBinary {
+        left, right, op, ..
+      }) if op == &syn::BinOp::Add(syn::token::Add(arg_buffer.span())) => {
+        handle_binop_add(left, right)
+      }
       _ => {
         panic!("self is not supported in #[async_dart] functions");
       }
@@ -123,4 +128,22 @@ pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
     .collect();
 
   Ok(inputs)
+}
+
+fn handle_binop_add(left: &Expr, right: &Expr) -> Input {
+  match (left, right) {
+    (Expr::Type(syn::ExprType { ty, expr: var, .. }), Expr::Path(syn::ExprPath { path, .. }))
+      if path.segments.last().is_some()
+        && path.segments.last().unwrap().ident.to_string() == "Clone".to_string() =>
+    {
+      Input {
+        variable: quote!(#var).to_string(),
+        rust_type: quote!(#ty).to_string().split_whitespace().collect(),
+        ty: *ty.clone(),
+      }
+    }
+    _ => {
+      panic!("the only constraint supported in #[async_dart] function args is `+ Clone`")
+    }
+  }
 }

@@ -17,16 +17,19 @@ impl fmt::Display for Ended {
 impl std::error::Error for Ended {}
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct Handle<T, E> {
-  data: EmitterData<T, E>,
+  inner: EmitterData<T, E>,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct StreamHandle<T, E> {
-  data: EmitterData<T, E>,
+  inner: EmitterData<T, E>,
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 struct EmitterData<T, E> {
   // pass the types through so that we know what we're serializing
   _type: PhantomData<Result<T, E>>,
@@ -111,7 +114,7 @@ mod emitter_impl {
     fn new(port: i64) -> Self {
       let isolate = allo_isolate::Isolate::new(port);
       Handle::<T, E> {
-        data: EmitterData::<T, E> {
+        inner: EmitterData::<T, E> {
           _type: PhantomData,
           is_done: Arc::new(Mutex::new(false)),
           isolate,
@@ -121,19 +124,27 @@ mod emitter_impl {
     }
 
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
-      self.data.abort_handle()
+      self.inner.abort_handle()
     }
 
     fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
-      self.data.call(result)
+      let state = self.inner.call(result);
+      // we preemptively show this emitter as done without waiting for the finalizer
+      // callback to do it since it should not be called more than once anyway
+      if state.is_ok() {
+        let mut done = self.inner.is_done.lock().unwrap();
+        *done = true;
+      }
+
+      state
     }
 
     fn is_done(&self) -> bool {
-      self.data.is_done()
+      self.inner.is_done()
     }
 
     fn on_done(&self, func: Box<dyn Fn() + Send + 'static>) {
-      self.data.on_done(func)
+      self.inner.on_done(func)
     }
   }
 
@@ -147,7 +158,7 @@ mod emitter_impl {
     fn new(port: i64) -> Self {
       let isolate = allo_isolate::Isolate::new(port);
       StreamHandle::<T, E> {
-        data: EmitterData::<T, E> {
+        inner: EmitterData::<T, E> {
           _type: PhantomData,
           is_done: Arc::new(Mutex::new(false)),
           isolate,
@@ -157,19 +168,19 @@ mod emitter_impl {
     }
 
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
-      self.data.abort_handle()
+      self.inner.abort_handle()
     }
 
     fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
-      self.data.call(result)
+      self.inner.call(result)
     }
 
     fn is_done(&self) -> bool {
-      self.data.is_done()
+      self.inner.is_done()
     }
 
     fn on_done(&self, func: Box<dyn Fn() + Send + 'static>) {
-      self.data.on_done(func)
+      self.inner.on_done(func)
     }
   }
 }

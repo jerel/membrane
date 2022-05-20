@@ -4,7 +4,6 @@ use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
 // used for background threading examples
-use std::sync::{Arc, Mutex};
 use std::{thread, time::Duration};
 
 use crate::data::{self, MoreTypes};
@@ -58,7 +57,10 @@ pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::E
 
 #[async_dart(namespace = "accounts", callback = true)]
 pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>, user_id: String) {
-  println!("\n[CAsync] sync Rust function {:?}", thread::current().id());
+  print!(
+    "\n[contact_c_async] sync Rust function {:?}",
+    thread::current().id()
+  );
 
   let contact = Ok(data::Contact {
     id: user_id.parse().unwrap(),
@@ -66,45 +68,45 @@ pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>
   });
 
   thread::spawn(move || {
-    let is_done = Arc::new(Mutex::new(false));
-    let mutex = is_done.clone();
     emitter.on_done(Box::new(move || {
-      let mut done = mutex.lock().unwrap();
-      *done = true;
-      println!("the finalizer has been called for the contact_c_async Emitter");
+      println!("\n[contact_c_async] the finalizer has been called for the contact_c_async Emitter");
     }));
 
-    println!(
+    print!(
       "\n[contact_c_async] spawned thread is starting {:?}",
       thread::current().id()
     );
 
-    println!("Emitter state is {:?}", emitter.call(contact));
+    println!(
+      "[contact_c_async] Emitter state is {:?}",
+      emitter.call(contact)
+    );
     println!("\n[contact_c_async] spawned thread has sent response");
 
+    print!("[contact_c_async] spawned thread is finished and waiting to be cancelled by Dart");
     let mut waiting = true;
     while waiting {
-      println!("[contact_c_async] spawned thread is finished and waiting to be cancelled by Dart");
-      waiting = !*is_done.lock().unwrap();
+      waiting = !emitter.is_done();
+      print!(".");
     }
 
     // this will result in an error because Dart has cancelled us
     println!(
-      "Emitter state is {:?}",
+      "[contact_c_async] Emitter state is {:?}",
       emitter.call(Ok(data::Contact::default()))
     );
   });
 
-  println!("\n[contact_c_async] sync Rust function is returning");
+  print!("\n[contact_c_async] sync Rust function is returning");
 }
 
 #[async_dart(namespace = "accounts", callback = true)]
 pub fn contact_c_async_stream(
-  stream: impl StreamEmitter<Result<data::Contact, data::Error>>,
-  user_id: String,
+  stream: impl StreamEmitter<Result<data::Contact, data::Error>> + Clone,
+  _user_id: String,
 ) {
   stream.on_done(Box::new(|| {
-    println!("the finalizer has been called for the contact_c_async_stream StreamEmitter");
+    println!("[contact_c_async_stream] the finalizer has been called for the contact_c_async_stream StreamEmitter");
   }));
 
   println!(
@@ -112,38 +114,42 @@ pub fn contact_c_async_stream(
     thread::current().id()
   );
 
-  let contact_one: Result<data::Contact, data::Error> = Ok(data::Contact {
-    id: user_id.parse().unwrap(),
-    ..data::Contact::default()
-  });
+  [1, 2, 3]
+    .iter()
+    .map(|user_id| data::Contact {
+      id: *user_id,
+      ..data::Contact::default()
+    })
+    .for_each(|contact| {
+      let stream = stream.clone();
+      thread::spawn(move || {
+        let id = thread::current().id();
 
-  let contact_two: Result<data::Contact, data::Error> = Ok(data::Contact {
-    id: 2,
-    full_name: "Bob Smith".to_string(),
-    ..data::Contact::default()
-  });
+        println!(
+          "\n[contact_c_async_stream] spawned thread is starting {:?}",
+          id
+        );
 
-  let contact_three: Result<data::Contact, data::Error> = Ok(data::Contact {
-    id: 3,
-    full_name: "Chuck Smith".to_string(),
-    ..data::Contact::default()
-  });
+        if contact.id > 2 {
+          // sleep momentarily and let Dart cancel the stream
+          // after it has received the 2 items the test requires
+          thread::sleep(Duration::from_millis(10));
+        }
 
-  thread::spawn(move || {
-    println!(
-      "\n[contact_c_async_stream] spawned thread is starting {:?}",
-      thread::current().id()
-    );
-    println!("Stream state is {:?}", stream.call(contact_one));
-    println!("Stream state is {:?}", stream.call(contact_two));
-    // sleep momentarily and let Dart cancel the stream
-    // after it has received the 2 items the test requires
-    thread::sleep(Duration::from_millis(10));
-    println!("\nStream state is {:?}", stream.call(contact_three));
-    println!("\n[contact_c_async_stream] spawned thread has sent response, shutting down");
-  });
+        println!(
+          "\n[contact_c_async_stream] Stream {:?} send state is {:?}",
+          id,
+          stream.call(Ok(contact))
+        );
 
-  println!("\n[contact_c_async_stream] sync Rust function is returning");
+        println!(
+          "\n[contact_c_async_stream] spawned thread {:?} has sent response, shutting down",
+          id
+        );
+      });
+    });
+
+  print!("\n[contact_c_async_stream] sync Rust function is returning");
 }
 
 #[sync_dart(namespace = "accounts")]
@@ -257,7 +263,7 @@ pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, Strin
 
 #[async_dart(namespace = "accounts")]
 pub async fn filter_arg(filter: data::Filter) -> Result<data::Contacts, String> {
-  println!("[Rust] Received filter: {:?}", filter);
+  println!("\n[Rust] Received filter: {:?}", filter);
 
   Ok(data::Contacts {
     data: vec![data::Contact::default()],

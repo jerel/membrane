@@ -50,11 +50,15 @@ void main() {
   test('can call C in os thread and get contact async via callback streaming',
       () async {
     final accounts = AccountsApi();
+    final contacts =
+        await accounts.contactCAsyncStream(userId: "1").take(2).toList();
+    contacts.sort((a, b) => a.id.compareTo(b.id));
+
     expect(
-        await accounts.contactCAsyncStream(userId: "1").take(2).toList(),
+        contacts,
         equals([
           Contact(id: 1, fullName: "Alice Smith", status: Status.pending),
-          Contact(id: 2, fullName: "Bob Smith", status: Status.pending)
+          Contact(id: 2, fullName: "Alice Smith", status: Status.pending)
         ]));
   });
 

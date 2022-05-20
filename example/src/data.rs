@@ -4,7 +4,7 @@ use membrane::dart_enum;
 use serde::{Deserialize, Serialize};
 
 #[dart_enum(namespace = "accounts")]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Status {
   Pending,
   Active,
@@ -16,7 +16,7 @@ impl Default for Status {
   }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Contact {
   pub id: i64,
   pub full_name: String,
@@ -33,7 +33,7 @@ impl Default for Contact {
   }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Error {
   pub message: String,
 }
