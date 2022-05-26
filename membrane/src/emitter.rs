@@ -52,7 +52,7 @@ mod emitter_impl {
   pub struct CHandle {
     pub context: Context,
     pub push: unsafe extern "C" fn(Context, Data),
-    pub drop: unsafe extern "C" fn(Context),
+    drop: unsafe extern "C" fn(Context),
   }
 
   pub type MembraneHandle = *mut CHandle;
@@ -94,8 +94,8 @@ mod emitter_impl {
       let ptr = Box::into_raw(Box::new(callback));
       CHandle {
         context: ptr as *mut _,
-        push: membrane_run_closure::<F, D>,
-        drop: membrane_drop_box_generic::<F>,
+        push: run_push_closure::<F, D>,
+        drop: drop_box::<F>,
       }
     }
 
@@ -225,7 +225,7 @@ mod emitter_impl {
     }
   }
 
-  pub extern "C" fn membrane_run_closure<'r, F, D>(
+  pub extern "C" fn run_push_closure<'r, F, D>(
     closure: *mut std::ffi::c_void,
     data: *mut std::ffi::c_void,
   ) where
@@ -234,13 +234,13 @@ mod emitter_impl {
   {
     let ptr = closure as *mut F;
     if ptr.is_null() {
-      return eprintln!("membrane_run_closure was called with a NULL pointer");
+      return eprintln!("run_push_closure was called with a NULL pointer");
     }
     let callback = unsafe { &mut *ptr };
 
     let data_ptr = data as *mut D;
     if data_ptr.is_null() {
-      return eprintln!("membrane_run_closure was called with a NULL pointer");
+      return eprintln!("run_push_closure was called with a NULL pointer");
     }
 
     let data = unsafe { &*data_ptr };
@@ -248,16 +248,28 @@ mod emitter_impl {
     callback(data);
   }
 
-  extern "C" fn membrane_drop_box_generic<T>(data: *mut std::ffi::c_void) {
+  extern "C" fn drop_box<T>(data: *mut std::ffi::c_void) {
     unsafe {
+      if data.is_null() {
+        return eprintln!("membrane drop_box was called with a NULL pointer");
+      }
+
       Box::from_raw(data as *mut T);
+      println!("cleaning up closure box");
     }
   }
 
   #[no_mangle]
   pub extern "C" fn membrane_drop_handle(data: *mut std::ffi::c_void) {
     unsafe {
-      Box::from_raw(data);
+      if data.is_null() {
+        return eprintln!("membrane_drop_handle was called with a NULL pointer");
+      }
+
+      let handle = Box::from_raw(data as MembraneHandle);
+      (handle.drop)(handle.context);
+      // `handle` will now be dropped as it goes out of scope
+      println!("cleaning up handle box");
     }
   }
 }
