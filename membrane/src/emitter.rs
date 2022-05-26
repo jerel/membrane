@@ -95,7 +95,7 @@ mod emitter_impl {
       CHandle {
         context: ptr as *mut _,
         push: membrane_run_closure::<F, D>,
-        drop: membrane_drop_box::<F>,
+        drop: membrane_drop_box_generic::<F>,
       }
     }
 
@@ -248,9 +248,16 @@ mod emitter_impl {
     callback(data);
   }
 
-  pub extern "C" fn membrane_drop_box<T>(data: *mut std::ffi::c_void) {
+  extern "C" fn membrane_drop_box_generic<T>(data: *mut std::ffi::c_void) {
     unsafe {
       Box::from_raw(data as *mut T);
+    }
+  }
+
+  #[no_mangle]
+  pub extern "C" fn membrane_drop_handle(data: *mut std::ffi::c_void) {
+    unsafe {
+      Box::from_raw(data);
     }
   }
 }

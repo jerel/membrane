@@ -9,5 +9,8 @@ typedef struct MembraneHandle
     void (*drop)(Context);
 } MembraneHandle;
 
-void *worker(MembraneHandle);
-int init(*MembraneHandle);
+void membrane_drop_handle(void *);
+
+void *worker(void *);
+void *supervisor(void *);
+int init(MembraneHandle *);

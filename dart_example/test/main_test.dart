@@ -49,7 +49,9 @@ void main() {
 
   test('can call C function with background C threading', () async {
     final accounts = AccountsApi();
-    print(await accounts.callC().take(2).toList());
+    final strings = await accounts.callC().take(2).toList();
+    expect(strings.length, 2);
+    expect(strings.every((s) => s.startsWith("This is a string from")), true);
   });
 
   test('can call C in os thread and get contact async via callback streaming',

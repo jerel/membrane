@@ -2,19 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h> //Header file for sleep(). man 3 sleep for details.
 #include <pthread.h>
-
-typedef void *Context;
-
-typedef void *Data;
-
-typedef struct membrane_handle MembraneHandle;
-
-struct membrane_handle
-{
-    Context context;
-    void (*push)(Context, Data);
-    void (*drop)(Context);
-};
+#include <threading_example.h>
 
 void *worker(void *vptr)
 {
@@ -23,13 +11,27 @@ void *worker(void *vptr)
     sleep(1);
     printf("\n[call_c] [C] This is running in a detached C thread after sleeping for 1 second \n");
 
-    char first[] = "This is a string from the first";
-    handle.push(handle.context, &first);
+    char string[] = "This is a string from a C thread";
+    handle.push(handle.context, &string);
 
-    char second[] = "This is the string from the second";
-    handle.push(handle.context, &second);
+    pthread_exit(NULL);
+}
+
+void *supervisor(void *vptr)
+{
+    MembraneHandle handle = *(MembraneHandle *)vptr;
+
+    printf("\n[call_c] [C] Worker supervisor is running \n");
+
+    pthread_t thread_one_id;
+    pthread_t thread_two_id;
+    pthread_create(&thread_one_id, NULL, worker, (void *)vptr);
+    pthread_create(&thread_two_id, NULL, worker, (void *)vptr);
+    pthread_join(thread_one_id, NULL);
+    pthread_join(thread_two_id, NULL);
 
     handle.drop(handle.context);
+    membrane_drop_handle(vptr);
 
     pthread_exit(NULL);
 }
@@ -41,7 +43,7 @@ int init(MembraneHandle *handle)
 
     printf("\n[call_c] [C] Spawning detached thread\n");
     pthread_detach(thread_id);
-    pthread_create(&thread_id, NULL, worker, (void *)handle);
+    pthread_create(&thread_id, NULL, supervisor, (void *)handle);
     printf("\n[call_c] [C] Done spawning detached thread\n");
 
     return 1;
