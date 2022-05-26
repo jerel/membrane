@@ -1,4 +1,4 @@
-pub use emitter_impl::{Emitter, Emitter as StreamEmitter};
+pub use emitter_impl::{Emitter, Emitter as StreamEmitter, MembraneHandle};
 use std::fmt;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
@@ -45,6 +45,18 @@ mod emitter_impl {
   use crate::emitter::{EmitterData, Handle, StreamHandle};
   use serde::Serialize;
 
+  pub type Context = *mut ::std::os::raw::c_void;
+  pub type Data = *mut ::std::os::raw::c_void;
+  #[repr(C)]
+  #[derive(Debug, Copy, Clone)]
+  pub struct CHandle {
+    pub context: Context,
+    pub push: unsafe extern "C" fn(Context, Data),
+    pub drop: unsafe extern "C" fn(Context),
+  }
+
+  pub type MembraneHandle = *mut CHandle;
+
   //
   // Shared emitter implementation
   //
@@ -53,7 +65,10 @@ mod emitter_impl {
     fn new(_: i64) -> Self;
     #[doc(hidden)]
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static>;
-    fn call(&self, _: T) -> Result<(), Ended>;
+    fn source<F, D>(&self, _: F) -> CHandle
+    where
+      F: FnMut(&D) + 'static;
+    fn push(&self, _: T) -> Result<(), Ended>;
     fn is_done(&self) -> bool;
     fn on_done(&self, _: Box<dyn Fn() + Send + 'static>);
   }
@@ -72,6 +87,18 @@ mod emitter_impl {
       }
     }
 
+    fn source<F, D>(&self, callback: F) -> CHandle
+    where
+      F: FnMut(&D) + 'static,
+    {
+      let ptr = Box::into_raw(Box::new(callback));
+      CHandle {
+        context: ptr as *mut _,
+        push: membrane_run_closure::<F, D>,
+        drop: membrane_drop_box::<F>,
+      }
+    }
+
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
       let is_done = self.is_done.clone();
       let finalizer = self.on_done_callback.clone();
@@ -85,7 +112,7 @@ mod emitter_impl {
       })
     }
 
-    fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
+    fn push(&self, result: Result<T, E>) -> Result<(), Ended> {
       if self.is_done() {
         return Err(Ended);
       }
@@ -123,12 +150,19 @@ mod emitter_impl {
       }
     }
 
+    fn source<F, D>(&self, callback: F) -> CHandle
+    where
+      F: FnMut(&D) + 'static,
+    {
+      self.inner.source(callback)
+    }
+
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
       self.inner.abort_handle()
     }
 
-    fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
-      let state = self.inner.call(result);
+    fn push(&self, result: Result<T, E>) -> Result<(), Ended> {
+      let state = self.inner.push(result);
       // we preemptively show this emitter as done without waiting for the finalizer
       // callback to do it since it should not be called more than once anyway
       if state.is_ok() {
@@ -167,12 +201,19 @@ mod emitter_impl {
       }
     }
 
+    fn source<F, D>(&self, callback: F) -> CHandle
+    where
+      F: FnMut(&D) + 'static,
+    {
+      self.inner.source(callback)
+    }
+
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
       self.inner.abort_handle()
     }
 
-    fn call(&self, result: Result<T, E>) -> Result<(), Ended> {
-      self.inner.call(result)
+    fn push(&self, result: Result<T, E>) -> Result<(), Ended> {
+      self.inner.push(result)
     }
 
     fn is_done(&self) -> bool {
@@ -181,6 +222,35 @@ mod emitter_impl {
 
     fn on_done(&self, func: Box<dyn Fn() + Send + 'static>) {
       self.inner.on_done(func)
+    }
+  }
+
+  pub extern "C" fn membrane_run_closure<'r, F, D>(
+    closure: *mut std::ffi::c_void,
+    data: *mut std::ffi::c_void,
+  ) where
+    F: FnMut(&'r D),
+    D: 'r,
+  {
+    let ptr = closure as *mut F;
+    if ptr.is_null() {
+      return eprintln!("membrane_run_closure was called with a NULL pointer");
+    }
+    let callback = unsafe { &mut *ptr };
+
+    let data_ptr = data as *mut D;
+    if data_ptr.is_null() {
+      return eprintln!("membrane_run_closure was called with a NULL pointer");
+    }
+
+    let data = unsafe { &*data_ptr };
+
+    callback(data);
+  }
+
+  pub extern "C" fn membrane_drop_box<T>(data: *mut std::ffi::c_void) {
+    unsafe {
+      Box::from_raw(data as *mut T);
     }
   }
 }

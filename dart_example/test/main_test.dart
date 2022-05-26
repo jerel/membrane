@@ -47,6 +47,11 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
+  test('can call C function with background C threading', () async {
+    final accounts = AccountsApi();
+    print(await accounts.callC().take(2).toList());
+  });
+
   test('can call C in os thread and get contact async via callback streaming',
       () async {
     final accounts = AccountsApi();

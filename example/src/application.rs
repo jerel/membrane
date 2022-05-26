@@ -1,5 +1,5 @@
 use data::OptionsDemo;
-use membrane::emitter::{Emitter, StreamEmitter};
+use membrane::emitter::{Emitter, MembraneHandle, StreamEmitter};
 use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
@@ -55,6 +55,36 @@ pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::E
   })
 }
 
+// This function and its types must match the C function that is called
+extern "C" {
+  pub fn init(arg1: MembraneHandle) -> ::std::os::raw::c_int;
+}
+
+#[async_dart(namespace = "accounts", timeout = 1100)]
+pub fn call_c(stream: impl StreamEmitter<Result<String, String>> + Clone) {
+  stream.on_done(Box::new(|| {
+    println!("[call_c] stream is closed");
+  }));
+
+  let s = stream.clone();
+  let handle = s.source(move |data: &std::os::raw::c_char| {
+    let c_data = unsafe { std::ffi::CStr::from_ptr(data).to_owned() };
+
+    let result = match c_data.into_string().into() {
+      Ok(val) => Ok(val),
+      Err(std::ffi::IntoStringError { .. }) => Err("Couldn't convert to a String".to_string()),
+    };
+
+    let _ = stream.push(result);
+  });
+
+  unsafe {
+    init(Box::into_raw(Box::new(handle)));
+  }
+
+  println!("[call_c] [Rust] finished with synchronous call to `call_c()`");
+}
+
 #[async_dart(namespace = "accounts")]
 pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>, user_id: String) {
   print!(
@@ -79,7 +109,7 @@ pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>
 
     println!(
       "[contact_c_async] Emitter state is {:?}",
-      emitter.call(contact)
+      emitter.push(contact)
     );
     println!("\n[contact_c_async] spawned thread has sent response");
 
@@ -93,7 +123,7 @@ pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>
     // this will result in an error because Dart has cancelled us
     println!(
       "[contact_c_async] Emitter state is {:?}",
-      emitter.call(Ok(data::Contact::default()))
+      emitter.push(Ok(data::Contact::default()))
     );
   });
 
@@ -141,7 +171,7 @@ pub fn contact_c_async_stream(
         println!(
           "\n[contact_c_async_stream] Stream {:?} send state is {:?}",
           id,
-          stream.call(Ok(contact))
+          stream.push(Ok(contact))
         );
 
         println!(

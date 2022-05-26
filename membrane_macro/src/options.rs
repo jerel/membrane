@@ -49,7 +49,7 @@ pub(crate) fn extract_options(
     }
     Some(_) => {
       panic!(
-        r#"#[async_dart] only `namespace=""`, `callback=true`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#
+        r#"#[async_dart] only `namespace=""`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#
       );
     }
     None => {
