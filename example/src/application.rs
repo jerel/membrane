@@ -60,7 +60,7 @@ extern "C" {
   pub fn init(arg1: MembraneHandle) -> ::std::os::raw::c_int;
 }
 
-#[async_dart(namespace = "accounts", timeout = 1100)]
+#[async_dart(namespace = "accounts", timeout = 30)]
 pub fn call_c(stream: impl StreamEmitter<Result<String, String>> + Clone) {
   stream.on_done(Box::new(|| {
     println!("[call_c] stream is closed");

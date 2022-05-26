@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h> //Header file for sleep(). man 3 sleep for details.
+#include <unistd.h>
 #include <pthread.h>
 #include <threading_example.h>
 
@@ -36,8 +36,8 @@ void *worker(void *vptr)
 {
     MembraneHandle handle = *(MembraneHandle *)vptr;
 
-    sleep(1);
-    printf("\n[call_c] [C] This is running in a detached C thread after sleeping for 1 second \n");
+    usleep(5);
+    printf("\n[call_c] [C] This is running in a detached C thread after sleeping for 5ms \n");
 
     char string[] = "This is a string from a C thread";
     handle.push(handle.context, &string);
