@@ -1,56 +1,48 @@
 use crate::quote::quote;
+use membrane_types::proc_macro2::Span;
 use membrane_types::{syn, Input, OutputStyle};
+use proc_macro::TokenStream;
 use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::{Error, Expr, Ident, Path, Token};
 
-pub fn parse_stream_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
+pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
   input.parse::<Token![impl]>()?;
   let span = input.span();
   let stream_ident = input.parse::<Ident>()?;
   input.parse::<Token![<]>()?;
-  let item_ident = input.parse::<Ident>()?;
 
-  if stream_ident != "Stream" || item_ident != "Item" {
-    return Err(Error::new(span, "expected `impl Stream<Item = Result>`"));
+  match stream_ident.to_string().as_str() {
+    "Stream" => {
+      let item_ident = input.parse::<Ident>()?;
+      if item_ident != "Item" {
+        return Err(Error::new(span, "expected `impl Stream<Item = Result>`"));
+      }
+
+      input.parse::<Token![=]>()?;
+      let (t, e) = parse_type(input)?;
+      input.parse::<Token![>]>()?;
+      Ok((OutputStyle::StreamSerialized, t, e))
+    }
+    "StreamEmitter" => {
+      let (t, e) = parse_type(input)?;
+      input.parse::<Token![>]>()?;
+      Ok((OutputStyle::StreamEmitterSerialized, t, e))
+    }
+    "Emitter" => {
+      let (t, e) = parse_type(input)?;
+      input.parse::<Token![>]>()?;
+      Ok((OutputStyle::EmitterSerialized, t, e))
+    }
+    _ => {
+      return Err(Error::new(span, "trait found, expected `impl Stream<Item = Result>` or `impl StreamEmitter<Result>` or `impl Emitter<Result>`"));
+    }
   }
-
-  input.parse::<Token![=]>()?;
-  let (t, e) = parse_type(input)?;
-  input.parse::<Token![>]>()?;
-
-  Ok((OutputStyle::StreamSerialized, t, e))
 }
 
 pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
   let (t, e) = parse_type(input)?;
   Ok((OutputStyle::Serialized, t, e))
-}
-
-pub fn parse_type_from_emitter(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
-  let buffer;
-  syn::parenthesized!(buffer in input);
-
-  buffer.parse::<Ident>()?;
-  buffer.parse::<Token![:]>()?;
-  buffer.parse::<Token![impl]>()?;
-  let span = buffer.span();
-  let name = buffer.parse::<Ident>()?.to_string();
-  buffer.parse::<Token![<]>()?;
-
-  let output_style = if name == "Emitter" {
-    OutputStyle::EmitterSerialized
-  } else if name == "StreamEmitter" {
-    OutputStyle::StreamEmitterSerialized
-  } else {
-    return Err(Error::new(
-      span,
-      "expected `impl membrane::Emitter<Result<T, E>>` or `impl membrane::StreamEmitter<Result<T, E>>`",
-    ));
-  };
-
-  let (t, e) = parse_type(&buffer)?;
-  Ok((output_style, t, e))
 }
 
 pub fn parse_type(input: ParseStream) -> Result<(Expr, Path)> {
@@ -145,4 +137,33 @@ fn handle_binop_add(left: &Expr, right: &Expr) -> Input {
       panic!("the only constraint supported in #[async_dart] function args is `+ Clone`")
     }
   }
+}
+
+pub(crate) fn add_port_to_args(input: TokenStream) -> TokenStream {
+  let mut item = syn::parse_macro_input!(input as syn::ItemFn);
+  let syn::Signature { inputs, .. } = item.sig;
+
+  let mut args: syn::punctuated::Punctuated<syn::FnArg, syn::token::Comma> =
+    syn::punctuated::Punctuated::new();
+
+  args.push(syn::FnArg::Typed(syn::PatType {
+    attrs: vec![],
+    pat: Box::new(syn::Pat::Ident(syn::PatIdent {
+      attrs: vec![],
+      by_ref: None,
+      mutability: None,
+      ident: Ident::new("_membrane_port", Span::call_site()),
+      subpat: None,
+    })),
+    colon_token: syn::token::Colon(Span::call_site()),
+    ty: Box::new(syn::Type::Path(syn::TypePath {
+      qself: None,
+      path: syn::Path::from(Ident::new("i64", Span::call_site())),
+    })),
+  }));
+
+  args.extend(inputs);
+  item.sig.inputs = args;
+
+  quote! {#item}.into()
 }

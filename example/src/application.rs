@@ -1,5 +1,5 @@
 use data::OptionsDemo;
-use membrane::emitter::{Emitter, MembraneHandle, StreamEmitter};
+use membrane::emitter::{handle, CHandle, Emitter, StreamEmitter};
 use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
@@ -57,17 +57,15 @@ pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::E
 
 // This function and its types must match the C function that is called
 extern "C" {
-  pub fn init(arg1: MembraneHandle) -> ::std::os::raw::c_int;
+  pub fn init(arg1: CHandle) -> ::std::os::raw::c_int;
 }
 
-#[async_dart(namespace = "accounts", timeout = 30)]
-pub fn call_c(stream: impl StreamEmitter<Result<String, String>> + Clone) {
-  stream.on_done(Box::new(|| {
-    println!("[call_c] stream is closed");
-  }));
+#[async_dart(namespace = "accounts")]
+pub fn call_c() -> impl StreamEmitter<Result<String, String>> {
+  let stream = handle!();
 
   let s = stream.clone();
-  let handle = s.source(move |data: &std::os::raw::c_char| {
+  let handle = stream.on_data(move |data: &std::os::raw::c_char| {
     let c_data = unsafe { std::ffi::CStr::from_ptr(data).to_owned() };
 
     let result = match c_data.into_string().into() {
@@ -75,18 +73,26 @@ pub fn call_c(stream: impl StreamEmitter<Result<String, String>> + Clone) {
       Err(std::ffi::IntoStringError { .. }) => Err("Couldn't convert to a String".to_string()),
     };
 
-    let _ = stream.push(result);
+    let _ = s.push(result.clone());
   });
+
+  stream.on_done(Box::new(|| {
+    println!("[call_c] stream is closed");
+  }));
 
   unsafe {
     init(Box::into_raw(Box::new(handle)));
   }
 
   println!("[call_c] [Rust] finished with synchronous call to `call_c()`");
+
+  stream
 }
 
 #[async_dart(namespace = "accounts")]
-pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>, user_id: String) {
+pub fn contact_c_async(user_id: String) -> impl Emitter<Result<data::Contact, data::Error>> {
+  let emitter = handle!();
+
   print!(
     "\n[contact_c_async] sync Rust function {:?}",
     thread::current().id()
@@ -97,8 +103,10 @@ pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>
     ..data::Contact::default()
   });
 
-  thread::spawn(move || {
-    emitter.on_done(Box::new(move || {
+  let e = emitter.clone();
+  // drop the JoinHandle to detach the thread
+  let _ = thread::spawn(move || {
+    e.on_done(Box::new(move || {
       println!("\n[contact_c_async] the finalizer has been called for the contact_c_async Emitter");
     }));
 
@@ -107,36 +115,34 @@ pub fn contact_c_async(emitter: impl Emitter<Result<data::Contact, data::Error>>
       thread::current().id()
     );
 
-    println!(
-      "[contact_c_async] Emitter state is {:?}",
-      emitter.push(contact)
-    );
+    println!("[contact_c_async] Emitter state is {:?}", e.push(contact));
     println!("\n[contact_c_async] spawned thread has sent response");
 
     print!("[contact_c_async] spawned thread is finished and waiting to be cancelled by Dart");
     let mut waiting = true;
     while waiting {
-      waiting = !emitter.is_done();
+      waiting = !e.is_done();
       print!(".");
     }
 
     // this will result in an error because Dart has cancelled us
     println!(
       "[contact_c_async] Emitter state is {:?}",
-      emitter.push(Ok(data::Contact::default()))
+      e.push(Ok(data::Contact::default()))
     );
   });
 
   print!("\n[contact_c_async] sync Rust function is returning");
+
+  emitter
 }
 
-// the Clone constraint on the data types here is optional,
-// it allows the `stream` handle to be sent to multiple threads
 #[async_dart(namespace = "accounts")]
 pub fn contact_c_async_stream(
-  stream: impl StreamEmitter<Result<data::Contact, data::Error>> + Clone,
   _user_id: String,
-) {
+) -> impl StreamEmitter<Result<data::Contact, data::Error>> {
+  let stream = handle!();
+
   stream.on_done(Box::new(|| {
     println!("[contact_c_async_stream] the finalizer has been called for the contact_c_async_stream StreamEmitter");
   }));
@@ -154,7 +160,9 @@ pub fn contact_c_async_stream(
     })
     .for_each(|contact| {
       let stream = stream.clone();
-      thread::spawn(move || {
+
+      // drop the JoinHandle to detach the thread
+      let _ = thread::spawn(move || {
         let id = thread::current().id();
 
         println!(
@@ -182,6 +190,8 @@ pub fn contact_c_async_stream(
     });
 
   print!("\n[contact_c_async_stream] sync Rust function is returning");
+
+  stream
 }
 
 #[sync_dart(namespace = "accounts")]

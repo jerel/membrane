@@ -1,7 +1,9 @@
-pub use emitter_impl::{Emitter, Emitter as StreamEmitter, MembraneHandle};
+pub use emitter_impl::{CHandle, Emitter, Emitter as StreamEmitter};
 use std::fmt;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
+
+pub use membrane_macro::handle;
 
 type FinalizerCallback = Arc<Mutex<Option<Box<dyn Fn() + Send + 'static>>>>;
 
@@ -24,12 +26,6 @@ pub struct Handle<T, E> {
 
 #[doc(hidden)]
 #[derive(Clone)]
-pub struct StreamHandle<T, E> {
-  inner: EmitterData<T, E>,
-}
-
-#[doc(hidden)]
-#[derive(Clone)]
 struct EmitterData<T, E> {
   // pass the types through so that we know what we're serializing
   _type: PhantomData<Result<T, E>>,
@@ -42,30 +38,29 @@ mod emitter_impl {
   use super::Ended;
   use super::PhantomData;
   use super::{Arc, Mutex};
-  use crate::emitter::{EmitterData, Handle, StreamHandle};
+  use crate::emitter::{EmitterData, Handle};
   use serde::Serialize;
 
   pub type Context = *mut ::std::os::raw::c_void;
   pub type Data = *mut ::std::os::raw::c_void;
   #[repr(C)]
   #[derive(Debug, Copy, Clone)]
-  pub struct CHandle {
+  pub struct CHandleImpl {
     pub context: Context,
     pub push: unsafe extern "C" fn(Context, Data),
     drop: unsafe extern "C" fn(Context),
   }
 
-  pub type MembraneHandle = *mut CHandle;
+  pub type CHandle = *mut CHandleImpl;
 
   //
   // Shared emitter implementation
   //
   pub trait Emitter<T>: Send + 'static {
-    #[doc(hidden)]
-    fn new(_: i64) -> Self;
+    fn new(port: i64) -> Self;
     #[doc(hidden)]
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static>;
-    fn source<F, D>(&self, _: F) -> CHandle
+    fn on_data<F, D>(&self, _: F) -> CHandleImpl
     where
       F: FnMut(&D) + 'static;
     fn push(&self, _: T) -> Result<(), Ended>;
@@ -78,21 +73,20 @@ mod emitter_impl {
     for EmitterData<T, E>
   {
     fn new(port: i64) -> Self {
-      let isolate = allo_isolate::Isolate::new(port);
       EmitterData::<T, E> {
         _type: PhantomData,
         is_done: Arc::new(Mutex::new(false)),
-        isolate,
+        isolate: allo_isolate::Isolate::new(port),
         on_done_callback: Arc::new(Mutex::new(None)),
       }
     }
 
-    fn source<F, D>(&self, callback: F) -> CHandle
+    fn on_data<F, D>(&self, callback: F) -> CHandleImpl
     where
       F: FnMut(&D) + 'static,
     {
       let ptr = Box::into_raw(Box::new(callback));
-      CHandle {
+      CHandleImpl {
         context: ptr as *mut _,
         push: run_push_closure::<F, D>,
         drop: drop_box::<F>,
@@ -131,30 +125,26 @@ mod emitter_impl {
     }
   }
 
-  //
-  // Oneshot implementation
-  ///
   #[allow(clippy::mutex_atomic)]
   impl<T: Serialize + Send + 'static, E: Serialize + Send + 'static> Emitter<Result<T, E>>
     for Handle<T, E>
   {
     fn new(port: i64) -> Self {
-      let isolate = allo_isolate::Isolate::new(port);
       Handle::<T, E> {
         inner: EmitterData::<T, E> {
           _type: PhantomData,
           is_done: Arc::new(Mutex::new(false)),
-          isolate,
+          isolate: allo_isolate::Isolate::new(port),
           on_done_callback: Arc::new(Mutex::new(None)),
         },
       }
     }
 
-    fn source<F, D>(&self, callback: F) -> CHandle
+    fn on_data<F, D>(&self, callback: F) -> CHandleImpl
     where
       F: FnMut(&D) + 'static,
     {
-      self.inner.source(callback)
+      self.inner.on_data(callback)
     }
 
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
@@ -171,49 +161,6 @@ mod emitter_impl {
       }
 
       state
-    }
-
-    fn is_done(&self) -> bool {
-      self.inner.is_done()
-    }
-
-    fn on_done(&self, func: Box<dyn Fn() + Send + 'static>) {
-      self.inner.on_done(func)
-    }
-  }
-
-  //
-  // Stream implementation
-  ///
-  #[allow(clippy::mutex_atomic)]
-  impl<T: Serialize + Send + 'static, E: Serialize + Send + 'static> Emitter<Result<T, E>>
-    for StreamHandle<T, E>
-  {
-    fn new(port: i64) -> Self {
-      let isolate = allo_isolate::Isolate::new(port);
-      StreamHandle::<T, E> {
-        inner: EmitterData::<T, E> {
-          _type: PhantomData,
-          is_done: Arc::new(Mutex::new(false)),
-          isolate,
-          on_done_callback: Arc::new(Mutex::new(None)),
-        },
-      }
-    }
-
-    fn source<F, D>(&self, callback: F) -> CHandle
-    where
-      F: FnMut(&D) + 'static,
-    {
-      self.inner.source(callback)
-    }
-
-    fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
-      self.inner.abort_handle()
-    }
-
-    fn push(&self, result: Result<T, E>) -> Result<(), Ended> {
-      self.inner.push(result)
     }
 
     fn is_done(&self) -> bool {
@@ -255,7 +202,6 @@ mod emitter_impl {
       }
 
       Box::from_raw(data as *mut T);
-      println!("cleaning up closure box");
     }
   }
 
@@ -266,10 +212,9 @@ mod emitter_impl {
         return eprintln!("membrane_drop_handle was called with a NULL pointer");
       }
 
-      let handle = Box::from_raw(data as MembraneHandle);
+      let handle = Box::from_raw(data as CHandle);
       (handle.drop)(handle.context);
       // `handle` will now be dropped as it goes out of scope
-      println!("cleaning up handle box");
     }
   }
 }

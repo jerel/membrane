@@ -33,21 +33,13 @@ impl Parse for ReprDart {
     }
     input.parse::<Token![fn]>()?;
     let fn_name = input.parse::<Ident>()?;
-
-    let emitter_input = input.fork();
     syn::parenthesized!(arg_buffer in input);
-
-    let (output_style, ret_type, err_type) = match input.fork().parse::<syn::ReturnType>()? {
-      syn::ReturnType::Default => parsers::parse_type_from_emitter(&emitter_input)?,
-      syn::ReturnType::Type(_, tp) => {
-        input.parse::<Token![->]>()?;
-        match *tp {
-          syn::Type::ImplTrait(_) => parsers::parse_stream_return_type(input)?,
-          _path => parsers::parse_return_type(input)?,
-        }
-      }
+    input.parse::<Token![->]>()?;
+    let (output_style, ret_type, err_type) = if input.peek(Token![impl]) {
+      parsers::parse_trait_return_type(input)?
+    } else {
+      parsers::parse_return_type(input)?
     };
-
     input.parse::<Block>()?;
 
     Ok(ReprDart {
@@ -82,28 +74,26 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     sync,
   );
 
-  let mut functions = TokenStream::new();
-  functions.extend(input.clone());
-
+  let input_two = input.clone();
   let ReprDart {
     fn_name,
     output_style,
     output,
     error,
-    mut inputs,
+    inputs,
     ..
   } = parse_macro_input!(input as ReprDart);
 
-  // we automatically provide the emitter as the first argument to the user's
-  // function and we enforce the type so here we drop the first parameter
-  if [
-    OutputStyle::EmitterSerialized,
-    OutputStyle::StreamEmitterSerialized,
-  ]
-  .contains(&output_style)
-  {
-    inputs.remove(0);
-  };
+  let mut functions = TokenStream::new();
+
+  match output_style {
+    OutputStyle::StreamEmitterSerialized | OutputStyle::EmitterSerialized => {
+      functions.extend(parsers::add_port_to_args(input_two))
+    }
+    _ => {
+      functions.extend(input_two);
+    }
+  }
 
   let rust_outer_params: Vec<TokenStream2> = RustExternParams::from(&inputs).into();
   let rust_transforms: Vec<TokenStream2> = RustTransforms::from(&inputs).into();
@@ -117,18 +107,16 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
 
   let return_statement = match output_style {
     OutputStyle::EmitterSerialized => quote! {
-      let membrane_emitter = ::membrane::emitter::Handle::new(_port);
-      let membrane_emitter_handle = membrane_emitter.abort_handle();
-      let _: () = #fn_name(membrane_emitter, #(#rust_inner_args),*);
+      let membrane_emitter = #fn_name(_port, #(#rust_inner_args),*);
+      let membrane_abort_handle = membrane_emitter.abort_handle();
 
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_emitter_handle));
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
     },
     OutputStyle::StreamEmitterSerialized => quote! {
-      let membrane_emitter = ::membrane::emitter::StreamHandle::new(_port);
-      let membrane_emitter_handle = membrane_emitter.abort_handle();
-      let _: () = #fn_name(membrane_emitter, #(#rust_inner_args),*);
+      let membrane_emitter = #fn_name(_port, #(#rust_inner_args),*);
+      let membrane_abort_handle = membrane_emitter.abort_handle();
 
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_emitter_handle));
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
     },
     OutputStyle::StreamSerialized => quote! {
       let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
@@ -336,4 +324,11 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   variants.extend::<TokenStream>(_deferred_trace.into());
 
   variants
+}
+
+#[proc_macro]
+pub fn handle(_item: TokenStream) -> TokenStream {
+  "::membrane::emitter::Handle::new(_membrane_port)"
+    .parse()
+    .unwrap()
 }
