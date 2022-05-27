@@ -7,8 +7,10 @@ typedef void *Context;
 typedef void *Data;
 typedef struct MembraneHandle
 {
-    Context context;
+    Context push_ctx;
     void (*push)(Context, Data);
+    Context is_done_ctx;
+    int (*is_done)(Context);
 } MembraneHandle;
 
 void init(MembraneHandle *);

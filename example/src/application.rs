@@ -76,9 +76,9 @@ pub fn call_c() -> impl StreamEmitter<Result<String, String>> {
     let _ = s.push(result.clone());
   });
 
-  stream.on_done(Box::new(|| {
-    println!("[call_c] stream is closed");
-  }));
+  stream.on_done(|| {
+    println!("[call_c] [Rust] stream is closed by Dart");
+  });
 
   unsafe {
     // call into C to kick off the async work
@@ -107,9 +107,9 @@ pub fn contact_c_async(user_id: String) -> impl Emitter<Result<data::Contact, da
   let e = emitter.clone();
   // drop the JoinHandle to detach the thread
   let _ = thread::spawn(move || {
-    e.on_done(Box::new(move || {
+    e.on_done(|| {
       println!("\n[contact_c_async] the finalizer has been called for the contact_c_async Emitter");
-    }));
+    });
 
     print!(
       "\n[contact_c_async] spawned thread is starting {:?}",
@@ -144,9 +144,9 @@ pub fn contact_c_async_stream(
 ) -> impl StreamEmitter<Result<data::Contact, data::Error>> {
   let stream = emitter!();
 
-  stream.on_done(Box::new(|| {
+  stream.on_done(move || {
     println!("[contact_c_async_stream] the finalizer has been called for the contact_c_async_stream StreamEmitter");
-  }));
+  });
 
   println!(
     "\n[contact_c_async_stream] sync Rust function {:?}",
