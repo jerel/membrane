@@ -106,13 +106,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
   let return_statement = match output_style {
-    OutputStyle::EmitterSerialized => quote! {
-      let membrane_emitter = #fn_name(_port, #(#rust_inner_args),*);
-      let membrane_abort_handle = membrane_emitter.abort_handle();
-
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
-    },
-    OutputStyle::StreamEmitterSerialized => quote! {
+    OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized => quote! {
       let membrane_emitter = #fn_name(_port, #(#rust_inner_args),*);
       let membrane_abort_handle = membrane_emitter.abort_handle();
 
@@ -327,7 +321,7 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn handle(_item: TokenStream) -> TokenStream {
+pub fn emitter(_item: TokenStream) -> TokenStream {
   "::membrane::emitter::Handle::new(_membrane_port)"
     .parse()
     .unwrap()

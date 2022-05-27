@@ -35,7 +35,7 @@ pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, Expr,
       Ok((OutputStyle::EmitterSerialized, t, e))
     }
     _ => {
-      return Err(Error::new(span, "trait found, expected `impl Stream<Item = Result>` or `impl StreamEmitter<Result>` or `impl Emitter<Result>`"));
+      Err(Error::new(span, "trait found, expected `impl Stream<Item = Result>` or `impl StreamEmitter<Result>` or `impl Emitter<Result>`"))
     }
   }
 }

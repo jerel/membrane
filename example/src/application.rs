@@ -1,5 +1,5 @@
 use data::OptionsDemo;
-use membrane::emitter::{handle, CHandle, Emitter, StreamEmitter};
+use membrane::emitter::{emitter, CHandle, Emitter, StreamEmitter};
 use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
@@ -62,7 +62,7 @@ extern "C" {
 
 #[async_dart(namespace = "accounts")]
 pub fn call_c() -> impl StreamEmitter<Result<String, String>> {
-  let stream = handle!();
+  let stream = emitter!();
 
   let s = stream.clone();
   let handle = stream.on_data(move |data: &std::os::raw::c_char| {
@@ -81,7 +81,8 @@ pub fn call_c() -> impl StreamEmitter<Result<String, String>> {
   }));
 
   unsafe {
-    init(Box::into_raw(Box::new(handle)));
+    // call into C to kick off the async work
+    init(handle);
   }
 
   println!("[call_c] [Rust] finished with synchronous call to `call_c()`");
@@ -91,7 +92,7 @@ pub fn call_c() -> impl StreamEmitter<Result<String, String>> {
 
 #[async_dart(namespace = "accounts")]
 pub fn contact_c_async(user_id: String) -> impl Emitter<Result<data::Contact, data::Error>> {
-  let emitter = handle!();
+  let emitter = emitter!();
 
   print!(
     "\n[contact_c_async] sync Rust function {:?}",
@@ -141,7 +142,7 @@ pub fn contact_c_async(user_id: String) -> impl Emitter<Result<data::Contact, da
 pub fn contact_c_async_stream(
   _user_id: String,
 ) -> impl StreamEmitter<Result<data::Contact, data::Error>> {
-  let stream = handle!();
+  let stream = emitter!();
 
   stream.on_done(Box::new(|| {
     println!("[contact_c_async_stream] the finalizer has been called for the contact_c_async_stream StreamEmitter");

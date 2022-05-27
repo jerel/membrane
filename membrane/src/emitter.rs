@@ -1,22 +1,10 @@
 pub use emitter_impl::{CHandle, Emitter, Emitter as StreamEmitter};
-use std::fmt;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 
-pub use membrane_macro::handle;
+pub use membrane_macro::emitter;
 
 type FinalizerCallback = Arc<Mutex<Option<Box<dyn Fn() + Send + 'static>>>>;
-
-#[derive(Debug)]
-pub struct Ended;
-
-impl fmt::Display for Ended {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "End of Stream")
-  }
-}
-
-impl std::error::Error for Ended {}
 
 #[doc(hidden)]
 #[derive(Clone)]
@@ -35,7 +23,6 @@ struct EmitterData<T, E> {
 }
 
 mod emitter_impl {
-  use super::Ended;
   use super::PhantomData;
   use super::{Arc, Mutex};
   use crate::emitter::{EmitterData, Handle};
@@ -46,9 +33,9 @@ mod emitter_impl {
   #[repr(C)]
   #[derive(Debug, Copy, Clone)]
   pub struct CHandleImpl {
-    pub context: Context,
+    pub push_ctx: Context,
     pub push: unsafe extern "C" fn(Context, Data),
-    drop: unsafe extern "C" fn(Context),
+    drop_push_ctx: unsafe extern "C" fn(Context),
   }
 
   pub type CHandle = *mut CHandleImpl;
@@ -60,10 +47,10 @@ mod emitter_impl {
     fn new(port: i64) -> Self;
     #[doc(hidden)]
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static>;
-    fn on_data<F, D>(&self, _: F) -> CHandleImpl
+    fn on_data<F, D>(&self, _: F) -> *mut CHandleImpl
     where
       F: FnMut(&D) + 'static;
-    fn push(&self, _: T) -> Result<(), Ended>;
+    fn push(&self, _: T) -> bool;
     fn is_done(&self) -> bool;
     fn on_done(&self, _: Box<dyn Fn() + Send + 'static>);
   }
@@ -81,16 +68,16 @@ mod emitter_impl {
       }
     }
 
-    fn on_data<F, D>(&self, callback: F) -> CHandleImpl
+    fn on_data<F, D>(&self, callback: F) -> *mut CHandleImpl
     where
       F: FnMut(&D) + 'static,
     {
       let ptr = Box::into_raw(Box::new(callback));
-      CHandleImpl {
-        context: ptr as *mut _,
+      Box::into_raw(Box::new(CHandleImpl {
+        push_ctx: ptr as *mut _,
         push: run_push_closure::<F, D>,
-        drop: drop_box::<F>,
-      }
+        drop_push_ctx: drop_push_ctx::<F>,
+      }))
     }
 
     fn abort_handle(&self) -> Box<dyn Fn() + Send + 'static> {
@@ -106,12 +93,8 @@ mod emitter_impl {
       })
     }
 
-    fn push(&self, result: Result<T, E>) -> Result<(), Ended> {
-      if self.is_done() {
-        return Err(Ended);
-      }
-      crate::utils::send::<T, E>(self.isolate, result);
-      Ok(())
+    fn push(&self, result: Result<T, E>) -> bool {
+      crate::utils::send::<T, E>(self.isolate, result)
     }
 
     fn is_done(&self) -> bool {
@@ -140,7 +123,7 @@ mod emitter_impl {
       }
     }
 
-    fn on_data<F, D>(&self, callback: F) -> CHandleImpl
+    fn on_data<F, D>(&self, callback: F) -> *mut CHandleImpl
     where
       F: FnMut(&D) + 'static,
     {
@@ -151,16 +134,8 @@ mod emitter_impl {
       self.inner.abort_handle()
     }
 
-    fn push(&self, result: Result<T, E>) -> Result<(), Ended> {
-      let state = self.inner.push(result);
-      // we preemptively show this emitter as done without waiting for the finalizer
-      // callback to do it since it should not be called more than once anyway
-      if state.is_ok() {
-        let mut done = self.inner.is_done.lock().unwrap();
-        *done = true;
-      }
-
-      state
+    fn push(&self, result: Result<T, E>) -> bool {
+      self.inner.push(result)
     }
 
     fn is_done(&self) -> bool {
@@ -195,10 +170,10 @@ mod emitter_impl {
     callback(data);
   }
 
-  extern "C" fn drop_box<T>(data: *mut std::ffi::c_void) {
+  extern "C" fn drop_push_ctx<T>(data: *mut std::ffi::c_void) {
     unsafe {
       if data.is_null() {
-        return eprintln!("membrane drop_box was called with a NULL pointer");
+        return eprintln!("membrane drop_push_ctx was called with a NULL pointer");
       }
 
       Box::from_raw(data as *mut T);
@@ -213,7 +188,7 @@ mod emitter_impl {
       }
 
       let handle = Box::from_raw(data as CHandle);
-      (handle.drop)(handle.context);
+      (handle.drop_push_ctx)(handle.push_ctx);
       // `handle` will now be dropped as it goes out of scope
     }
   }
