@@ -1,6 +1,6 @@
 use data::OptionsDemo;
+use membrane::async_dart;
 use membrane::emitter::{emitter, Emitter, StreamEmitter};
-use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
 // used for background threading examples
@@ -158,15 +158,6 @@ pub fn contact_async_stream_emitter(
   print!("\n[contact_async_stream_emitter] sync Rust function is returning");
 
   stream
-}
-
-#[sync_dart(namespace = "accounts")]
-pub fn contact_sync(user_id: String) -> Result<data::Contact, data::Error> {
-  println!("sync {:?}", thread::current().id());
-  Ok(data::Contact {
-    id: user_id.parse().unwrap(),
-    ..data::Contact::default()
-  })
 }
 
 #[async_dart(namespace = "accounts")]

@@ -52,10 +52,13 @@ impl Parse for ReprDart {
   }
 }
 
-#[proc_macro_attribute]
-pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
-  dart_impl(attrs, input, true)
-}
+// TODO, change the Dart return signature for generated sync functions to be T instead
+// of Future<T> and that will require error handling to be changed first
+//
+// #[proc_macro_attribute]
+// pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
+//   dart_impl(attrs, input, true)
+// }
 
 #[proc_macro_attribute]
 pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {

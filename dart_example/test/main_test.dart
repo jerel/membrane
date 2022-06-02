@@ -23,14 +23,6 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
-  test('can call non-threaded Rust and get contact', () async {
-    final accounts = AccountsApi();
-    expect(
-        await accounts.contactSync(userId: "1"),
-        equals(
-            Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
-  });
-
   test('can call os-threaded Rust and get contact', () async {
     final accounts = AccountsApi();
     expect(
