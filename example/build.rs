@@ -1,10 +1,10 @@
 fn main() {
   #[cfg(feature = "c-example")]
   {
-    let headers = std::path::Path::new("./");
+    let headers = std::path::Path::new("./c/");
 
     cc::Build::new()
-      .file("threading_example.c")
+      .file("./c/threading_example.c")
       .include(headers)
       .compile("threading_example");
   }
