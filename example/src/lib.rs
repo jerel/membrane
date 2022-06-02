@@ -4,6 +4,10 @@ use tokio::runtime::{Builder, Runtime};
 mod application;
 mod data;
 
+// used to test interaction with a C library's threading
+#[cfg(feature = "c-example")]
+mod c_example;
+
 pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
   Builder::new_multi_thread()
     .worker_threads(2)

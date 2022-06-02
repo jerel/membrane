@@ -70,6 +70,13 @@ class Contact {
       vec!["test", "test/main_test.dart"],
       true,
     );
+
+    #[cfg(feature = "test-c-example")]
+    run_dart(
+      &path.to_path_buf(),
+      vec!["test", "test/async_c_test.dart"],
+      true,
+    );
   }
 
   #[test]

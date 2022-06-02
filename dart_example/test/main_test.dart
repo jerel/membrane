@@ -39,26 +39,18 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
-  test('can call C in os thread and get contact async via callback', () async {
+  test('can call C in os thread and get contact async via emitter', () async {
     final accounts = AccountsApi();
     expect(
         await accounts.contactCAsync(userId: "1"),
         equals(
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
-
-  test('can call C function with background C threading', () async {
-    final accounts = AccountsApi();
-    final strings = await accounts.callC().take(2).toList();
-    expect(strings.length, 2);
-    expect(strings.every((s) => s.startsWith("This is a string from")), true);
-  });
-
-  test('can call C in os thread and get contact async via callback streaming',
+  test('can call Rust in os thread and get contact async via streaming emitter',
       () async {
     final accounts = AccountsApi();
     final contacts =
-        await accounts.contactCAsyncStream(userId: "1").take(2).toList();
+        await accounts.contactAsyncStreamEmitter(userId: "1").take(2).toList();
     contacts.sort((a, b) => a.id.compareTo(b.id));
 
     expect(

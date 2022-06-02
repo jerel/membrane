@@ -16,6 +16,7 @@ doctest = false
 [features]
 generate = ["membrane_macro/generate"]
 skip-generate = ["membrane_macro/skip-generate"]
+test-c-example = ["example/c-example"]
 
 [dependencies]
 allo-isolate = "0.1.11"
@@ -32,7 +33,7 @@ serde-generate = {git = "https://github.com/jerel/serde-reflection", rev = "13d7
 serde-reflection = {git = "https://github.com/jerel/serde-reflection", rev = "13d7005"}
 
 [dev-dependencies]
-example = {path = "../example"}
+example = {path = "../example", features = ["c-example"]}
 pretty_assertions = "1.0.0"
 serial_test = "0.5.1"
 trybuild = "1.0"
