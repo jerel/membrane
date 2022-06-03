@@ -343,7 +343,7 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// Example:
 ///
-/// ```
+/// ```ignore
 /// #[async_dart(namespace = "example")]
 /// pub fn some_function() -> impl StreamEmitter<Result<i32, String>> {
 ///   let stream = emitter!();
