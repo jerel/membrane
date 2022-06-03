@@ -165,5 +165,5 @@ pub(crate) fn add_port_to_args(input: TokenStream) -> TokenStream {
   args.extend(inputs);
   item.sig.inputs = args;
 
-  quote! {#item}.into()
+  quote!(#item).into()
 }
