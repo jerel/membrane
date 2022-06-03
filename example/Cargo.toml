@@ -1,5 +1,4 @@
 [package]
-default-run = "generator"
 edition = "2018"
 name = "example"
 version = "0.1.0"

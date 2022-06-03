@@ -34,7 +34,7 @@ void main() {
   test('can call C in os thread and get contact async via emitter', () async {
     final accounts = AccountsApi();
     expect(
-        await accounts.contactCAsync(userId: "1"),
+        await accounts.contactAsyncEmitter(userId: "1"),
         equals(
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });

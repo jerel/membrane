@@ -14,12 +14,12 @@ crate-type = ["lib"]
 doctest = false
 
 [features]
+c-example = []
 generate = ["membrane_macro/generate"]
 skip-generate = ["membrane_macro/skip-generate"]
-test-c-example = ["example/c-example"]
 
 [dependencies]
-allo-isolate = "0.1.11"
+allo-isolate = "0.1"
 bincode = {version = "1.3"}
 ffi_helpers = "0.2"
 futures = "0.3"
@@ -34,6 +34,6 @@ serde-reflection = {git = "https://github.com/jerel/serde-reflection", rev = "13
 
 [dev-dependencies]
 example = {path = "../example", features = ["c-example"]}
-pretty_assertions = "1.0.0"
-serial_test = "0.5.1"
+pretty_assertions = "1.2"
+serial_test = "0.6"
 trybuild = "1.0"

@@ -8,44 +8,6 @@ use std::{thread, time::Duration};
 
 use crate::data::{self, MoreTypes};
 
-#[async_dart(namespace = "accounts")]
-pub fn contacts() -> impl Stream<Item = Result<data::Contact, data::Error>> {
-  futures::stream::iter(vec![Ok(data::Contact::default())])
-}
-
-#[async_dart(namespace = "accounts")]
-pub async fn contact(user_id: String) -> Result<data::Contact, data::Error> {
-  println!("async {:?}", thread::current().id());
-  Ok(data::Contact {
-    id: user_id.parse().unwrap(),
-    ..data::Contact::default()
-  })
-}
-
-#[async_dart(namespace = "accounts")]
-pub async fn update_contact(
-  id: String,
-  contact: data::Contact,
-  send_email: Option<bool>,
-) -> Result<data::Contact, data::Error> {
-  println!(
-    "Rust received id {} with send_email flag {:?}: {:?}",
-    id, send_email, contact
-  );
-  Ok(contact)
-}
-
-#[async_dart(namespace = "accounts")]
-pub async fn delete_contact(id: String) -> Result<data::Contact, data::Error> {
-  Err(data::Error {
-    message: format!("{} cannot be deleted", id),
-  })
-}
-
-//
-// Functions below are used by integration tests
-//
-
 #[async_dart(namespace = "accounts", os_thread = true)]
 pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::Error> {
   println!("os thread {:?}", thread::current().id());
@@ -56,11 +18,11 @@ pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::E
 }
 
 #[async_dart(namespace = "accounts")]
-pub fn contact_c_async(user_id: String) -> impl Emitter<Result<data::Contact, data::Error>> {
+pub fn contact_async_emitter(user_id: String) -> impl Emitter<Result<data::Contact, data::Error>> {
   let emitter = emitter!();
 
   print!(
-    "\n[contact_c_async] sync Rust function {:?}",
+    "\n[contact_async_emitter] sync Rust function {:?}",
     thread::current().id()
   );
 
@@ -73,18 +35,23 @@ pub fn contact_c_async(user_id: String) -> impl Emitter<Result<data::Contact, da
   // drop the JoinHandle to detach the thread
   let _ = thread::spawn(move || {
     e.on_done(|| {
-      println!("\n[contact_c_async] the finalizer has been called for the Emitter");
+      println!("\n[contact_async_emitter] the finalizer has been called for the Emitter");
     });
 
     print!(
-      "\n[contact_c_async] spawned thread is starting {:?}",
+      "\n[contact_async_emitter] spawned thread is starting {:?}",
       thread::current().id()
     );
 
-    println!("[contact_c_async] Emitter state is {:?}", e.push(contact));
-    println!("\n[contact_c_async] spawned thread has sent response");
+    println!(
+      "[contact_async_emitter] Emitter state is {:?}",
+      e.push(contact)
+    );
+    println!("\n[contact_async_emitter] spawned thread has sent response");
 
-    print!("[contact_c_async] spawned thread is finished and waiting to be cancelled by Dart");
+    print!(
+      "[contact_async_emitter] spawned thread is finished and waiting to be cancelled by Dart"
+    );
     let mut waiting = true;
     while waiting {
       waiting = !e.is_done();
@@ -93,12 +60,12 @@ pub fn contact_c_async(user_id: String) -> impl Emitter<Result<data::Contact, da
 
     // this will result in an error because Dart has cancelled us
     println!(
-      "[contact_c_async] Emitter state is {:?}",
+      "[contact_async_emitter] Emitter state is {:?}",
       e.push(Ok(data::Contact::default()))
     );
   });
 
-  print!("\n[contact_c_async] sync Rust function is returning");
+  print!("\n[contact_async_emitter] sync Rust function is returning");
 
   emitter
 }

@@ -1,12 +1,16 @@
 use membrane::async_dart;
 use membrane::emitter::{emitter, CHandle, Emitter, StreamEmitter};
 
+// add a public function to this module... this prevents Rust prior to 1.60 from
+// assuming this module is never used and stripping it out
+pub fn load() {}
+
 // This function and its types must match the C function that is called
 extern "C" {
   pub fn init(arg1: CHandle) -> ::std::os::raw::c_int;
 }
 
-#[async_dart(namespace = "accounts")]
+#[async_dart(namespace = "c_example")]
 pub fn call_async_c() -> impl StreamEmitter<Result<String, String>> {
   let stream = emitter!();
 
@@ -23,7 +27,7 @@ pub fn call_async_c() -> impl StreamEmitter<Result<String, String>> {
   });
 
   stream.on_done(|| {
-    println!("[call_c] [Rust] stream is closed by Dart");
+    println!("[call_async_c] [Rust] stream is closed by Dart");
   });
 
   unsafe {
@@ -31,7 +35,7 @@ pub fn call_async_c() -> impl StreamEmitter<Result<String, String>> {
     init(handle);
   }
 
-  println!("[call_c] [Rust] finished with synchronous call to `call_c()`");
+  println!("[call_async_c] [Rust] finished with synchronous call to `call_async_c()`");
 
   stream
 }

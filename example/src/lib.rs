@@ -4,10 +4,6 @@ use tokio::runtime::{Builder, Runtime};
 mod application;
 mod data;
 
-// used to test interaction with a C library's threading
-#[cfg(feature = "c-example")]
-mod c_example;
-
 pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
   Builder::new_multi_thread()
     .worker_threads(2)
@@ -17,5 +13,9 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
     .unwrap()
 });
 
-// this is necessary for bin.rs to be able to inspect lib.rs
-pub fn load() {}
+// this is necessary for Rust prior to 1.60 for generator.rs to be able to inspect lib.rs...
+// it prevents our "unused" code from being stripped out
+pub fn load() {
+  #[cfg(feature = "c-example")]
+  application::c_example::load();
+}
