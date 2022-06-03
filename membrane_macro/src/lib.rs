@@ -60,6 +60,20 @@ impl Parse for ReprDart {
 //   dart_impl(attrs, input, true)
 // }
 
+///
+/// Apply this macro to Rust functions to mark them and their input/output types for Dart code generation.
+///
+/// Valid options:
+///   * `namespace`, used to name the generated Dart API class and the implementation code directory.
+///   * `disable_logging`, turn off logging statements inside generated Dart API code.
+///   * `timeout`, the milliseconds that Dart should wait for a response on the isolate port before cancelling.
+///   * `os_thread`, specifies that the function should be ran with `spawn_blocking` which moves the work to a pool of OS threads.
+///
+/// The usual function return type is either `Result<T, E>` or `impl Stream<Item = Result<T, E>>`. However, for
+/// advanced usage you may want to use either `impl Emitter<Result<T, E>>` or `impl StreamEmitter<Result<T, E>>`.
+/// When the Emitter traits are used the function must be synchronous but the emitter is thread-safe
+/// and may be sent to another thread to send asynchronous messages. See the `example` directory for details.
+///
 #[proc_macro_attribute]
 pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   dart_impl(attrs, input, false)
@@ -323,6 +337,26 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   variants
 }
 
+///
+/// For use inside `#[async_dart]` functions. Used to create an emitter for use with `impl Emitter<Result<T, E>>` and `impl StreamEmitter<Result<T, E>>`
+/// return types.
+///
+/// Example:
+///
+/// ```
+/// #[async_dart(namespace = "example")]
+/// pub fn some_function() -> impl StreamEmitter<Result<i32, String>> {
+///   let stream = emitter!();
+///
+///   let s = stream.clone();
+///   thread::spawn(move || {
+///     s.push(Ok(1));
+///     s.push(Ok(2));
+///   });
+///
+///   stream
+/// }
+/// ```
 #[proc_macro]
 pub fn emitter(_item: TokenStream) -> TokenStream {
   "::membrane::emitter::Handle::new(_membrane_port)"
