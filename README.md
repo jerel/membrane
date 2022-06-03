@@ -18,6 +18,10 @@
     <img src="https://github.com/jerel/membrane/workflows/Valgrind%20Memory%20Check/badge.svg"
       alt="Valgrind Memory Check" />
   </a>
+  <a href="https://github.com/jerel/membrane">
+    <img src="https://img.shields.io/badge/rust-1.49%2B-orange.svg"
+      alt="Rust 1.49+" />
+  </a>
 </div>
 
 <h1 align="center"></h1>

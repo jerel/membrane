@@ -1,5 +1,4 @@
 [package]
-default-run = "generator"
 edition = "2018"
 name = "example"
 version = "0.1.0"
@@ -14,6 +13,7 @@ path = "src/generator.rs"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
+c-example = ["cc"]
 codegen = ["membrane/generate"]
 skip-codegen = ["membrane/skip-generate"]
 
@@ -26,3 +26,6 @@ serde = {version = "1.0", features = ["derive"]}
 serde_bytes = "0.11"
 tokio = {version = "1", features = ["full"]}
 tokio-stream = "0.1"
+
+[build-dependencies]
+cc = {version = "1.0", optional = true}

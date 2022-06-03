@@ -9,6 +9,34 @@ mod test {
 
   #[test]
   #[serial]
+  #[cfg(feature = "c-example")]
+  fn test_c_project() {
+    let path = Path::new("../dart_example");
+
+    // reference the example lib so it doesn't get optimized away
+    let _ = example::load();
+
+    Membrane::new()
+      .timeout(200)
+      .package_destination_dir(path)
+      .using_lib("libexample")
+      .create_pub_package()
+      .write_api()
+      .write_c_headers()
+      .write_bindings();
+
+    build_lib(&path.to_path_buf(), &mut vec!["--features", "c-example"]);
+    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
+
+    run_dart(
+      &path.to_path_buf(),
+      vec!["test", "test/async_c_test.dart"],
+      true,
+    );
+  }
+
+  #[test]
+  #[serial]
   fn base_project() {
     let path = Path::new("../dart_example");
 
@@ -63,7 +91,7 @@ class Contact {
       "int32_t *membrane_accounts_contact(int64_t port, const char *user_id);",
     );
 
-    build_lib(&path.to_path_buf());
+    build_lib(&path.to_path_buf(), &mut vec![]);
     run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
     run_dart(
       &path.to_path_buf(),
@@ -89,7 +117,7 @@ class Contact {
       .write_c_headers()
       .write_bindings();
 
-    build_lib(&path.to_path_buf());
+    build_lib(&path.to_path_buf(), &mut vec![]);
     run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
     run_dart(
       &path.to_path_buf(),

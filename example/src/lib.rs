@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use once_cell::sync::Lazy;
 use tokio::runtime::{Builder, Runtime};
 
@@ -15,5 +13,9 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
     .unwrap()
 });
 
-// this is necessary for bin.rs to be able to inspect lib.rs
-pub fn load() {}
+// this is necessary for Rust prior to 1.60 for generator.rs to be able to inspect lib.rs...
+// it prevents our "unused" code from being stripped out
+pub fn load() {
+  #[cfg(feature = "c-example")]
+  application::c_example::load();
+}

@@ -27,11 +27,12 @@ impl<'a> fmt::Debug for PrettyString<'a> {
   }
 }
 
-pub fn build_lib(path: &PathBuf) {
+pub fn build_lib(path: &PathBuf, additional_args: &mut Vec<&str>) {
+  let mut args = vec!["build", "-p", "example"];
+  args.append(additional_args);
+
   Command::new("cargo")
-    .arg("build")
-    .arg("-p")
-    .arg("example")
+    .args(args)
     .output()
     .expect("lib could not be compiled for integration tests");
 

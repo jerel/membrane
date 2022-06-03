@@ -4,64 +4,15 @@ use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
 use membrane_types::heck::MixedCase;
 use membrane_types::rust::{RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
+use options::{extract_options, Options};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::punctuated::Punctuated;
-use syn::{
-  parse_macro_input, AttributeArgs, Block, Expr, Ident, Lit, Meta, MetaNameValue, NestedMeta, Path,
-  Token, Type,
-};
+use syn::{parse_macro_input, AttributeArgs, Block, Expr, Ident, Path, Token, Type};
 
+mod options;
 mod parsers;
-
-#[derive(Debug, Default)]
-struct Options {
-  namespace: String,
-  disable_logging: bool,
-  timeout: Option<i32>,
-}
-
-fn extract_options(mut input: Vec<NestedMeta>, mut options: Options) -> Options {
-  let option = match input.pop() {
-    Some(NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. }))) => {
-      let ident = path.get_ident().unwrap().clone();
-      Some((ident, lit))
-    }
-    _ => None,
-  };
-
-  let options = match option {
-    Some((ident, Lit::Str(val))) if ident == "namespace" => {
-      options.namespace = val.value();
-      options
-    }
-    Some((ident, Lit::Bool(val))) if ident == "disable_logging" => {
-      options.disable_logging = val.value();
-      options
-    }
-    Some((ident, Lit::Int(val))) if ident == "timeout" => {
-      options.timeout = Some(val.base10_parse().unwrap());
-      options
-    }
-    Some(_) => {
-      panic!(
-        r#"#[async_dart] only `namespace=""`, `disable_logging=true`, and `timeout=1000` are valid options"#
-      );
-    }
-    None => {
-      // we've iterated over all options and didn't find a namespace (required)
-      if options.namespace.is_empty() {
-        panic!("#[async_dart] expects a `namespace` attribute");
-      }
-
-      return options;
-    }
-  };
-
-  extract_options(input, options)
-}
 
 #[derive(Debug)]
 struct ReprDart {
@@ -85,7 +36,7 @@ impl Parse for ReprDart {
     syn::parenthesized!(arg_buffer in input);
     input.parse::<Token![->]>()?;
     let (output_style, ret_type, err_type) = if input.peek(Token![impl]) {
-      parsers::parse_stream_return_type(input)?
+      parsers::parse_trait_return_type(input)?
     } else {
       parsers::parse_return_type(input)?
     };
@@ -93,22 +44,7 @@ impl Parse for ReprDart {
 
     Ok(ReprDart {
       fn_name,
-      inputs: {
-        let args: Punctuated<Expr, Token![,]> = arg_buffer.parse_terminated(Expr::parse)?;
-        args
-          .iter()
-          .map(|arg| match arg {
-            Expr::Type(syn::ExprType { ty, expr: var, .. }) => Input {
-              variable: quote!(#var).to_string(),
-              rust_type: quote!(#ty).to_string().split_whitespace().collect(),
-              ty: *ty.clone(),
-            },
-            _ => {
-              panic!("self is not supported in #[async_dart] functions");
-            }
-          })
-          .collect()
-      },
+      inputs: parsers::parse_args(arg_buffer)?,
       output_style,
       output: ret_type,
       error: err_type,
@@ -116,20 +52,46 @@ impl Parse for ReprDart {
   }
 }
 
+// TODO, change the Dart return signature for generated sync functions to be T instead
+// of Future<T> and that will require error handling to be changed first
+//
+// #[proc_macro_attribute]
+// pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
+//   dart_impl(attrs, input, true)
+// }
+
+///
+/// Apply this macro to Rust functions to mark them and their input/output types for Dart code generation.
+///
+/// Valid options:
+///   * `namespace`, used to name the generated Dart API class and the implementation code directory.
+///   * `disable_logging`, turn off logging statements inside generated Dart API code.
+///   * `timeout`, the milliseconds that Dart should wait for a response on the isolate port before cancelling.
+///   * `os_thread`, specifies that the function should be ran with `spawn_blocking` which moves the work to a pool of OS threads.
+///
+/// The usual function return type is either `Result<T, E>` or `impl Stream<Item = Result<T, E>>`. However, for
+/// advanced usage you may want to use either `impl Emitter<Result<T, E>>` or `impl StreamEmitter<Result<T, E>>`.
+/// When the Emitter traits are used the function must be synchronous but the emitter is thread-safe
+/// and may be sent to another thread to send asynchronous messages. See the `example` directory for details.
+///
 #[proc_macro_attribute]
 pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
+  dart_impl(attrs, input, false)
+}
+
+fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream {
   let Options {
     namespace,
     disable_logging,
     timeout,
+    os_thread,
   } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
+    sync,
   );
 
-  let mut functions = TokenStream::new();
-  functions.extend(input.clone());
-
+  let input_two = input.clone();
   let ReprDart {
     fn_name,
     output_style,
@@ -138,6 +100,17 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
     inputs,
     ..
   } = parse_macro_input!(input as ReprDart);
+
+  let mut functions = TokenStream::new();
+
+  match output_style {
+    OutputStyle::StreamEmitterSerialized | OutputStyle::EmitterSerialized => {
+      functions.extend(parsers::add_port_to_args(input_two))
+    }
+    _ => {
+      functions.extend(input_two);
+    }
+  }
 
   let rust_outer_params: Vec<TokenStream2> = RustExternParams::from(&inputs).into();
   let rust_transforms: Vec<TokenStream2> = RustTransforms::from(&inputs).into();
@@ -149,40 +122,72 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let dart_transforms: Vec<String> = DartTransforms::from(&inputs).into();
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
-  let serializer = quote! {
-      match result {
-          Ok(value) => {
-              if let Ok(buffer) = ::membrane::bincode::serialize(&(true, value)) {
-                  _isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
-              }
-          }
-          Err(err) => {
-              if let Ok(buffer) = ::membrane::bincode::serialize(&(false, err)) {
-                  _isolate.post(::membrane::allo_isolate::ZeroCopyBuffer(buffer));
-              }
-          }
-      };
-  };
-
   let return_statement = match output_style {
-    OutputStyle::StreamSerialized => {
-      quote! {
-        async move {
-          use ::membrane::futures::stream::StreamExt;
-          let mut stream = #fn_name(#(#rust_inner_args),*);
-          ::membrane::futures::pin_mut!(stream);
-          while let Some(result) = stream.next().await {
+    OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized => quote! {
+      let membrane_emitter = #fn_name(_port, #(#rust_inner_args),*);
+      let membrane_abort_handle = membrane_emitter.abort_handle();
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
+    },
+    OutputStyle::StreamSerialized => quote! {
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
+      crate::RUNTIME.spawn(
+        ::futures::future::Abortable::new(
+          async move {
+            use ::membrane::futures::stream::StreamExt;
+            let mut stream = #fn_name(#(#rust_inner_args),*);
+            ::membrane::futures::pin_mut!(stream);
+            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+            while let Some(result) = stream.next().await {
               let result: ::std::result::Result<#output, #error> = result;
-              #serializer
-          }
+              ::membrane::utils::send::<#output, #error>(isolate, result);
+            }
+          }, membrane_future_registration)
+        );
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+    },
+    OutputStyle::Serialized if sync => quote! {
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
+      let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
+      let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+      ::membrane::utils::send::<#output, #error>(isolate, result);
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+    },
+    OutputStyle::Serialized if os_thread => quote! {
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
+      crate::RUNTIME.spawn_blocking(
+        move || {
+          ::futures::executor::block_on(
+            ::futures::future::Abortable::new(
+              async move {
+                let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
+                let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+                ::membrane::utils::send::<#output, #error>(isolate, result);
+              }, membrane_future_registration)
+          )
         }
-      }
-    }
+      );
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+    },
     OutputStyle::Serialized => quote! {
-      async move {
-        let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-        #serializer
-      }
+      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+
+      crate::RUNTIME.spawn(
+        ::futures::future::Abortable::new(
+          async move {
+            let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
+            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+            ::membrane::utils::send::<#output, #error>(isolate, result);
+          }, membrane_future_registration)
+        );
+
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
     },
   };
 
@@ -195,20 +200,13 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
       pub extern "C" fn #extern_c_fn_name(_port: i64, #(#rust_outer_params),*) -> *const ::membrane::TaskHandle {
-          use crate::RUNTIME;
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
-          let _isolate = ::membrane::allo_isolate::Isolate::new(_port);
-          let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
-
           #(#rust_transforms)*
-          RUNTIME.spawn(
-            ::futures::future::Abortable::new(#return_statement, membrane_future_registration)
-          );
+          #return_statement
 
-          let handle = ::std::boxed::Box::new(::membrane::TaskHandle(membrane_future_handle));
-          ::std::boxed::Box::into_raw(handle)
+          ::std::boxed::Box::into_raw(Box::new(handle))
       }
   };
 
@@ -217,7 +215,11 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let c_name = extern_c_fn_name.to_string();
   let c_header_types = c_header_types.join(", ");
   let name = fn_name.to_string().to_mixed_case();
-  let is_stream = output_style == OutputStyle::StreamSerialized;
+  let is_stream = [
+    OutputStyle::StreamSerialized,
+    OutputStyle::StreamEmitterSerialized,
+  ]
+  .contains(&output_style);
   let return_type = match &output {
     Expr::Tuple(_expr) => "()".to_string(),
     Expr::Path(expr) => expr.path.segments.last().unwrap().ident.to_string(),
@@ -303,6 +305,7 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let Options { namespace, .. } = extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
+    false,
   );
 
   let mut variants = TokenStream::new();
@@ -332,4 +335,31 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   variants.extend::<TokenStream>(_deferred_trace.into());
 
   variants
+}
+
+///
+/// For use inside `#[async_dart]` functions. Used to create an emitter for use with `impl Emitter<Result<T, E>>` and `impl StreamEmitter<Result<T, E>>`
+/// return types.
+///
+/// Example:
+///
+/// ```ignore
+/// #[async_dart(namespace = "example")]
+/// pub fn some_function() -> impl StreamEmitter<Result<i32, String>> {
+///   let stream = emitter!();
+///
+///   let s = stream.clone();
+///   thread::spawn(move || {
+///     s.push(Ok(1));
+///     s.push(Ok(2));
+///   });
+///
+///   stream
+/// }
+/// ```
+#[proc_macro]
+pub fn emitter(_item: TokenStream) -> TokenStream {
+  "::membrane::emitter::Handle::new(_membrane_port)"
+    .parse()
+    .unwrap()
 }
