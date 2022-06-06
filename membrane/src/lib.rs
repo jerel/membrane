@@ -79,7 +79,7 @@ pub mod emitter;
 #[doc(hidden)]
 pub mod utils;
 
-use heck::CamelCase;
+use membrane_types::heck::CamelCase;
 use membrane_types::dart::dart_fn_return_type;
 use serde_reflection::{ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig};
 use std::{
