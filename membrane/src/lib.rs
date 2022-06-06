@@ -79,8 +79,8 @@ pub mod emitter;
 #[doc(hidden)]
 pub mod utils;
 
-use membrane_types::heck::CamelCase;
 use membrane_types::dart::dart_fn_return_type;
+use membrane_types::heck::CamelCase;
 use serde_reflection::{ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig};
 use std::{
   collections::HashMap,
