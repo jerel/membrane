@@ -459,7 +459,7 @@ macros:
     - __none__
 structs:
   include:
-    - __none__
+    - TaskResult
 unions:
   include:
     - __none__
@@ -506,7 +506,13 @@ headers:
  */
 #include <stdint.h>
 
-int32_t membrane_cancel_membrane_task(const int32_t *task_handle);
+typedef struct TaskResult
+{
+    uint8_t status;
+    const void *data;
+} TaskResult;
+
+uint8_t membrane_cancel_membrane_task(const void *task_handle);
 "#;
 
     let mut buffer =
@@ -641,6 +647,7 @@ import 'package:meta/meta.dart';
 
 import './src/loader.dart' as loader;
 import './src/bincode/bincode.dart';
+import './src/ffi_bindings.dart' show TaskResult;
 import './src/{ns}/{ns}.dart';
 
 export './src/{ns}/{ns}.dart' hide TraitHelpers;
@@ -711,7 +718,7 @@ impl Function {
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "int32_t *{extern_c_fn_name}(int64_t port{extern_c_fn_types});",
+      "TaskResult {extern_c_fn_name}(int64_t port{extern_c_fn_types});",
       extern_c_fn_name = self.extern_c_fn_name,
       extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
         String::new()
@@ -729,13 +736,13 @@ impl Function {
     final List<Pointer> _toFree = [];{fn_transforms}
     final _port = ReceivePort();
 
-    Pointer<Int32>? _taskHandle;
+    TaskResult? _taskResult;
     try {{
       if (!_loggingDisabled) {{
         _log.fine('Calling Rust `{fn_name}` via C `{extern_c_fn_name}`');
       }}
-      _taskHandle = _bindings.{extern_c_fn_name}(_port.sendPort.nativePort{dart_inner_args});
-      if (_taskHandle == null) {{
+      _taskResult = _bindings.{extern_c_fn_name}(_port.sendPort.nativePort{dart_inner_args});
+      if (_taskResult == null) {{
         throw {class_name}ApiError('Call to C failed');
       }}
     }} finally {{
@@ -789,8 +796,8 @@ impl Function {
         throw {class_name}ApiError({error_de});
       }});
     }} finally {{
-      if (_bindings.membrane_cancel_membrane_task(_taskHandle) < 1) {{
-        throw {class_name}ApiError('Cancelation call to C failed');
+      if (_taskResult.status > 0 && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+        throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
         return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
@@ -819,7 +826,7 @@ impl Function {
       }}
       throw {class_name}ApiError({error_de});
     }} finally {{
-      if (_bindings.membrane_cancel_membrane_task(_taskHandle) < 1) {{
+      if (_taskResult.status > 0 && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw {class_name}ApiError('Cancelation call to C failed');
       }}
     }}"#,
@@ -884,6 +891,13 @@ impl Function {
     }
     .to_string()
   }
+}
+
+#[doc(hidden)]
+#[repr(C)]
+pub struct TaskResult {
+  pub status: u8,
+  pub data: *const std::ffi::c_void,
 }
 
 #[doc(hidden)]

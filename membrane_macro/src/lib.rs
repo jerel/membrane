@@ -199,7 +199,8 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #extern_c_fn_name(_port: i64, #(#rust_outer_params),*) -> *const ::membrane::TaskHandle {
+      pub extern "C" fn #extern_c_fn_name(_port: i64, #(#rust_outer_params),*) -> ::membrane::TaskResult {
+        let func = || {
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
@@ -207,6 +208,21 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
           #return_statement
 
           ::std::boxed::Box::into_raw(Box::new(handle))
+        };
+
+        let result = ::std::panic::catch_unwind(func)
+          .map_err(|e| {
+              ::membrane::ffi_helpers::panic::recover_panic_message(e)
+                .unwrap_or_else(|| "The program panicked".to_string())
+          });
+
+        match result {
+          Ok(ptr) => ::membrane::TaskResult{status: 1, data: ptr as _},
+          Err(error) => {
+            let ptr = ::std::ffi::CString::new(error).unwrap();
+            ::membrane::TaskResult{status: 0, data: ptr.into_raw() as _}
+          }
+        }
       }
   };
 

@@ -270,4 +270,16 @@ void main() {
       expect(err.message, "No stream event");
     }
   });
+
+  test(
+      'test that panics in async code are handled gracefully and merely time out',
+      () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.contactPanic();
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 200);
+      expect(err.message, "Future not completed");
+    }
+  });
 }
