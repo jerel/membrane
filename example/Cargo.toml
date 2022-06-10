@@ -1,6 +1,9 @@
 [package]
+description = "An example application using Membrane"
 edition = "2018"
+license = "Apache-2.0"
 name = "example"
+repository = "https://github.com/jerel/membrane"
 version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
