@@ -130,32 +130,27 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
     },
     OutputStyle::StreamSerialized => quote! {
-      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+      let membrane_join_handle = crate::RUNTIME.spawn(
+        async move {
+          use ::membrane::futures::stream::StreamExt;
+          let mut stream = #fn_name(#(#rust_inner_args),*);
+          ::membrane::futures::pin_mut!(stream);
+          let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+          while let Some(result) = stream.next().await {
+            let result: ::std::result::Result<#output, #error> = result;
+            ::membrane::utils::send::<#output, #error>(isolate, result);
+          }
+        }
+      );
 
-      crate::RUNTIME.spawn(
-        ::futures::future::Abortable::new(
-          async move {
-            use ::membrane::futures::stream::StreamExt;
-            let mut stream = #fn_name(#(#rust_inner_args),*);
-            ::membrane::futures::pin_mut!(stream);
-            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-            while let Some(result) = stream.next().await {
-              let result: ::std::result::Result<#output, #error> = result;
-              ::membrane::utils::send::<#output, #error>(isolate, result);
-            }
-          }, membrane_future_registration)
-        );
-
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
     },
     OutputStyle::Serialized if sync => quote! {
-      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
-
       let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
       let isolate = ::membrane::allo_isolate::Isolate::new(_port);
       ::membrane::utils::send::<#output, #error>(isolate, result);
 
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(|| {}));
     },
     OutputStyle::Serialized if os_thread => quote! {
       let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
@@ -176,18 +171,15 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
     },
     OutputStyle::Serialized => quote! {
-      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+      let membrane_join_handle = crate::RUNTIME.spawn(
+        async move {
+          let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
+          let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+          ::membrane::utils::send::<#output, #error>(isolate, result);
+        }
+      );
 
-      crate::RUNTIME.spawn(
-        ::futures::future::Abortable::new(
-          async move {
-            let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-            ::membrane::utils::send::<#output, #error>(isolate, result);
-          }, membrane_future_registration)
-        );
-
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
     },
   };
 
