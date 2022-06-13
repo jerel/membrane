@@ -282,4 +282,14 @@ void main() {
       expect(err.message, "Future not completed");
     }
   });
+
+  test('test that panics in sync code are handled gracefully', () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.contactSyncPanic();
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 200);
+      expect(err.message, "Future not completed");
+    }
+  });
 }

@@ -204,14 +204,21 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
 
         let result = ::std::panic::catch_unwind(func)
           .map_err(|e| {
-              ::membrane::ffi_helpers::panic::recover_panic_message(e)
-                .unwrap_or_else(|| "The program panicked".to_string())
+            ::membrane::ffi_helpers::panic::recover_panic_message(e)
+              .unwrap_or_else(|| "The program panicked".to_string())
           });
 
         match result {
           Ok(ptr) => ::membrane::TaskResult{status: 1, data: ptr as _},
           Err(error) => {
-            let ptr = ::std::ffi::CString::new(error).unwrap();
+            let ptr = match ::std::ffi::CString::new(error) {
+              Ok(c_string) => c_string,
+              Err(error) => {
+                // we don't expect this to ever happen
+                ::std::ffi::CString::new(
+                  format!("The program panicked and, additionally, panicked while reporting the error message. {}", error)).unwrap()
+              }
+            };
             ::membrane::TaskResult{status: 0, data: ptr.into_raw() as _}
           }
         }

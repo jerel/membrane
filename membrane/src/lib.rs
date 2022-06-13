@@ -924,6 +924,8 @@ macro_rules! error {
       Ok(value) => value,
       Err(e) => {
         ::membrane::ffi_helpers::update_last_error(e);
+        // silence unreachable code warnings to enable panicking on invalid data
+        #[allow(unreachable_code)]
         return $error;
       }
     }

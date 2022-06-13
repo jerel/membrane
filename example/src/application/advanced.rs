@@ -13,6 +13,16 @@ pub async fn contact_panic() -> Result<data::Contact, data::Error> {
   panic!("The rust code panicked");
 }
 
+#[async_dart(namespace = "accounts")]
+pub fn contact_sync_panic() -> impl Emitter<Result<data::Contact, data::Error>> {
+  let _emitter = emitter!();
+
+  panic!("The sync rust code panicked");
+
+  #[allow(unreachable_code)]
+  _emitter
+}
+
 #[async_dart(namespace = "accounts", os_thread = true)]
 pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::Error> {
   println!("os thread {:?}", thread::current().id());

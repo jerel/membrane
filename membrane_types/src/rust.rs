@@ -87,7 +87,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
   match str_ty {
     "String" => {
       let variable = Ident::new(variable, Span::call_site());
-      q!(cstr!(#variable).to_string())
+      q!(cstr!(#variable, panic!("invalid C string")).to_string())
     }
     "i64" => {
       let variable = Ident::new(variable, Span::call_site());
