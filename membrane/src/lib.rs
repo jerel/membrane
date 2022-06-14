@@ -70,7 +70,7 @@ pub use futures;
 #[doc(hidden)]
 pub use inventory;
 #[doc(hidden)]
-pub use membrane_macro::{async_dart, dart_enum};
+pub use membrane_macro::{async_dart, dart_enum, sync_dart};
 #[doc(hidden)]
 pub use serde_reflection;
 
@@ -95,6 +95,7 @@ pub struct Function {
   pub extern_c_fn_types: String,
   pub fn_name: String,
   pub is_stream: bool,
+  pub is_sync: bool,
   pub return_type: String,
   pub error_type: String,
   pub namespace: String,
@@ -702,16 +703,32 @@ impl Function {
 
   pub fn signature(&mut self) -> &mut Self {
     self.output += format!(
-      "  {output_style}<{return_type}> {fn_name}({fn_params}){asink}",
-      output_style = if self.is_stream { "Stream" } else { "Future" },
-      return_type = dart_fn_return_type(&self.return_type),
+      "  {output_style}{return_type} {fn_name}({fn_params}){asink}",
+      output_style = if self.is_sync {
+        ""
+      } else if self.is_stream {
+        "Stream"
+      } else {
+        "Future"
+      },
+      return_type = if self.is_sync {
+        dart_fn_return_type(&self.return_type).to_string()
+      } else {
+        format!("<{}>", dart_fn_return_type(&self.return_type))
+      },
       fn_name = self.fn_name,
       fn_params = if self.dart_outer_params.is_empty() {
         String::new()
       } else {
         format!("{{{}}}", self.dart_outer_params)
       },
-      asink = if self.is_stream { " async*" } else { " async" }
+      asink = if self.is_sync {
+        ""
+      } else if self.is_stream {
+        " async*"
+      } else {
+        " async"
+      }
     )
     .as_str();
     self
@@ -781,7 +798,34 @@ impl Function {
     enum_tracer_registry: &Registry,
     config: &Membrane,
   ) -> &mut Self {
-    self.output += if self.is_stream {
+    self.output += if self.is_sync {
+      format!(
+        r#"
+    try {{
+      if (!_loggingDisabled) {{
+        _log.fine('Deserializing data from {fn_name}');
+      }}
+      if (_taskResult.status > 0) {{
+        final deserializer = BincodeDeserializer(_taskResult.data.cast() as Uint8List);
+        if (deserializer.deserializeBool()) {{
+          return {return_de};
+        }}
+        throw {class_name}ApiError({error_de});
+      }} else {{
+        final ptr = _taskResult.data.cast<Utf8>();
+        throw {class_name}ApiError(ptr.toDartString());
+      }}
+    }} finally {{
+      if (_taskResult.status > 0 && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+        throw {class_name}ApiError('Cancellation call to C failed');
+      }}
+    }}"#,
+        return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
+        error_de = self.deserializer(&self.error_type, enum_tracer_registry, config),
+        class_name = namespace.to_camel_case(),
+        fn_name = self.fn_name,
+      )
+    } else if self.is_stream {
       format!(
         r#"
     try {{

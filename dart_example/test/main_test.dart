@@ -287,9 +287,8 @@ void main() {
     final accounts = AccountsApi();
     try {
       await accounts.contactSyncPanic();
-    } on TimeoutException catch (err) {
-      expect(err.duration?.inMilliseconds, 200);
-      expect(err.message, "Future not completed");
+    } on AccountsApiError catch (err) {
+      expect(err.e, "The sync rust code panicked");
     }
   });
 }

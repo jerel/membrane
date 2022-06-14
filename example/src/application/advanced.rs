@@ -1,6 +1,6 @@
 use data::OptionsDemo;
-use membrane::async_dart;
 use membrane::emitter::{emitter, Emitter, StreamEmitter};
+use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
 // used for background threading examples
@@ -13,7 +13,7 @@ pub async fn contact_panic() -> Result<data::Contact, data::Error> {
   panic!("The rust code panicked");
 }
 
-#[async_dart(namespace = "accounts")]
+#[sync_dart(namespace = "accounts")]
 pub fn contact_sync_panic() -> impl Emitter<Result<data::Contact, data::Error>> {
   let _emitter = emitter!();
 

@@ -79,6 +79,11 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   dart_impl(attrs, input, false)
 }
 
+#[proc_macro_attribute]
+pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
+  dart_impl(attrs, input, true)
+}
+
 fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream {
   let Options {
     namespace,
@@ -264,6 +269,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
                 extern_c_fn_types: #c_header_types.to_string(),
                 fn_name: #name.to_string(),
                 is_stream: #is_stream,
+                is_sync: #sync,
                 return_type: #return_type.to_string(),
                 error_type: #error_type.to_string(),
                 namespace: #namespace.to_string(),
