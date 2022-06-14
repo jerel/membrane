@@ -812,7 +812,7 @@ impl Function {
       }}
       if (_taskResult.result_type == MembraneResultType.Data) {{
         final deserializer = BincodeDeserializer(_taskResult.data.cast() as Uint8List);
-        if (deserializer.deserializeBool()) {{
+        if (deserializer.deserializeUint8() == MembraneResultType.Data) {{
           return {return_de};
         }}
         throw {class_name}ApiError({error_de});
@@ -839,7 +839,7 @@ impl Function {
           _log.fine('Deserializing data from {fn_name}');
         }}
         final deserializer = BincodeDeserializer(input as Uint8List);
-        if (deserializer.deserializeBool()) {{
+        if (deserializer.deserializeUint8() == MembraneResultType.Data) {{
           return {return_de};
         }}
         throw {class_name}ApiError({error_de});
@@ -870,7 +870,7 @@ impl Function {
         _log.fine('Deserializing data from {fn_name}');
       }}
       final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
-      if (deserializer.deserializeBool()) {{
+      if (deserializer.deserializeUint8() == MembraneResultType.Data) {{
         return {return_de};
       }}
       throw {class_name}ApiError({error_de});
@@ -942,7 +942,9 @@ impl Function {
   }
 }
 
-#[repr(C)]
+#[doc(hidden)]
+#[repr(u8)]
+#[derive(serde::Serialize)]
 pub enum MembraneResultType {
   Data,
   Error,
