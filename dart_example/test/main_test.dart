@@ -23,6 +23,14 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
+  test('can get contact synchronously', () {
+    final accounts = AccountsApi();
+    expect(
+        accounts.contactSync(),
+        equals(
+            Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
+  });
+
   test('can call os-threaded Rust and get contact', () async {
     final accounts = AccountsApi();
     expect(
@@ -283,10 +291,10 @@ void main() {
     }
   });
 
-  test('test that panics in sync code are handled gracefully', () async {
+  test('test that panics in sync code are handled gracefully', () {
     final accounts = AccountsApi();
     try {
-      await accounts.contactSyncPanic();
+      accounts.contactSyncPanic();
     } on AccountsApiError catch (err) {
       expect(err.e, "The sync rust code panicked");
     }

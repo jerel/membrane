@@ -129,7 +129,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
 
   let return_statement = match output_style {
     OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized => quote! {
-      let membrane_emitter = #fn_name(_port, #(#rust_inner_args),*);
+      let membrane_emitter = #fn_name(membrane_port, #(#rust_inner_args),*);
       let membrane_abort_handle = membrane_emitter.abort_handle();
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
@@ -140,7 +140,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
           use ::membrane::futures::stream::StreamExt;
           let mut stream = #fn_name(#(#rust_inner_args),*);
           ::membrane::futures::pin_mut!(stream);
-          let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+          let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
           while let Some(result) = stream.next().await {
             let result: ::std::result::Result<#output, #error> = result;
             ::membrane::utils::send::<#output, #error>(isolate, result);
@@ -152,7 +152,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     },
     OutputStyle::Serialized if sync => quote! {
       let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
-      let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+      let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
       ::membrane::utils::send::<#output, #error>(isolate, result);
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(|| {}));
@@ -166,7 +166,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
             ::futures::future::Abortable::new(
               async move {
                 let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-                let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+                let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
                 ::membrane::utils::send::<#output, #error>(isolate, result);
               }, membrane_future_registration)
           )
@@ -179,7 +179,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       let membrane_join_handle = crate::RUNTIME.spawn(
         async move {
           let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-          let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+          let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
           ::membrane::utils::send::<#output, #error>(isolate, result);
         }
       );
@@ -196,7 +196,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #extern_c_fn_name(_port: i64, #(#rust_outer_params),*) -> ::membrane::MembraneResult {
+      pub extern "C" fn #extern_c_fn_name(membrane_port: i64, #(#rust_outer_params),*) -> ::membrane::MembraneResult {
         let func = || {
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;

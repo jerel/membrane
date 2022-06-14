@@ -510,11 +510,12 @@ headers:
 typedef enum MembraneResultType {
   Data,
   Error,
+  Panic,
 } MembraneResultType;
 
 typedef struct MembraneResult
 {
-  enum MembraneResultType result_type;
+  uint8_t result_type;
   const void *data;
 } MembraneResult;
 
@@ -740,8 +741,9 @@ impl Function {
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "MembraneResult {extern_c_fn_name}(int64_t port{extern_c_fn_types});",
+      "MembraneResult {extern_c_fn_name}({port}{extern_c_fn_types});",
       extern_c_fn_name = self.extern_c_fn_name,
+      port = if self.is_sync { "" } else { "int64_t port" },
       extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
         String::new()
       } else {
@@ -755,15 +757,14 @@ impl Function {
   pub fn body(&mut self, namespace: &str) -> &mut Self {
     self.output += format!(
       r#" {{{disable_logging}
-    final List<Pointer> _toFree = [];{fn_transforms}
-    final _port = ReceivePort();
+    final List<Pointer> _toFree = [];{fn_transforms}{receive_port}
 
     MembraneResult? _taskResult;
     try {{
       if (!_loggingDisabled) {{
         _log.fine('Calling Rust `{fn_name}` via C `{extern_c_fn_name}`');
       }}
-      _taskResult = _bindings.{extern_c_fn_name}(_port.sendPort.nativePort{dart_inner_args});
+      _taskResult = _bindings.{extern_c_fn_name}({native_port}{dart_inner_args});
       if (_taskResult == null) {{
         throw {class_name}ApiError('Call to C failed');
       }}
@@ -784,8 +785,18 @@ impl Function {
       } else {
         "\n    ".to_string() + &self.dart_transforms + ";"
       },
+      receive_port = if self.is_sync {
+        ""
+      } else {
+        "\n    final _port = ReceivePort();"
+      },
       extern_c_fn_name = self.extern_c_fn_name,
       fn_name = self.fn_name,
+      native_port = if self.is_sync {
+        ""
+      } else {
+        "_port.sendPort.nativePort"
+      },
       dart_inner_args = if self.dart_inner_args.is_empty() {
         String::new()
       } else {
@@ -869,11 +880,25 @@ impl Function {
       if (!_loggingDisabled) {{
         _log.fine('Deserializing data from {fn_name}');
       }}
-      final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
-      if (deserializer.deserializeUint8() == MembraneResultType.Data) {{
-        return {return_de};
+      switch (_taskResult.result_type) {{
+        case MembraneResultType.Data:
+          final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
+          switch (deserializer.deserializeUint8()) {{
+            case MembraneResultType.Data:
+              return {return_de};
+            case MembraneResultType.Error:
+              throw {class_name}ApiError({error_de});
+            case MembraneResultType.Panic:
+              throw {class_name}ApiError(deserializer.deserializeString());
+            default:
+              throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
+          }}
+        case MembraneResultType.Panic:
+          final ptr = _taskResult.data.cast<Utf8>();
+          throw {class_name}ApiError(ptr.toDartString());
+        default:
+          throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
       }}
-      throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.result_type == MembraneResultType.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw {class_name}ApiError('Cancellation call to C failed');
@@ -948,6 +973,7 @@ impl Function {
 pub enum MembraneResultType {
   Data,
   Error,
+  Panic,
 }
 
 #[doc(hidden)]
