@@ -88,7 +88,7 @@ class Contact {
 
     assert_contains_part(
       &headers,
-      "TaskResult membrane_accounts_contact(int64_t port, const char *user_id);",
+      "MembraneResult membrane_accounts_contact(int64_t port, const char *user_id);",
     );
 
     build_lib(&path.to_path_buf(), &mut vec![]);
