@@ -133,6 +133,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       let membrane_abort_handle = membrane_emitter.abort_handle();
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::StreamSerialized => quote! {
       let membrane_join_handle = crate::RUNTIME.spawn(
@@ -149,13 +150,30 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       );
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::Serialized if sync => quote! {
       let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
-      let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
-      ::membrane::utils::send::<#output, #error>(isolate, result);
+      let ser_result = match result {
+        Ok(value) => ::membrane::bincode::serialize(&(::membrane::MembraneResultType::Data as u8, value)),
+        Err(err) => ::membrane::bincode::serialize(&(::membrane::MembraneResultType::Error as u8, err)),
+      };
 
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(|| {}));
+      let data = if let Ok(data) = ser_result {
+        data
+      } else {
+        // while failure to serialize isn't a hard panic it's an error that should never happen
+        // so we don't want to tell the client that it was either Data or Error
+        vec![::membrane::MembraneResultType::Panic as u8]
+      };
+
+      let len: [u8; 8] = (data.len() as i64).to_le_bytes();
+      // prepend the type of response, then box the vec to shrink
+      let mut buffer = vec![len.to_vec(), data.clone()].concat().into_boxed_slice();
+      let handle = buffer.as_mut_ptr();
+      // forget so that Rust doesn't free while C is using it, we'll free it later
+      ::std::mem::forget(buffer);
+      handle
     },
     OutputStyle::Serialized if os_thread => quote! {
       let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
@@ -174,6 +192,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       );
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::Serialized => quote! {
       let membrane_join_handle = crate::RUNTIME.spawn(
@@ -185,6 +204,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       );
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
   };
 
@@ -203,8 +223,6 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
 
           #(#rust_transforms)*
           #return_statement
-
-          ::std::boxed::Box::into_raw(Box::new(handle))
         };
 
         let result = ::std::panic::catch_unwind(func)

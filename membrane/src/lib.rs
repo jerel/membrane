@@ -822,7 +822,9 @@ impl Function {
         _log.fine('Deserializing data from {fn_name}');
       }}
       if (_taskResult.result_type == MembraneResultType.Data) {{
-        final deserializer = BincodeDeserializer(_taskResult.data.cast() as Uint8List);
+        final data = _taskResult.data.cast<Uint8>();
+        final length = ByteData.view(data.asTypedList(8).buffer).getInt64(0, Endian.little);
+        final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
         if (deserializer.deserializeUint8() == MembraneResultType.Data) {{
           return {return_de};
         }}
