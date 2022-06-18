@@ -563,6 +563,10 @@ DynamicLibrary _open() {{
     Logger('membrane').info('Opening native library {lib}.dylib');
     return DynamicLibrary.open('{lib}.dylib');
   }}
+  if (Platform.isWindows) {{
+    Logger('membrane').info('Opening native library {lib}.dll');
+    return DynamicLibrary.open('{lib}.dll');
+  }}
   throw UnsupportedError('This platform is not supported.');
 }}
 
