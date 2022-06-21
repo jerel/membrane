@@ -454,13 +454,15 @@ output: './lib/src/ffi_bindings.dart'
 sort: true
 enums:
   include:
-    - MembraneResultType
+    - MembraneMsgKind
+    - MembraneResponseKind
 macros:
   include:
     - __none__
 structs:
   include:
-    - MembraneResult
+    - MembraneMsg
+    - MembraneResponse
 unions:
   include:
     - __none__
@@ -507,19 +509,30 @@ headers:
  */
 #include <stdint.h>
 
-typedef enum MembraneResultType {
-  Data,
+typedef enum MembraneMsgKind {
+  Ok,
   Error,
-  Panic,
-} MembraneResultType;
+} MembraneMsgKind;
 
-typedef struct MembraneResult
+typedef struct MembraneMsg
 {
-  uint8_t result_type;
+  uint8_t kind;
   const void *data;
-} MembraneResult;
+} MembraneMsg;
+
+typedef enum MembraneResponseKind {
+  Data,
+  Panic,
+} MembraneResponseKind;
+
+typedef struct MembraneResponse
+{
+  uint8_t kind;
+  const void *data;
+} MembraneResponse;
 
 uint8_t membrane_cancel_membrane_task(const void *task_handle);
+uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
 "#;
 
     let mut buffer =
@@ -654,7 +667,7 @@ import 'package:meta/meta.dart';
 
 import './src/loader.dart' as loader;
 import './src/bincode/bincode.dart';
-import './src/ffi_bindings.dart' show MembraneResult, MembraneResultType;
+import './src/ffi_bindings.dart' show MembraneMsg, MembraneMsgKind, MembraneResponse, MembraneResponseKind;
 import './src/{ns}/{ns}.dart';
 
 export './src/{ns}/{ns}.dart' hide TraitHelpers;
@@ -741,7 +754,7 @@ impl Function {
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "MembraneResult {extern_c_fn_name}({port}{extern_c_fn_types});",
+      "MembraneResponse {extern_c_fn_name}({port}{extern_c_fn_types});",
       extern_c_fn_name = self.extern_c_fn_name,
       port = if self.is_sync { "" } else { "int64_t port" },
       extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
@@ -759,7 +772,7 @@ impl Function {
       r#" {{{disable_logging}
     final List<Pointer> _toFree = [];{fn_transforms}{receive_port}
 
-    MembraneResult? _taskResult;
+    MembraneResponse? _taskResult;
     try {{
       if (!_loggingDisabled) {{
         _log.fine('Calling Rust `{fn_name}` via C `{extern_c_fn_name}`');
@@ -817,25 +830,32 @@ impl Function {
     self.output += if self.is_sync {
       format!(
         r#"
+    final data = _taskResult.data.cast<Uint8>();
+    final length = ByteData.view(data.asTypedList(8).buffer).getInt64(0, Endian.little);
     try {{
       if (!_loggingDisabled) {{
         _log.fine('Deserializing data from {fn_name}');
       }}
-      if (_taskResult.result_type == MembraneResultType.Data) {{
-        final data = _taskResult.data.cast<Uint8>();
-        final length = ByteData.view(data.asTypedList(8).buffer).getInt64(0, Endian.little);
-        final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
-        if (deserializer.deserializeUint8() == MembraneResultType.Data) {{
-          return {return_de};
-        }}
-        throw {class_name}ApiError({error_de});
-      }} else {{
-        final ptr = _taskResult.data.cast<Utf8>();
-        throw {class_name}ApiError(ptr.toDartString());
+      switch (_taskResult.kind) {{
+        case MembraneResponseKind.Data:
+          final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
+          switch (deserializer.deserializeUint8()) {{
+            case MembraneMsgKind.Ok:
+              return {return_de};
+            case MembraneMsgKind.Error:
+              throw {class_name}ApiError({error_de});
+            default:
+              throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
+          }}
+        case MembraneResponseKind.Panic:
+          final ptr = _taskResult.data.cast<Utf8>();
+          throw {class_name}ApiError(ptr.toDartString());
+        default:
+          throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
       }}
     }} finally {{
-      if (_taskResult.result_type == MembraneResultType.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
-        throw {class_name}ApiError('Cancellation call to C failed');
+      if (_taskResult.kind == MembraneResponseKind.Data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
+        throw AccountsApiError('Resource freeing call to C failed');
       }}
     }}"#,
         return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
@@ -852,13 +872,17 @@ impl Function {
           _log.fine('Deserializing data from {fn_name}');
         }}
         final deserializer = BincodeDeserializer(input as Uint8List);
-        if (deserializer.deserializeUint8() == MembraneResultType.Data) {{
-          return {return_de};
+        switch (deserializer.deserializeUint8()) {{
+          case MembraneMsgKind.Ok:
+            return {return_de};
+          case MembraneMsgKind.Error:
+            throw {class_name}ApiError({error_de});
+          default:
+            throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
         }}
-        throw {class_name}ApiError({error_de});
       }});
     }} finally {{
-      if (_taskResult.result_type == MembraneResultType.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+      if (_taskResult.kind == MembraneResponseKind.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
@@ -882,27 +906,25 @@ impl Function {
       if (!_loggingDisabled) {{
         _log.fine('Deserializing data from {fn_name}');
       }}
-      switch (_taskResult.result_type) {{
-        case MembraneResultType.Data:
+      switch (_taskResult.kind) {{
+        case MembraneResponseKind.Data:
           final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
           switch (deserializer.deserializeUint8()) {{
-            case MembraneResultType.Data:
+            case MembraneMsgKind.Ok:
               return {return_de};
-            case MembraneResultType.Error:
+            case MembraneMsgKind.Error:
               throw {class_name}ApiError({error_de});
-            case MembraneResultType.Panic:
-              throw {class_name}ApiError(deserializer.deserializeString());
             default:
               throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
           }}
-        case MembraneResultType.Panic:
+        case MembraneResponseKind.Panic:
           final ptr = _taskResult.data.cast<Utf8>();
           throw {class_name}ApiError(ptr.toDartString());
         default:
           throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
       }}
     }} finally {{
-      if (_taskResult.result_type == MembraneResultType.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+      if (_taskResult.kind == MembraneResponseKind.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
@@ -972,16 +994,30 @@ impl Function {
 #[doc(hidden)]
 #[repr(u8)]
 #[derive(serde::Serialize)]
-pub enum MembraneResultType {
+pub enum MembraneResponseKind {
   Data,
-  Error,
   Panic,
 }
 
 #[doc(hidden)]
 #[repr(C)]
-pub struct MembraneResult {
-  pub result_type: MembraneResultType,
+pub struct MembraneResponse {
+  pub kind: MembraneResponseKind,
+  pub data: *const std::ffi::c_void,
+}
+
+#[doc(hidden)]
+#[repr(u8)]
+#[derive(serde::Serialize)]
+pub enum MembraneMsgKind {
+  Ok,
+  Error,
+}
+
+#[doc(hidden)]
+#[repr(C)]
+pub struct MembraneMsg {
+  pub kind: MembraneMsgKind,
   pub data: *const std::ffi::c_void,
 }
 
@@ -994,6 +1030,15 @@ pub unsafe extern "C" fn membrane_cancel_membrane_task(task_handle: *mut TaskHan
   // turn the pointer back into a box and Rust will drop it when it goes out of scope
   let handle = Box::from_raw(task_handle);
   (handle.0)();
+
+  1
+}
+
+#[doc(hidden)]
+#[no_mangle]
+pub unsafe extern "C" fn membrane_free_membrane_vec(len: i64, ptr: *const u8) -> i32 {
+  // turn the pointer back into a vec and Rust will drop it
+  let _ = ::std::slice::from_raw_parts::<u8>(ptr, len as usize);
 
   1
 }

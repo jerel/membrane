@@ -155,20 +155,18 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     OutputStyle::Serialized if sync => quote! {
       let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
       let ser_result = match result {
-        Ok(value) => ::membrane::bincode::serialize(&(::membrane::MembraneResultType::Data as u8, value)),
-        Err(err) => ::membrane::bincode::serialize(&(::membrane::MembraneResultType::Error as u8, err)),
+        Ok(value) => ::membrane::bincode::serialize(&(::membrane::MembraneMsgKind::Ok as u8, value)),
+        Err(err) => ::membrane::bincode::serialize(&(::membrane::MembraneMsgKind::Error as u8, err)),
       };
 
       let data = if let Ok(data) = ser_result {
         data
       } else {
-        // while failure to serialize isn't a hard panic it's an error that should never happen
-        // so we don't want to tell the client that it was either Data or Error
-        vec![::membrane::MembraneResultType::Panic as u8]
+        vec![::membrane::MembraneMsgKind::Error as u8]
       };
 
       let len: [u8; 8] = (data.len() as i64).to_le_bytes();
-      // prepend the type of response, then box the vec to shrink
+      // prepend the length of response, then box the vec to shrink capacity
       let mut buffer = vec![len.to_vec(), data.clone()].concat().into_boxed_slice();
       let handle = buffer.as_mut_ptr();
       // forget so that Rust doesn't free while C is using it, we'll free it later
@@ -216,7 +214,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #extern_c_fn_name(membrane_port: i64, #(#rust_outer_params),*) -> ::membrane::MembraneResult {
+      pub extern "C" fn #extern_c_fn_name(membrane_port: i64, #(#rust_outer_params),*) -> ::membrane::MembraneResponse {
         let func = || {
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
@@ -232,7 +230,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
           });
 
         match result {
-          Ok(ptr) => ::membrane::MembraneResult{result_type: ::membrane::MembraneResultType::Data, data: ptr as _},
+          Ok(ptr) => ::membrane::MembraneResponse{kind: ::membrane::MembraneResponseKind::Data, data: ptr as _},
           Err(error) => {
             let ptr = match ::std::ffi::CString::new(error) {
               Ok(c_string) => c_string,
@@ -242,7 +240,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
                   format!("The program panicked and, additionally, panicked while reporting the error message. {}", error)).unwrap()
               }
             };
-            ::membrane::MembraneResult{result_type: ::membrane::MembraneResultType::Error, data: ptr.into_raw() as _}
+            ::membrane::MembraneResponse{kind: ::membrane::MembraneResponseKind::Panic, data: ptr.into_raw() as _}
           }
         }
       }
