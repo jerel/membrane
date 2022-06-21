@@ -456,12 +456,17 @@ enums:
   include:
     - MembraneMsgKind
     - MembraneResponseKind
+  member-rename:
+    'Membrane(.*)':
+      'Data': 'data'
+      'Error': 'error'
+      'Ok': 'ok'
+      'Panic': 'panic'
 macros:
   include:
     - __none__
 structs:
   include:
-    - MembraneMsg
     - MembraneResponse
 unions:
   include:
@@ -513,12 +518,6 @@ typedef enum MembraneMsgKind {
   Ok,
   Error,
 } MembraneMsgKind;
-
-typedef struct MembraneMsg
-{
-  uint8_t kind;
-  const void *data;
-} MembraneMsg;
 
 typedef enum MembraneResponseKind {
   Data,
@@ -667,7 +666,7 @@ import 'package:meta/meta.dart';
 
 import './src/loader.dart' as loader;
 import './src/bincode/bincode.dart';
-import './src/ffi_bindings.dart' show MembraneMsg, MembraneMsgKind, MembraneResponse, MembraneResponseKind;
+import './src/ffi_bindings.dart' show MembraneMsgKind, MembraneResponse, MembraneResponseKind;
 import './src/{ns}/{ns}.dart';
 
 export './src/{ns}/{ns}.dart' hide TraitHelpers;
@@ -837,24 +836,20 @@ impl Function {
         _log.fine('Deserializing data from {fn_name}');
       }}
       switch (_taskResult.kind) {{
-        case MembraneResponseKind.Data:
+        case MembraneResponseKind.data:
           final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
-          switch (deserializer.deserializeUint8()) {{
-            case MembraneMsgKind.Ok:
-              return {return_de};
-            case MembraneMsgKind.Error:
-              throw {class_name}ApiError({error_de});
-            default:
-              throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
+          if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+            return {return_de};
           }}
-        case MembraneResponseKind.Panic:
+          throw {class_name}ApiError({error_de});
+        case MembraneResponseKind.panic:
           final ptr = _taskResult.data.cast<Utf8>();
           throw {class_name}ApiError(ptr.toDartString());
         default:
           throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
       }}
     }} finally {{
-      if (_taskResult.kind == MembraneResponseKind.Data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
+      if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
         throw AccountsApiError('Resource freeing call to C failed');
       }}
     }}"#,
@@ -872,17 +867,13 @@ impl Function {
           _log.fine('Deserializing data from {fn_name}');
         }}
         final deserializer = BincodeDeserializer(input as Uint8List);
-        switch (deserializer.deserializeUint8()) {{
-          case MembraneMsgKind.Ok:
-            return {return_de};
-          case MembraneMsgKind.Error:
-            throw {class_name}ApiError({error_de});
-          default:
-            throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
+        if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+          return {return_de};
         }}
+        throw {class_name}ApiError({error_de});
       }});
     }} finally {{
-      if (_taskResult.kind == MembraneResponseKind.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+      if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
@@ -907,24 +898,20 @@ impl Function {
         _log.fine('Deserializing data from {fn_name}');
       }}
       switch (_taskResult.kind) {{
-        case MembraneResponseKind.Data:
+        case MembraneResponseKind.data:
           final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
-          switch (deserializer.deserializeUint8()) {{
-            case MembraneMsgKind.Ok:
-              return {return_de};
-            case MembraneMsgKind.Error:
-              throw {class_name}ApiError({error_de});
-            default:
-              throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
+          if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+            return {return_de};
           }}
-        case MembraneResponseKind.Panic:
+          throw {class_name}ApiError({error_de});
+        case MembraneResponseKind.panic:
           final ptr = _taskResult.data.cast<Utf8>();
           throw {class_name}ApiError(ptr.toDartString());
         default:
           throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
       }}
     }} finally {{
-      if (_taskResult.kind == MembraneResponseKind.Data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+      if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
@@ -1012,13 +999,6 @@ pub struct MembraneResponse {
 pub enum MembraneMsgKind {
   Ok,
   Error,
-}
-
-#[doc(hidden)]
-#[repr(C)]
-pub struct MembraneMsg {
-  pub kind: MembraneMsgKind,
-  pub data: *const std::ffi::c_void,
 }
 
 #[doc(hidden)]
