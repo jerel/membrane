@@ -22,7 +22,7 @@ skip-generate = ["membrane_macro/skip-generate"]
 allo-isolate = "0.1"
 bincode = "1.3"
 ffi_helpers = "0.2"
-futures = "0.3"
+futures = {version = "0.3", features = ["executor"]}
 inventory = "0.1"
 membrane_macro = {version = "0.5", path = "../membrane_macro"}
 membrane_types = {version = "0.3", path = "../membrane_types"}

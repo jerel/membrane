@@ -23,6 +23,17 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
+  test('can get contacts synchronously', () {
+    final accounts = AccountsApi();
+    final result = accounts.contactSync().value;
+    expect(result.length, 100);
+
+    expect(
+        result.first,
+        equals(
+            Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
+  });
+
   test('can call os-threaded Rust and get contact', () async {
     final accounts = AccountsApi();
     expect(
@@ -268,6 +279,39 @@ void main() {
     } on TimeoutException catch (err) {
       expect(err.duration?.inMilliseconds, 50);
       expect(err.message, "No stream event");
+    }
+  });
+
+  test(
+      'test that panics in async code are handled gracefully and merely time out',
+      () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.contactPanic();
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 200);
+      expect(err.message, "Future not completed");
+    }
+  });
+
+  test(
+      'test that panics in stream code are handled gracefully and merely time out',
+      () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.contactStreamPanic().take(1).toList();
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 20);
+      expect(err.message, "No stream event");
+    }
+  });
+
+  test('test that panics in sync code are handled gracefully', () {
+    final accounts = AccountsApi();
+    try {
+      accounts.contactSyncPanic();
+    } on AccountsApiError catch (err) {
+      expect(err.e, "The sync rust code panicked");
     }
   });
 }

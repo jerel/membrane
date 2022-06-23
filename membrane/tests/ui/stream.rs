@@ -1,13 +1,19 @@
 use futures::{Future, Stream};
 use membrane::async_dart;
 
+struct JoinHandle {}
+impl JoinHandle {
+  pub fn abort(&self) {}
+}
+
 struct Runtime {}
 impl Runtime {
-  pub fn spawn<T>(&self, future: T)
+  pub fn spawn<T>(&self, future: T) -> JoinHandle
   where
     T: Future + Send + 'static,
     T::Output: Send + 'static,
   {
+    JoinHandle {}
   }
 }
 

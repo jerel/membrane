@@ -68,9 +68,12 @@ pub struct Contacts {
   pub total: i32,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct SyncContacts(pub Vec<Contact>);
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct VecWrapper {
-  pub data: Vec<f64>,
+  data: Vec<f64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]

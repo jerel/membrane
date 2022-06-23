@@ -79,6 +79,11 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   dart_impl(attrs, input, false)
 }
 
+#[proc_macro_attribute]
+pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
+  dart_impl(attrs, input, true)
+}
+
 fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream {
   let Options {
     namespace,
@@ -124,38 +129,49 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
 
   let return_statement = match output_style {
     OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized => quote! {
-      let membrane_emitter = #fn_name(_port, #(#rust_inner_args),*);
+      let membrane_emitter = #fn_name(membrane_port, #(#rust_inner_args),*);
       let membrane_abort_handle = membrane_emitter.abort_handle();
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(membrane_abort_handle));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::StreamSerialized => quote! {
-      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+      let membrane_join_handle = crate::RUNTIME.spawn(
+        async move {
+          use ::membrane::futures::stream::StreamExt;
+          let mut stream = #fn_name(#(#rust_inner_args),*);
+          ::membrane::futures::pin_mut!(stream);
+          let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
+          while let Some(result) = stream.next().await {
+            let result: ::std::result::Result<#output, #error> = result;
+            ::membrane::utils::send::<#output, #error>(isolate, result);
+          }
+        }
+      );
 
-      crate::RUNTIME.spawn(
-        ::futures::future::Abortable::new(
-          async move {
-            use ::membrane::futures::stream::StreamExt;
-            let mut stream = #fn_name(#(#rust_inner_args),*);
-            ::membrane::futures::pin_mut!(stream);
-            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-            while let Some(result) = stream.next().await {
-              let result: ::std::result::Result<#output, #error> = result;
-              ::membrane::utils::send::<#output, #error>(isolate, result);
-            }
-          }, membrane_future_registration)
-        );
-
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::Serialized if sync => quote! {
-      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
-
       let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*);
-      let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-      ::membrane::utils::send::<#output, #error>(isolate, result);
+      let ser_result = match result {
+        Ok(value) => ::membrane::bincode::serialize(&(::membrane::MembraneMsgKind::Ok as u8, value)),
+        Err(err) => ::membrane::bincode::serialize(&(::membrane::MembraneMsgKind::Error as u8, err)),
+      };
 
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      let data = if let Ok(data) = ser_result {
+        data
+      } else {
+        vec![::membrane::MembraneMsgKind::Error as u8]
+      };
+
+      let len: [u8; 8] = (data.len() as i64).to_le_bytes();
+      // prepend the length of response, then box the vec to shrink capacity
+      let mut buffer = vec![len.to_vec(), data.clone()].concat().into_boxed_slice();
+      let handle = buffer.as_mut_ptr();
+      // forget so that Rust doesn't free while C is using it, we'll free it later
+      ::std::mem::forget(buffer);
+      handle
     },
     OutputStyle::Serialized if os_thread => quote! {
       let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
@@ -166,7 +182,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
             ::futures::future::Abortable::new(
               async move {
                 let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-                let isolate = ::membrane::allo_isolate::Isolate::new(_port);
+                let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
                 ::membrane::utils::send::<#output, #error>(isolate, result);
               }, membrane_future_registration)
           )
@@ -174,20 +190,19 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
       );
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::Serialized => quote! {
-      let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
+      let membrane_join_handle = crate::RUNTIME.spawn(
+        async move {
+          let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
+          let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
+          ::membrane::utils::send::<#output, #error>(isolate, result);
+        }
+      );
 
-      crate::RUNTIME.spawn(
-        ::futures::future::Abortable::new(
-          async move {
-            let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
-            let isolate = ::membrane::allo_isolate::Isolate::new(_port);
-            ::membrane::utils::send::<#output, #error>(isolate, result);
-          }, membrane_future_registration)
-        );
-
-      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
+      let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
+      ::std::boxed::Box::into_raw(Box::new(handle))
     },
   };
 
@@ -199,14 +214,35 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #extern_c_fn_name(_port: i64, #(#rust_outer_params),*) -> *const ::membrane::TaskHandle {
+      pub extern "C" fn #extern_c_fn_name(membrane_port: i64, #(#rust_outer_params),*) -> ::membrane::MembraneResponse {
+        let func = || {
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;
 
           #(#rust_transforms)*
           #return_statement
+        };
 
-          ::std::boxed::Box::into_raw(Box::new(handle))
+        let result = ::std::panic::catch_unwind(func)
+          .map_err(|e| {
+            ::membrane::ffi_helpers::panic::recover_panic_message(e)
+              .unwrap_or_else(|| "The program panicked".to_string())
+          });
+
+        match result {
+          Ok(ptr) => ::membrane::MembraneResponse{kind: ::membrane::MembraneResponseKind::Data, data: ptr as _},
+          Err(error) => {
+            let ptr = match ::std::ffi::CString::new(error) {
+              Ok(c_string) => c_string,
+              Err(error) => {
+                // we don't expect this to ever happen
+                ::std::ffi::CString::new(
+                  format!("The program panicked and, additionally, panicked while reporting the error message. {}", error)).unwrap()
+              }
+            };
+            ::membrane::MembraneResponse{kind: ::membrane::MembraneResponseKind::Panic, data: ptr.into_raw() as _}
+          }
+        }
       }
   };
 
@@ -249,6 +285,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
                 extern_c_fn_types: #c_header_types.to_string(),
                 fn_name: #name.to_string(),
                 is_stream: #is_stream,
+                is_sync: #sync,
                 return_type: #return_type.to_string(),
                 error_type: #error_type.to_string(),
                 namespace: #namespace.to_string(),

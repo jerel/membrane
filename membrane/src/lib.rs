@@ -70,7 +70,7 @@ pub use futures;
 #[doc(hidden)]
 pub use inventory;
 #[doc(hidden)]
-pub use membrane_macro::{async_dart, dart_enum};
+pub use membrane_macro::{async_dart, dart_enum, sync_dart};
 #[doc(hidden)]
 pub use serde_reflection;
 
@@ -95,6 +95,7 @@ pub struct Function {
   pub extern_c_fn_types: String,
   pub fn_name: String,
   pub is_stream: bool,
+  pub is_sync: bool,
   pub return_type: String,
   pub error_type: String,
   pub namespace: String,
@@ -453,13 +454,20 @@ output: './lib/src/ffi_bindings.dart'
 sort: true
 enums:
   include:
-    - __none__
+    - MembraneMsgKind
+    - MembraneResponseKind
+  member-rename:
+    'Membrane(.*)':
+      'Data': 'data'
+      'Error': 'error'
+      'Ok': 'ok'
+      'Panic': 'panic'
 macros:
   include:
     - __none__
 structs:
   include:
-    - __none__
+    - MembraneResponse
 unions:
   include:
     - __none__
@@ -506,7 +514,24 @@ headers:
  */
 #include <stdint.h>
 
-int32_t membrane_cancel_membrane_task(const int32_t *task_handle);
+typedef enum MembraneMsgKind {
+  Ok,
+  Error,
+} MembraneMsgKind;
+
+typedef enum MembraneResponseKind {
+  Data,
+  Panic,
+} MembraneResponseKind;
+
+typedef struct MembraneResponse
+{
+  uint8_t kind;
+  const void *data;
+} MembraneResponse;
+
+uint8_t membrane_cancel_membrane_task(const void *task_handle);
+uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
 "#;
 
     let mut buffer =
@@ -641,6 +666,7 @@ import 'package:meta/meta.dart';
 
 import './src/loader.dart' as loader;
 import './src/bincode/bincode.dart';
+import './src/ffi_bindings.dart' show MembraneMsgKind, MembraneResponse, MembraneResponseKind;
 import './src/{ns}/{ns}.dart';
 
 export './src/{ns}/{ns}.dart' hide TraitHelpers;
@@ -695,24 +721,41 @@ impl Function {
 
   pub fn signature(&mut self) -> &mut Self {
     self.output += format!(
-      "  {output_style}<{return_type}> {fn_name}({fn_params}){asink}",
-      output_style = if self.is_stream { "Stream" } else { "Future" },
-      return_type = dart_fn_return_type(&self.return_type),
+      "  {output_style}{return_type} {fn_name}({fn_params}){asink}",
+      output_style = if self.is_sync {
+        ""
+      } else if self.is_stream {
+        "Stream"
+      } else {
+        "Future"
+      },
+      return_type = if self.is_sync {
+        dart_fn_return_type(&self.return_type).to_string()
+      } else {
+        format!("<{}>", dart_fn_return_type(&self.return_type))
+      },
       fn_name = self.fn_name,
       fn_params = if self.dart_outer_params.is_empty() {
         String::new()
       } else {
         format!("{{{}}}", self.dart_outer_params)
       },
-      asink = if self.is_stream { " async*" } else { " async" }
+      asink = if self.is_sync {
+        ""
+      } else if self.is_stream {
+        " async*"
+      } else {
+        " async"
+      }
     )
     .as_str();
     self
   }
   pub fn c_signature(&mut self) -> &mut Self {
     self.output += format!(
-      "int32_t *{extern_c_fn_name}(int64_t port{extern_c_fn_types});",
+      "MembraneResponse {extern_c_fn_name}({port}{extern_c_fn_types});",
       extern_c_fn_name = self.extern_c_fn_name,
+      port = if self.is_sync { "" } else { "int64_t port" },
       extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
         String::new()
       } else {
@@ -726,17 +769,19 @@ impl Function {
   pub fn body(&mut self, namespace: &str) -> &mut Self {
     self.output += format!(
       r#" {{{disable_logging}
-    final List<Pointer> _toFree = [];{fn_transforms}
-    final _port = ReceivePort();
+    final List<Pointer> _toFree = [];{fn_transforms}{receive_port}
 
-    Pointer<Int32>? _taskHandle;
+    MembraneResponse _taskResult;
     try {{
       if (!_loggingDisabled) {{
         _log.fine('Calling Rust `{fn_name}` via C `{extern_c_fn_name}`');
       }}
-      _taskHandle = _bindings.{extern_c_fn_name}(_port.sendPort.nativePort{dart_inner_args});
-      if (_taskHandle == null) {{
-        throw {class_name}ApiError('Call to C failed');
+      _taskResult = _bindings.{extern_c_fn_name}({native_port}{dart_inner_args});
+      if (_taskResult.kind == MembraneResponseKind.panic) {{
+        final ptr = _taskResult.data.cast<Utf8>();
+        throw {class_name}ApiError(ptr.toDartString());
+      }} else if (_taskResult.kind != MembraneResponseKind.data) {{
+        throw {class_name}ApiError('Found unknown MembraneResponseKind variant, mismatched code versions?');
       }}
     }} finally {{
       _toFree.forEach((ptr) => calloc.free(ptr));
@@ -755,8 +800,18 @@ impl Function {
       } else {
         "\n    ".to_string() + &self.dart_transforms + ";"
       },
+      receive_port = if self.is_sync {
+        ""
+      } else {
+        "\n    final _port = ReceivePort();"
+      },
       extern_c_fn_name = self.extern_c_fn_name,
       fn_name = self.fn_name,
+      native_port = if self.is_sync {
+        ""
+      } else {
+        "_port.sendPort.nativePort"
+      },
       dart_inner_args = if self.dart_inner_args.is_empty() {
         String::new()
       } else {
@@ -774,7 +829,31 @@ impl Function {
     enum_tracer_registry: &Registry,
     config: &Membrane,
   ) -> &mut Self {
-    self.output += if self.is_stream {
+    self.output += if self.is_sync {
+      format!(
+        r#"
+    final data = _taskResult.data.cast<Uint8>();
+    final length = ByteData.view(data.asTypedList(8).buffer).getInt64(0, Endian.little);
+    try {{
+      if (!_loggingDisabled) {{
+        _log.fine('Deserializing data from {fn_name}');
+      }}
+      final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
+      if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+        return {return_de};
+      }}
+      throw {class_name}ApiError({error_de});
+    }} finally {{
+      if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
+        throw AccountsApiError('Resource freeing call to C failed');
+      }}
+    }}"#,
+        return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
+        error_de = self.deserializer(&self.error_type, enum_tracer_registry, config),
+        class_name = namespace.to_camel_case(),
+        fn_name = self.fn_name,
+      )
+    } else if self.is_stream {
       format!(
         r#"
     try {{
@@ -783,14 +862,14 @@ impl Function {
           _log.fine('Deserializing data from {fn_name}');
         }}
         final deserializer = BincodeDeserializer(input as Uint8List);
-        if (deserializer.deserializeBool()) {{
+        if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
           return {return_de};
         }}
         throw {class_name}ApiError({error_de});
       }});
     }} finally {{
-      if (_bindings.membrane_cancel_membrane_task(_taskHandle) < 1) {{
-        throw {class_name}ApiError('Cancelation call to C failed');
+      if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+        throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
         return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
@@ -814,13 +893,13 @@ impl Function {
         _log.fine('Deserializing data from {fn_name}');
       }}
       final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
-      if (deserializer.deserializeBool()) {{
+      if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
         return {return_de};
       }}
       throw {class_name}ApiError({error_de});
     }} finally {{
-      if (_bindings.membrane_cancel_membrane_task(_taskHandle) < 1) {{
-        throw {class_name}ApiError('Cancelation call to C failed');
+      if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
+        throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
         return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
@@ -887,6 +966,29 @@ impl Function {
 }
 
 #[doc(hidden)]
+#[repr(u8)]
+#[derive(serde::Serialize)]
+pub enum MembraneResponseKind {
+  Data,
+  Panic,
+}
+
+#[doc(hidden)]
+#[repr(C)]
+pub struct MembraneResponse {
+  pub kind: MembraneResponseKind,
+  pub data: *const std::ffi::c_void,
+}
+
+#[doc(hidden)]
+#[repr(u8)]
+#[derive(serde::Serialize)]
+pub enum MembraneMsgKind {
+  Ok,
+  Error,
+}
+
+#[doc(hidden)]
 pub struct TaskHandle(pub Box<dyn Fn()>);
 
 #[doc(hidden)]
@@ -895,6 +997,15 @@ pub unsafe extern "C" fn membrane_cancel_membrane_task(task_handle: *mut TaskHan
   // turn the pointer back into a box and Rust will drop it when it goes out of scope
   let handle = Box::from_raw(task_handle);
   (handle.0)();
+
+  1
+}
+
+#[doc(hidden)]
+#[no_mangle]
+pub unsafe extern "C" fn membrane_free_membrane_vec(len: i64, ptr: *const u8) -> i32 {
+  // turn the pointer back into a vec and Rust will drop it
+  let _ = ::std::slice::from_raw_parts::<u8>(ptr, len as usize);
 
   1
 }
@@ -910,6 +1021,8 @@ macro_rules! error {
       Ok(value) => value,
       Err(e) => {
         ::membrane::ffi_helpers::update_last_error(e);
+        // silence unreachable code warnings to enable panicking on invalid data
+        #[allow(unreachable_code)]
         return $error;
       }
     }

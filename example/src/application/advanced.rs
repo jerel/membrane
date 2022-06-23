@@ -1,12 +1,36 @@
 use data::OptionsDemo;
-use membrane::async_dart;
 use membrane::emitter::{emitter, Emitter, StreamEmitter};
+use membrane::{async_dart, sync_dart};
 use tokio_stream::Stream;
 
 // used for background threading examples
 use std::{thread, time::Duration};
 
 use crate::data::{self, MoreTypes};
+
+#[async_dart(namespace = "accounts")]
+pub async fn contact_panic() -> Result<data::Contact, data::Error> {
+  panic!("The rust code panicked");
+}
+
+#[async_dart(namespace = "accounts", timeout = 20)]
+pub fn contact_stream_panic() -> impl Stream<Item = Result<data::Contact, data::Error>> {
+  panic!("The rust code panicked");
+  #[allow(unreachable_code)]
+  futures::stream::iter(vec![Ok(data::Contact::default())])
+}
+
+#[sync_dart(namespace = "accounts")]
+pub fn contact_sync_panic() -> Result<data::Contact, data::Error> {
+  panic!("The sync rust code panicked");
+}
+
+#[sync_dart(namespace = "accounts")]
+pub fn contact_sync() -> Result<data::SyncContacts, data::Error> {
+  Ok(data::SyncContacts(
+    (0..100).map(|_| data::Contact::default()).collect(),
+  ))
+}
 
 #[async_dart(namespace = "accounts", os_thread = true)]
 pub async fn contact_os_thread(user_id: String) -> Result<data::Contact, data::Error> {

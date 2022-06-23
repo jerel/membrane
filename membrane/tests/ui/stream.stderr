@@ -1,17 +1,17 @@
 error: expected `impl Stream<Item = Result>`
-  --> tests/ui/stream.rs:17:30
+  --> tests/ui/stream.rs:23:30
    |
-17 | pub fn one_failure() -> impl Stream<i32, String> {}
+23 | pub fn one_failure() -> impl Stream<i32, String> {}
    |                              ^^^^^^
 
 error: expected enum `Result`
-  --> tests/ui/stream.rs:20:44
+  --> tests/ui/stream.rs:26:44
    |
-20 | pub fn two_failure() -> impl Stream<Item = i32, String> {}
+26 | pub fn two_failure() -> impl Stream<Item = i32, String> {}
    |                                            ^^^
 
 error: expected a struct or scalar type
-  --> tests/ui/stream.rs:23:53
+  --> tests/ui/stream.rs:29:53
    |
-23 | pub fn three_failure() -> impl Stream<Item = Result<Option<i32>, String>> {}
+29 | pub fn three_failure() -> impl Stream<Item = Result<Option<i32>, String>> {}
    |                                                     ^^^^^^
