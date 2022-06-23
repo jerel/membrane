@@ -23,10 +23,13 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
-  test('can get contact synchronously', () {
+  test('can get contacts synchronously', () {
     final accounts = AccountsApi();
+    final result = accounts.contactSync().value;
+    expect(result.length, 100);
+
     expect(
-        accounts.contactSync(),
+        result.first,
         equals(
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
@@ -288,6 +291,18 @@ void main() {
     } on TimeoutException catch (err) {
       expect(err.duration?.inMilliseconds, 200);
       expect(err.message, "Future not completed");
+    }
+  });
+
+  test(
+      'test that panics in stream code are handled gracefully and merely time out',
+      () async {
+    final accounts = AccountsApi();
+    try {
+      await accounts.contactStreamPanic().take(1).toList();
+    } on TimeoutException catch (err) {
+      expect(err.duration?.inMilliseconds, 20);
+      expect(err.message, "No stream event");
     }
   });
 

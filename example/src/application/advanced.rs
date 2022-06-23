@@ -13,14 +13,23 @@ pub async fn contact_panic() -> Result<data::Contact, data::Error> {
   panic!("The rust code panicked");
 }
 
+#[async_dart(namespace = "accounts", timeout = 20)]
+pub fn contact_stream_panic() -> impl Stream<Item = Result<data::Contact, data::Error>> {
+  panic!("The rust code panicked");
+  #[allow(unreachable_code)]
+  futures::stream::iter(vec![Ok(data::Contact::default())])
+}
+
 #[sync_dart(namespace = "accounts")]
 pub fn contact_sync_panic() -> Result<data::Contact, data::Error> {
   panic!("The sync rust code panicked");
 }
 
 #[sync_dart(namespace = "accounts")]
-pub fn contact_sync() -> Result<data::Contact, data::Error> {
-  Ok(data::Contact::default())
+pub fn contact_sync() -> Result<data::SyncContacts, data::Error> {
+  Ok(data::SyncContacts(
+    (0..100).map(|_| data::Contact::default()).collect(),
+  ))
 }
 
 #[async_dart(namespace = "accounts", os_thread = true)]
