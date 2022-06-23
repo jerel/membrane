@@ -771,14 +771,17 @@ impl Function {
       r#" {{{disable_logging}
     final List<Pointer> _toFree = [];{fn_transforms}{receive_port}
 
-    MembraneResponse? _taskResult;
+    MembraneResponse _taskResult;
     try {{
       if (!_loggingDisabled) {{
         _log.fine('Calling Rust `{fn_name}` via C `{extern_c_fn_name}`');
       }}
       _taskResult = _bindings.{extern_c_fn_name}({native_port}{dart_inner_args});
-      if (_taskResult == null) {{
-        throw {class_name}ApiError('Call to C failed');
+      if (_taskResult.kind == MembraneResponseKind.panic) {{
+        final ptr = _taskResult.data.cast<Utf8>();
+        throw {class_name}ApiError(ptr.toDartString());
+      }} else if (_taskResult.kind != MembraneResponseKind.data) {{
+        throw {class_name}ApiError('Found unknown MembraneResponseKind variant, mismatched code versions?');
       }}
     }} finally {{
       _toFree.forEach((ptr) => calloc.free(ptr));
@@ -835,19 +838,11 @@ impl Function {
       if (!_loggingDisabled) {{
         _log.fine('Deserializing data from {fn_name}');
       }}
-      switch (_taskResult.kind) {{
-        case MembraneResponseKind.data:
-          final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
-          if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
-            return {return_de};
-          }}
-          throw {class_name}ApiError({error_de});
-        case MembraneResponseKind.panic:
-          final ptr = _taskResult.data.cast<Utf8>();
-          throw {class_name}ApiError(ptr.toDartString());
-        default:
-          throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
+      final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
+      if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+        return {return_de};
       }}
+      throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
         throw AccountsApiError('Resource freeing call to C failed');
@@ -897,19 +892,11 @@ impl Function {
       if (!_loggingDisabled) {{
         _log.fine('Deserializing data from {fn_name}');
       }}
-      switch (_taskResult.kind) {{
-        case MembraneResponseKind.data:
-          final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
-          if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
-            return {return_de};
-          }}
-          throw {class_name}ApiError({error_de});
-        case MembraneResponseKind.panic:
-          final ptr = _taskResult.data.cast<Utf8>();
-          throw {class_name}ApiError(ptr.toDartString());
-        default:
-          throw {class_name}ApiError('unrecognized result type, membrane version mismatch?');
+      final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
+      if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+        return {return_de};
       }}
+      throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw {class_name}ApiError('Cancellation call to C failed');
