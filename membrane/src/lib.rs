@@ -758,6 +758,8 @@ impl Function {
       port = if self.is_sync { "" } else { "int64_t port" },
       extern_c_fn_types = if self.extern_c_fn_types.is_empty() {
         String::new()
+      } else if self.is_sync {
+        String::new() + &self.extern_c_fn_types
       } else {
         String::from(", ") + &self.extern_c_fn_types
       }
@@ -814,6 +816,8 @@ impl Function {
       },
       dart_inner_args = if self.dart_inner_args.is_empty() {
         String::new()
+      } else if self.is_sync {
+        String::new() + &self.dart_inner_args
       } else {
         String::from(", ") + &self.dart_inner_args
       },

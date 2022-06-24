@@ -25,7 +25,7 @@ void main() {
 
   test('can get contacts synchronously', () {
     final accounts = AccountsApi();
-    final result = accounts.contactSync().value;
+    final result = accounts.contactSync(count: 100).value;
     expect(result.length, 100);
 
     expect(

@@ -117,7 +117,15 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     }
   }
 
-  let rust_outer_params: Vec<TokenStream2> = RustExternParams::from(&inputs).into();
+  let rust_outer_params: Vec<TokenStream2> = if sync {
+    RustExternParams::from(&inputs).into()
+  } else {
+    vec![
+      vec![quote! {membrane_port: i64}],
+      RustExternParams::from(&inputs).into(),
+    ]
+    .concat()
+  };
   let rust_transforms: Vec<TokenStream2> = RustTransforms::from(&inputs).into();
   let rust_inner_args: Vec<Ident> = RustArgs::from(&inputs).into();
 
@@ -214,7 +222,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let c_fn = quote! {
       #[no_mangle]
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
-      pub extern "C" fn #extern_c_fn_name(membrane_port: i64, #(#rust_outer_params),*) -> ::membrane::MembraneResponse {
+      pub extern "C" fn #extern_c_fn_name(#(#rust_outer_params),*) -> ::membrane::MembraneResponse {
         let func = || {
           use ::membrane::{cstr, error, ffi_helpers};
           use ::std::ffi::CStr;

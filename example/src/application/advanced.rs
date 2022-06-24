@@ -26,9 +26,9 @@ pub fn contact_sync_panic() -> Result<data::Contact, data::Error> {
 }
 
 #[sync_dart(namespace = "accounts")]
-pub fn contact_sync() -> Result<data::SyncContacts, data::Error> {
+pub fn contact_sync(count: i64) -> Result<data::SyncContacts, data::Error> {
   Ok(data::SyncContacts(
-    (0..100).map(|_| data::Contact::default()).collect(),
+    (0..count).map(|_| data::Contact::default()).collect(),
   ))
 }
 
