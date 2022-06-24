@@ -845,7 +845,7 @@ impl Function {
       throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
-        throw AccountsApiError('Resource freeing call to C failed');
+        throw {class_name}ApiError('Resource freeing call to C failed');
       }}
     }}"#,
         return_de = self.deserializer(&self.return_type, enum_tracer_registry, config),
