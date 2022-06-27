@@ -27,3 +27,11 @@ error: expected a struct or scalar type
    |
 35 | pub async fn option() -> Result<Option<i32>, String> {}
    |                                 ^^^^^^
+
+error: custom attribute panicked
+  --> tests/ui/single.rs:42:1
+   |
+42 | #[sync_dart(namespace = "a")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: #[sync_dart] expected a return type of `Result<T, E>` found an emitter

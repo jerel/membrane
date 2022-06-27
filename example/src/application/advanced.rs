@@ -8,13 +8,14 @@ use std::{thread, time::Duration};
 
 use crate::data::{self, MoreTypes};
 
-#[async_dart(namespace = "accounts")]
-pub async fn contact_panic() -> Result<data::Contact, data::Error> {
+#[async_dart(namespace = "accounts")] // also demonstrate fully qualified return types
+pub async fn contact_panic() -> ::std::result::Result<data::Contact, data::Error> {
   panic!("The rust code panicked");
 }
 
 #[async_dart(namespace = "accounts", timeout = 20)]
-pub fn contact_stream_panic() -> impl Stream<Item = Result<data::Contact, data::Error>> {
+pub fn contact_stream_panic(
+) -> impl ::futures::stream::Stream<Item = Result<data::Contact, data::Error>> {
   panic!("The rust code panicked");
   #[allow(unreachable_code)]
   futures::stream::iter(vec![Ok(data::Contact::default())])

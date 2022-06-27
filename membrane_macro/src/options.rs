@@ -31,7 +31,7 @@ pub(crate) fn extract_options(
       options.disable_logging = val.value();
       options
     }
-    Some((ident, Lit::Int(val))) if ident == "timeout" => {
+    Some((ident, Lit::Int(val))) if ident == "timeout" && !sync => {
       options.timeout = Some(val.base10_parse().unwrap());
       options
     }
@@ -43,9 +43,7 @@ pub(crate) fn extract_options(
       options
     }
     Some(_) if sync => {
-      panic!(
-        r#"#[sync_dart] only `namespace=""`, `disable_logging=true`, and `timeout=1000` are valid options"#
-      );
+      panic!(r#"#[sync_dart] only `namespace=""` and `disable_logging=true` are valid options"#);
     }
     Some(_) => {
       panic!(

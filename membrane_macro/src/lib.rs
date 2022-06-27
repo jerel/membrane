@@ -52,14 +52,6 @@ impl Parse for ReprDart {
   }
 }
 
-// TODO, change the Dart return signature for generated sync functions to be T instead
-// of Future<T> and that will require error handling to be changed first
-//
-// #[proc_macro_attribute]
-// pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
-//   dart_impl(attrs, input, true)
-// }
-
 ///
 /// Apply this macro to Rust functions to mark them and their input/output types for Dart code generation.
 ///
@@ -79,6 +71,20 @@ pub fn async_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   dart_impl(attrs, input, false)
 }
 
+///
+/// Apply this macro to synchronous Rust functions to mark them and their input/output types for Dart code generation.
+///
+/// WARNING: because it is synchronous a `#[sync_dart]` function will block the main Dart/Flutter thread until it
+/// returns. Always use `#[async_dart]` unless you know you need synchronous behavior. For example, to interface with
+/// a Rust/C library function that merely returns a pre-calculated value or tells the library to begin doing some
+/// background work which will be reported later.
+///
+/// Valid options:
+///   * `namespace`, used to name the generated Dart API class and the implementation code directory.
+///   * `disable_logging`, turn off logging statements inside generated Dart API code.
+///
+/// The only supported function return type is `Result<T, E>`.
+///
 #[proc_macro_attribute]
 pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
   dart_impl(attrs, input, true)
@@ -136,6 +142,9 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
   let return_statement = match output_style {
+    OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized if sync => {
+      panic!("#[sync_dart] expected a return type of `Result<T, E>` found an emitter");
+    }
     OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized => quote! {
       let membrane_emitter = #fn_name(membrane_port, #(#rust_inner_args),*);
       let membrane_abort_handle = membrane_emitter.abort_handle();

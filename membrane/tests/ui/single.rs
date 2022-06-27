@@ -1,5 +1,5 @@
 use futures::Future;
-use membrane::async_dart;
+use membrane::{async_dart, sync_dart};
 
 struct JoinHandle {}
 impl JoinHandle {
@@ -37,6 +37,11 @@ pub async fn option() -> Result<Option<i32>, String> {}
 #[async_dart(namespace = "a")]
 pub async fn one_success() -> Result<i32, String> {
   Ok(10)
+}
+
+#[sync_dart(namespace = "a")]
+pub fn emitter_in_sync_return() -> impl membrane::emitter::Emitter<Result<String, String>> {
+  membrane::emitter::emitter!()
 }
 
 fn main() {}

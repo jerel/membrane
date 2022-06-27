@@ -4,12 +4,13 @@ use membrane_types::{syn, Input, OutputStyle};
 use proc_macro::TokenStream;
 use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{Error, Expr, Ident, Path, Token};
+use syn::{Error, Expr, ExprPath, Ident, Path, Token};
 
 pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
   input.parse::<Token![impl]>()?;
   let span = input.span();
-  let stream_ident = input.parse::<Ident>()?;
+  let stream_path = input.parse::<ExprPath>()?;
+  let stream_ident = &stream_path.path.segments.last().unwrap().ident;
   input.parse::<Token![<]>()?;
 
   match stream_ident.to_string().as_str() {
@@ -47,7 +48,8 @@ pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)
 
 pub fn parse_type(input: ParseStream) -> Result<(Expr, Path)> {
   let outer_span = input.span();
-  match input.parse::<Ident>()? {
+  let type_path = input.parse::<ExprPath>()?;
+  match &type_path.path.segments.last().unwrap().ident {
     ident if ident == "Result" => (),
     _ => {
       return Err(Error::new(outer_span, "expected enum `Result`"));
