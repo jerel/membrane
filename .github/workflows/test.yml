@@ -14,8 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@1.49.0
-      # since we don't check in the lock file we specify 1.8.2 here for rust 1.49 compatibility
+      # since we don't check in the lock file we specify specific versions here for rust 1.49 compatibility
       - run: cargo update -p indexmap --precise 1.8.2
+      - run: cargo update -p linked-hash-map --precise 0.5.4
       - run: cargo build --verbose --features c-example --manifest-path membrane/Cargo.toml
   build-stable:
     name: build and test stable
