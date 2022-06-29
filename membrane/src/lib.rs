@@ -514,6 +514,7 @@ headers:
  */
 #include <stdint.h>
 
+#ifndef MembraneResponse
 typedef enum MembraneMsgKind {
   Ok,
   Error,
@@ -532,6 +533,7 @@ typedef struct MembraneResponse
 
 uint8_t membrane_cancel_membrane_task(const void *task_handle);
 uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
+#endif
 "#;
 
     let mut buffer =
