@@ -253,6 +253,13 @@ pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, Strin
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn vec_arg(contacts: Vec<data::Contact>) -> Result<Vec<data::Contact>, String> {
+  println!("\n[Rust] Received vec: {:?}", contacts);
+
+  Ok(contacts)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn filter_arg(filter: data::Filter) -> Result<data::Contacts, String> {
   println!("\n[Rust] Received filter: {:?}", filter);
 

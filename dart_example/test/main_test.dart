@@ -170,6 +170,19 @@ void main() {
     expect(returned.toString(), types.toString());
   });
 
+  test('can pass a vec of structs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecArg(contacts: [
+          Contact(id: 1, fullName: 'Alice Smith', status: Status.pending),
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ])),
+        equals([
+          Contact(id: 1, fullName: 'Alice Smith', status: Status.pending),
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ]));
+  });
+
   test('can pass a tuple arg containing a vec of structs', () async {
     final accounts = AccountsApi();
     expect(
