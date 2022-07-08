@@ -67,6 +67,32 @@ impl From<RustArgs> for Vec<Ident> {
   }
 }
 
+pub fn flatten_types<'a>(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> {
+  match &ty {
+    syn::Type::Tuple(_expr) => {
+      types.push("()".to_string());
+      types
+    }
+    syn::Type::Path(expr) => {
+      let last = expr.path.segments.last().unwrap();
+      types.push(last.ident.to_string());
+
+      if let syn::PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
+        args, ..
+      }) = &last.arguments
+      {
+        match args.last() {
+          Some(syn::GenericArgument::Type(last)) => flatten_types(last, types),
+          _ => types,
+        }
+      } else {
+        types
+      }
+    }
+    _ => unreachable!(),
+  }
+}
+
 fn rust_c_type(ty: &str) -> TokenStream2 {
   match ty {
     "String" => q!(*const ::std::os::raw::c_char),

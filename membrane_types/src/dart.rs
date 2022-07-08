@@ -71,8 +71,9 @@ impl From<DartArgs> for Vec<String> {
   }
 }
 
-pub fn dart_fn_return_type(str_ty: &str) -> &str {
-  match str_ty {
+pub fn dart_fn_return_type<'a>(str_ty: &Vec<&'a str>) -> String {
+  let tmp;
+  match str_ty[0] {
     "String" => "String",
     "i32" => "int",
     "i64" => "int",
@@ -80,8 +81,13 @@ pub fn dart_fn_return_type(str_ty: &str) -> &str {
     "f64" => "double",
     "bool" => "bool",
     "()" => "void",
-    _ => str_ty,
+    "Vec" => {
+      tmp = format!("List<{}>", dart_fn_return_type(&str_ty[1..].to_vec()));
+      &tmp
+    }
+    _ => str_ty[0],
   }
+  .to_string()
 }
 
 fn dart_type(str_ty: &str) -> String {
@@ -91,6 +97,13 @@ fn dart_type(str_ty: &str) -> String {
     "i64" => "required int",
     "f64" => "required double",
     "bool" => "required bool",
+    serialized if serialized.starts_with("Vec<") => {
+      ser_type = format!(
+        "required List<{} ",
+        str_ty.split(['<', ':'].as_ref()).last().unwrap().trim()
+      );
+      &ser_type
+    }
     serialized if !serialized.starts_with("Option<") => {
       ser_type = format!(
         "required {} ",
@@ -124,12 +137,6 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     &syn::Type::Tuple(_) | &syn::Type::Slice(_) | &syn::Type::Array(_) => {
       panic!("{}", unsupported_type_error(str_ty, variable, "a struct"))
     }
-    &syn::Type::Path(ref p) => match p.path.segments.first() {
-      Some(segment) if segment.ident == "Vec" => {
-        panic!("{}", unsupported_type_error(str_ty, variable, "a struct"))
-      }
-      _ => (),
-    },
     _ => (),
   };
 
@@ -162,6 +169,19 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     "bool" => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
     "i64" => variable.to_mixed_case(),
     "f64" => variable.to_mixed_case(),
+    serialized if serialized.starts_with("Vec<") => format!(
+      r#"(){{
+      final serializer = BincodeSerializer();
+      serializer.serializeLength({variable}.length);
+      for (final item in {variable}) {{
+        item.serialize(serializer);
+      }}
+      final data = serializer.bytes;
+      {serialize}
+    }}()"#,
+      variable = variable.to_mixed_case(),
+      serialize = serialization_partial(),
+    ),
     serialized if !serialized.starts_with("Option<") => format!(
       r#"(){{
       final data = {variable}.bincodeSerialize();

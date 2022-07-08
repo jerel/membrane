@@ -96,8 +96,8 @@ pub struct Function {
   pub fn_name: String,
   pub is_stream: bool,
   pub is_sync: bool,
-  pub return_type: String,
-  pub error_type: String,
+  pub return_type: Vec<&'static str>,
+  pub error_type: Vec<&'static str>,
   pub namespace: String,
   pub disable_logging: bool,
   pub timeout: Option<i32>,
@@ -963,9 +963,14 @@ impl Function {
     self
   }
 
-  fn deserializer(&self, ty: &str, enum_tracer_registry: &Registry, config: &Membrane) -> String {
+  fn deserializer(
+    &self,
+    ty: &Vec<&str>,
+    enum_tracer_registry: &Registry,
+    config: &Membrane,
+  ) -> String {
     let de;
-    match ty {
+    match ty[0] {
       "String" => "deserializer.deserializeString()",
       "i32" => "deserializer.deserializeInt32()",
       "i64" => "deserializer.deserializeInt64()",
@@ -973,6 +978,16 @@ impl Function {
       "f64" => "deserializer.deserializeFloat64()",
       "bool" => "deserializer.deserializeBool()",
       "()" => "null",
+      "Vec" => {
+        de = format!(
+          "(){{
+            final length = deserializer.deserializeLength();
+            return List.generate(length, (_i) => {}.deserialize(deserializer));
+          }}()",
+          ty[1]
+        );
+        &de
+      }
       ty if ty == "Option" => {
         panic!(
           "Option is not supported as a bare return type. Return the inner type from {} instead",
@@ -980,11 +995,11 @@ impl Function {
         )
       }
       _ => {
-        de = match enum_tracer_registry.get(ty) {
+        de = match enum_tracer_registry.get(ty[0]) {
           Some(ContainerFormat::Enum { .. }) if config.c_style_enums => {
-            format!("{}Extension.deserialize(deserializer)", ty)
+            format!("{}Extension.deserialize(deserializer)", ty[0])
           }
-          _ => format!("{}.deserialize(deserializer)", ty),
+          _ => format!("{}.deserialize(deserializer)", ty[0]),
         };
         &de
       }

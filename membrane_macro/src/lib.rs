@@ -2,14 +2,14 @@ extern crate proc_macro;
 use membrane_types::c::CHeaderTypes;
 use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
 use membrane_types::heck::MixedCase;
-use membrane_types::rust::{RustArgs, RustExternParams, RustTransforms};
+use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
 use options::{extract_options, Options};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parse_macro_input, AttributeArgs, Block, Expr, Ident, Path, Token, Type};
+use syn::{parse_macro_input, AttributeArgs, Block, Ident, Token, Type};
 
 mod options;
 mod parsers;
@@ -19,8 +19,8 @@ struct ReprDart {
   fn_name: Ident,
   inputs: Vec<Input>,
   output_style: OutputStyle,
-  output: Expr,
-  error: Path,
+  output: syn::Type,
+  error: syn::Type,
 }
 
 impl Parse for ReprDart {
@@ -273,12 +273,13 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     OutputStyle::StreamEmitterSerialized,
   ]
   .contains(&output_style);
-  let return_type = match &output {
-    Expr::Tuple(_expr) => "()".to_string(),
-    Expr::Path(expr) => expr.path.segments.last().unwrap().ident.to_string(),
-    _ => unreachable!(),
-  };
-  let error_type = error.segments.last().unwrap().ident.to_string();
+
+  let types = flatten_types(&output, vec![]);
+  let return_type = quote! { vec![#(#types),*] };
+
+  let types = flatten_types(&error, vec![]);
+  let error_type = quote! { vec![#(#types),*] };
+
   let rust_arg_types = inputs
     .iter()
     .map(|Input { ty, .. }| ty)
@@ -303,8 +304,8 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
                 fn_name: #name.to_string(),
                 is_stream: #is_stream,
                 is_sync: #sync,
-                return_type: #return_type.to_string(),
-                error_type: #error_type.to_string(),
+                return_type: #return_type,
+                error_type: #error_type,
                 namespace: #namespace.to_string(),
                 disable_logging: #disable_logging,
                 timeout: #timeout,

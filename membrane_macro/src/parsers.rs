@@ -4,9 +4,9 @@ use membrane_types::{syn, Input, OutputStyle};
 use proc_macro::TokenStream;
 use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{Error, Expr, ExprPath, Ident, Path, Token};
+use syn::{Error, Expr, ExprPath, Ident, Token};
 
-pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
+pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, syn::Type, syn::Type)> {
   input.parse::<Token![impl]>()?;
   let span = input.span();
   let stream_path = input.parse::<ExprPath>()?;
@@ -41,63 +41,53 @@ pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, Expr,
   }
 }
 
-pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, Expr, Path)> {
+pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, syn::Type, syn::Type)> {
   let (t, e) = parse_type(input)?;
   Ok((OutputStyle::Serialized, t, e))
 }
 
-pub fn parse_type(input: ParseStream) -> Result<(Expr, Path)> {
+fn parse_type(input: ParseStream) -> Result<(syn::Type, syn::Type)> {
   let outer_span = input.span();
-  let type_path = input.parse::<ExprPath>()?;
-  match &type_path.path.segments.last().unwrap().ident {
-    ident if ident == "Result" => (),
-    _ => {
-      return Err(Error::new(outer_span, "expected enum `Result`"));
-    }
+  let type_path = input.parse::<syn::TypePath>()?;
+  let return_type = &type_path.path.segments.last().unwrap();
+  if return_type.ident != "Result" {
+    return Err(Error::new(outer_span, "expected enum `Result`"));
   }
 
-  input.parse::<Token![<]>()?;
+  match &return_type.arguments {
+    syn::PathArguments::AngleBracketed(args) => match args {
+      syn::AngleBracketedGenericArguments { args, .. } => {
+        Ok((validate_type(&args[0])?, validate_type(&args[1])?))
+      }
+    },
+    _ => Err(Error::new(outer_span, "expected enum `Result`")),
+  }
+}
 
-  let type_span = input.span();
-  // handle the empty unit () type
-  let t = if input.peek(syn::token::Paren) {
-    let tuple = input.parse::<syn::ExprTuple>()?;
-    if !tuple.elems.is_empty() {
-      return Err(Error::new(
-        type_span,
+fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
+  match type_ {
+    syn::GenericArgument::Type(type_) => match type_ {
+      syn::Type::Path(_path) => return Ok(type_.clone()),
+      syn::Type::Tuple(tuple) if tuple.elems.len() > 0 => {
+        return Err(Error::new(
+        Span::call_site(),
         "A tuple may not be returned from an `async_dart` function. If a tuple is needed return a struct containing the tuple.",
       ));
-    }
-    Expr::Tuple(tuple)
-  } else {
-    Expr::Path(input.parse::<syn::ExprPath>()?)
+      }
+      // empty unit () is supported as a return type
+      syn::Type::Tuple(_tuple) => return Ok(type_.clone()),
+      _ => (),
+    },
+    _ => (),
   };
 
-  match input.parse::<Token![,]>() {
-    Ok(_) => (),
-    Err(_err) => {
-      let type_name = match t {
-        Expr::Path(syn::ExprPath { path, .. }) if !path.segments.is_empty() => {
-          path.segments.first().unwrap().ident.to_string()
-        }
-        _ => String::new(),
-      };
-
-      match type_name.as_str() {
-        "Vec" => {
-          return Err(Error::new(type_span, "A vector may not be returned from an `async_dart` function. If a vector is needed return a struct containing the vector."));
-        }
-        _ => {
-          return Err(Error::new(type_span, "expected a struct or scalar type"));
-        }
-      }
-    }
-  }
-
-  let e = input.parse::<Path>()?;
-  input.parse::<Token![>]>()?;
-
-  Ok((t, e))
+  Err(Error::new(
+    Span::call_site(),
+    format!(
+      "expected a struct, vec, or scalar type but found {:?}",
+      type_
+    ),
+  ))
 }
 
 pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
