@@ -79,7 +79,7 @@ pub mod emitter;
 #[doc(hidden)]
 pub mod utils;
 
-use membrane_types::dart::dart_fn_return_type;
+use membrane_types::dart::dart_bare_type;
 use membrane_types::heck::CamelCase;
 use serde_reflection::{ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig};
 use std::{
@@ -754,9 +754,9 @@ impl Function {
         "Future"
       },
       return_type = if self.is_sync {
-        dart_fn_return_type(&self.return_type).to_string()
+        dart_bare_type(&self.return_type).to_string()
       } else {
-        format!("<{}>", dart_fn_return_type(&self.return_type))
+        format!("<{}>", dart_bare_type(&self.return_type))
       },
       fn_name = self.fn_name,
       fn_params = if self.dart_outer_params.is_empty() {
@@ -970,38 +970,41 @@ impl Function {
     config: &Membrane,
   ) -> String {
     let de;
-    match ty[0] {
-      "String" => "deserializer.deserializeString()",
-      "i32" => "deserializer.deserializeInt32()",
-      "i64" => "deserializer.deserializeInt64()",
-      "f32" => "deserializer.deserializeFloat32()",
-      "f64" => "deserializer.deserializeFloat64()",
-      "bool" => "deserializer.deserializeBool()",
-      "()" => "null",
-      "Vec" => {
+    match ty[..] {
+      ["String"] => "deserializer.deserializeString()",
+      ["i32"] => "deserializer.deserializeInt32()",
+      ["i64"] => "deserializer.deserializeInt64()",
+      ["f32"] => "deserializer.deserializeFloat32()",
+      ["f64"] => "deserializer.deserializeFloat64()",
+      ["bool"] => "deserializer.deserializeBool()",
+      ["()"] => "null",
+      ["Vec", ty] => {
         de = format!(
           "(){{
             final length = deserializer.deserializeLength();
             return List.generate(length, (_i) => {}.deserialize(deserializer));
           }}()",
-          ty[1]
+          ty
         );
         &de
       }
-      ty if ty == "Option" => {
+      ["Option", _ty] => {
         panic!(
           "Option is not supported as a bare return type. Return the inner type from {} instead",
           self.fn_name
         )
       }
-      _ => {
-        de = match enum_tracer_registry.get(ty[0]) {
+      [ty, ..] => {
+        de = match enum_tracer_registry.get(ty) {
           Some(ContainerFormat::Enum { .. }) if config.c_style_enums => {
-            format!("{}Extension.deserialize(deserializer)", ty[0])
+            format!("{}Extension.deserialize(deserializer)", ty)
           }
-          _ => format!("{}.deserialize(deserializer)", ty[0]),
+          _ => format!("{}.deserialize(deserializer)", ty),
         };
         &de
+      }
+      [] => {
+        unreachable!("Expected type information to exist")
       }
     }
     .to_string()

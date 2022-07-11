@@ -69,10 +69,7 @@ impl From<RustArgs> for Vec<Ident> {
 
 pub fn flatten_types<'a>(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> {
   match &ty {
-    syn::Type::Tuple(_expr) => {
-      types.push("()".to_string());
-      types
-    }
+    syn::Type::Tuple(_expr) => vec!["()".to_string()],
     syn::Type::Path(expr) => {
       let last = expr.path.segments.last().unwrap();
       types.push(last.ident.to_string());
