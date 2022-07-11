@@ -982,9 +982,9 @@ impl Function {
         de = format!(
           "(){{
             final length = deserializer.deserializeLength();
-            return List.generate(length, (_i) => {}.deserialize(deserializer));
+            return List.generate(length, (_i) => {});
           }}()",
-          ty
+          self.deserializer(&vec![ty], enum_tracer_registry, config)
         );
         &de
       }

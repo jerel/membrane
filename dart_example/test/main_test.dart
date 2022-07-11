@@ -183,6 +183,28 @@ void main() {
         ]));
   });
 
+  test('can handle a vec of strings', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecString(values: ["hello", "world"])),
+        equals(["hello", "world"]));
+  });
+
+  test('can handle a vec of booleans', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecBool(values: [true, false])), equals([true, false]));
+  });
+
+  test('can handle a vec of integers', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecInt(values: [1, 2])), equals([1, 2]));
+  });
+
+  test('can handle a vec of floats', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecFloat(values: [1.0, 2.1])), equals([1.0, 2.1]));
+  });
+
   test('can pass a tuple arg containing a vec of structs', () async {
     final accounts = AccountsApi();
     expect(

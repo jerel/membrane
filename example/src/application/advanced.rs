@@ -260,6 +260,34 @@ pub async fn vec_arg(contacts: Vec<data::Contact>) -> Result<Vec<data::Contact>,
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn vec_string(values: Vec<String>) -> Result<Vec<String>, String> {
+  println!("\n[Rust] Received string vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_bool(values: Vec<bool>) -> Result<Vec<bool>, String> {
+  println!("\n[Rust] Received bool vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_int(values: Vec<i64>) -> Result<Vec<i64>, String> {
+  println!("\n[Rust] Received int vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_float(values: Vec<f64>) -> Result<Vec<f64>, String> {
+  println!("\n[Rust] Received float vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn filter_arg(filter: data::Filter) -> Result<data::Contacts, String> {
   println!("\n[Rust] Received filter: {:?}", filter);
 

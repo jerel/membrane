@@ -174,17 +174,18 @@ fn cast_dart_type_to_c(str_ty: &Vec<&str>, variable: &str, ty: &Type) -> String 
     ["bool"] => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
     ["i64"] => variable.to_mixed_case(),
     ["f64"] => variable.to_mixed_case(),
-    ["Vec", ..] => format!(
+    ["Vec", ty] => format!(
       r#"(){{
       final serializer = BincodeSerializer();
       serializer.serializeLength({variable}.length);
-      for (final item in {variable}) {{
-        item.serialize(serializer);
+      for (final value in {variable}) {{
+        {serializer};
       }}
       final data = serializer.bytes;
       {serialize}
     }}()"#,
       variable = variable.to_mixed_case(),
+      serializer = serializer(ty),
       serialize = serialization_partial(),
     ),
     [ty, ..] if ty != "Option" => format!(
@@ -275,4 +276,14 @@ final blobBytes = ptr.asTypedList(data.length + 8);
 blobBytes.buffer.asUint64List(0, 1)[0] = data.length + 8;
 blobBytes.setAll(8, data);
 return ptr;"#
+}
+
+fn serializer(str_ty: &str) -> &'static str {
+  match str_ty {
+    "String" => "serializer.serializeString(value)",
+    "bool" => "serializer.serializeBool(value)",
+    "i64" => "serializer.serializeInt64(value)",
+    "f64" => "serializer.serializeFloat64(value)",
+    _ => "value.serialize(serializer)",
+  }
 }
