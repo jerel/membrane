@@ -54,21 +54,19 @@ fn parse_type(input: ParseStream) -> Result<(syn::Type, syn::Type)> {
     return Err(Error::new(outer_span, "expected enum `Result`"));
   }
 
-  match &return_type.arguments {
-    syn::PathArguments::AngleBracketed(args) => match args {
-      syn::AngleBracketedGenericArguments { args, .. } => {
-        Ok((validate_type(&args[0])?, validate_type(&args[1])?))
-      }
-    },
-    _ => Err(Error::new(outer_span, "expected enum `Result`")),
+  if let syn::PathArguments::AngleBracketed(args) = &return_type.arguments {
+    let syn::AngleBracketedGenericArguments { args, .. } = args;
+    return Ok((validate_type(&args[0])?, validate_type(&args[1])?));
   }
+
+  Err(Error::new(outer_span, "expected enum `Result`"))
 }
 
 fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
-  match type_ {
-    syn::GenericArgument::Type(type_) => match type_ {
+  if let syn::GenericArgument::Type(type_) = type_ {
+    match type_ {
       syn::Type::Path(_path) => return Ok(type_.clone()),
-      syn::Type::Tuple(tuple) if tuple.elems.len() > 0 => {
+      syn::Type::Tuple(tuple) if !tuple.elems.is_empty() => {
         return Err(Error::new(
         Span::call_site(),
         "A tuple may not be returned from an `async_dart` function. If a tuple is needed return a struct containing the tuple.",
@@ -77,9 +75,8 @@ fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
       // empty unit () is supported as a return type
       syn::Type::Tuple(_tuple) => return Ok(type_.clone()),
       _ => (),
-    },
-    _ => (),
-  };
+    }
+  }
 
   Err(Error::new(
     Span::call_site(),

@@ -67,7 +67,7 @@ impl From<RustArgs> for Vec<Ident> {
   }
 }
 
-pub fn flatten_types<'a>(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> {
+pub fn flatten_types(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> {
   match &ty {
     syn::Type::Tuple(_expr) => vec!["()".to_string()],
     syn::Type::Path(expr) => {

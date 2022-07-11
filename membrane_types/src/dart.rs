@@ -17,7 +17,7 @@ impl From<&Vec<Input>> for DartParams {
           &flatten_types(&input.ty, vec![])
             .iter()
             .map(|x| x.as_str())
-            .collect()
+            .collect::<Vec<&str>>()
         ),
         variable = &input.variable.to_mixed_case(),
       ))
@@ -39,7 +39,7 @@ impl From<&Vec<Input>> for DartTransforms {
           &flatten_types(&input.ty, vec![])
             .iter()
             .map(|x| x.as_str())
-            .collect(),
+            .collect::<Vec<&str>>(),
           &input.variable,
           &input.ty
         )
@@ -83,7 +83,7 @@ impl From<DartArgs> for Vec<String> {
   }
 }
 
-pub fn dart_bare_type<'a>(str_ty: &Vec<&'a str>) -> String {
+pub fn dart_bare_type(str_ty: &[&str]) -> String {
   let tmp;
   match str_ty[..] {
     ["String"] => "String",
@@ -106,7 +106,7 @@ pub fn dart_bare_type<'a>(str_ty: &Vec<&'a str>) -> String {
   .to_string()
 }
 
-fn dart_type<'a>(str_ty: &Vec<&str>) -> String {
+fn dart_type(str_ty: &[&str]) -> String {
   let ser_type;
   match str_ty[..] {
     ["String"] => "required String",
@@ -114,11 +114,11 @@ fn dart_type<'a>(str_ty: &Vec<&str>) -> String {
     ["f64"] => "required double",
     ["bool"] => "required bool",
     ["Vec", ty] => {
-      ser_type = format!("required List<{}>", dart_bare_type(&vec![ty]));
+      ser_type = format!("required List<{}>", dart_bare_type(&[ty]));
       &ser_type
     }
     ["Vec", "Option", ty] => {
-      ser_type = format!("required List<{}?>", dart_bare_type(&vec![ty]));
+      ser_type = format!("required List<{}?>", dart_bare_type(&[ty]));
       &ser_type
     }
     [serialized] if serialized != "Option" => {
@@ -138,7 +138,7 @@ fn dart_type<'a>(str_ty: &Vec<&str>) -> String {
   .to_string()
 }
 
-fn cast_dart_type_to_c(str_ty: &Vec<&str>, variable: &str, ty: &Type) -> String {
+fn cast_dart_type_to_c(str_ty: &[&str], variable: &str, ty: &Type) -> String {
   match ty {
     &syn::Type::Reference(_) => panic!(
       "{}",

@@ -754,7 +754,7 @@ impl Function {
         "Future"
       },
       return_type = if self.is_sync {
-        dart_bare_type(&self.return_type).to_string()
+        dart_bare_type(&self.return_type)
       } else {
         format!("<{}>", dart_bare_type(&self.return_type))
       },
@@ -965,7 +965,7 @@ impl Function {
 
   fn deserializer(
     &self,
-    ty: &Vec<&str>,
+    ty: &[&str],
     enum_tracer_registry: &Registry,
     config: &Membrane,
   ) -> String {
@@ -984,7 +984,7 @@ impl Function {
             final length = deserializer.deserializeLength();
             return List.generate(length, (_i) => {});
           }}()",
-          self.deserializer(&vec![ty], enum_tracer_registry, config)
+          self.deserializer(&[ty], enum_tracer_registry, config)
         );
         &de
       }
@@ -999,7 +999,7 @@ impl Function {
               return null;
             }});
           }}()",
-          self.deserializer(&vec![ty], enum_tracer_registry, config)
+          self.deserializer(&[ty], enum_tracer_registry, config)
         );
         &de
       }
