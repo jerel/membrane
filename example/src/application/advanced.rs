@@ -253,10 +253,10 @@ pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, Strin
 }
 
 #[async_dart(namespace = "accounts")]
-pub async fn vec_arg(contacts: Vec<data::Contact>) -> Result<Vec<data::Contact>, String> {
-  println!("\n[Rust] Received vec: {:?}", contacts);
+pub async fn vec_struct(values: Vec<data::Contact>) -> Result<Vec<data::Contact>, String> {
+  println!("\n[Rust] Received struct vec: {:?}", values);
 
-  Ok(contacts)
+  Ok(values)
 }
 
 #[async_dart(namespace = "accounts")]
@@ -283,6 +283,43 @@ pub async fn vec_int(values: Vec<i64>) -> Result<Vec<i64>, String> {
 #[async_dart(namespace = "accounts")]
 pub async fn vec_float(values: Vec<f64>) -> Result<Vec<f64>, String> {
   println!("\n[Rust] Received float vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_struct(
+  values: Vec<Option<data::Contact>>,
+) -> Result<Vec<Option<data::Contact>>, String> {
+  println!("\n[Rust] Received optional struct vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_string(values: Vec<Option<String>>) -> Result<Vec<Option<String>>, String> {
+  println!("\n[Rust] Received string option vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_bool(values: Vec<Option<bool>>) -> Result<Vec<Option<bool>>, String> {
+  println!("\n[Rust] Received bool option vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_int(values: Vec<Option<i64>>) -> Result<Vec<Option<i64>>, String> {
+  println!("\n[Rust] Received int option vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_float(values: Vec<Option<f64>>) -> Result<Vec<Option<f64>>, String> {
+  println!("\n[Rust] Received float option vec: {:?}", values);
 
   Ok(values)
 }

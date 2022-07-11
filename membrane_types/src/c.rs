@@ -36,7 +36,7 @@ fn c_type(ty: &str) -> String {
     "Option<f64>" => "const double *",
     "Option<bool>" => "const uint8_t *",
     serialized if serialized.starts_with("Option<") => "const uint8_t *",
-    _ => unreachable!(),
+    _ => unreachable!("[c_type] macro checks should make this code unreachable"),
   }
   .to_string()
 }

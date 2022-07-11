@@ -86,7 +86,7 @@ pub fn flatten_types<'a>(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> 
         types
       }
     }
-    _ => unreachable!(),
+    _ => unreachable!("[flatten_types] macro checks should make this code unreachable"),
   }
 }
 
@@ -102,7 +102,7 @@ fn rust_c_type(ty: &str) -> TokenStream2 {
     "Option<f64>" => q!(*const ::std::os::raw::c_double),
     "Option<bool>" => q!(*const ::std::os::raw::c_char), // i8
     serialized if serialized.starts_with("Option<") => q!(*const u8),
-    _ => unreachable!(),
+    _ => unreachable!("[rust_c_type] macro checks should make this code unreachable"),
   }
 }
 
@@ -200,7 +200,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
       }
     }
 
-    _ => unreachable!(),
+    _ => unreachable!("[cast_c_type_to_rust] macro checks should make this code unreachable"),
   }
 }
 

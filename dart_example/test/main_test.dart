@@ -173,7 +173,7 @@ void main() {
   test('can pass a vec of structs', () async {
     final accounts = AccountsApi();
     expect(
-        (await accounts.vecArg(contacts: [
+        (await accounts.vecStruct(values: [
           Contact(id: 1, fullName: 'Alice Smith', status: Status.pending),
           Contact(id: 2, fullName: 'John Smith', status: Status.active)
         ])),
@@ -203,6 +203,43 @@ void main() {
   test('can handle a vec of floats', () async {
     final accounts = AccountsApi();
     expect((await accounts.vecFloat(values: [1.0, 2.1])), equals([1.0, 2.1]));
+  });
+
+  test('can pass a vec of optional structs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecOptionStruct(values: [
+          null,
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ])),
+        equals([
+          null,
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ]));
+  });
+
+  test('can handle a vec of optional strings', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionString(values: [null, "hello", "world"])),
+        equals([null, "hello", "world"]));
+  });
+
+  test('can handle a vec of optional booleans', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionBool(values: [false, null, true])),
+        equals([false, null, true]));
+  });
+
+  test('can handle a vec of optional integers', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionInt(values: [1, null, 2])),
+        equals([1, null, 2]));
+  });
+
+  test('can handle a vec of optional floats', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionFloat(values: [1.0, 2.1, null])),
+        equals([1.0, 2.1, null]));
   });
 
   test('can pass a tuple arg containing a vec of structs', () async {

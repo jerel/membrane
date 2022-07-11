@@ -988,6 +988,21 @@ impl Function {
         );
         &de
       }
+      ["Vec", "Option", ty] => {
+        de = format!(
+          "(){{
+            final length = deserializer.deserializeLength();
+            return List.generate(length, (_i) {{
+              if (deserializer.deserializeOptionTag()) {{
+                return {};
+              }}
+              return null;
+            }});
+          }}()",
+          self.deserializer(&vec![ty], enum_tracer_registry, config)
+        );
+        &de
+      }
       ["Option", _ty] => {
         panic!(
           "Option is not supported as a bare return type. Return the inner type from {} instead",

@@ -93,6 +93,10 @@ pub fn dart_bare_type<'a>(str_ty: &Vec<&'a str>) -> String {
     ["f64"] => "double",
     ["bool"] => "bool",
     ["()"] => "void",
+    ["Vec", "Option", ..] => {
+      tmp = format!("List<{}?>", dart_bare_type(&str_ty[2..].to_vec()));
+      &tmp
+    }
     ["Vec", ..] => {
       tmp = format!("List<{}>", dart_bare_type(&str_ty[1..].to_vec()));
       &tmp
@@ -113,6 +117,10 @@ fn dart_type<'a>(str_ty: &Vec<&str>) -> String {
       ser_type = format!("required List<{}>", dart_bare_type(&vec![ty]));
       &ser_type
     }
+    ["Vec", "Option", ty] => {
+      ser_type = format!("required List<{}?>", dart_bare_type(&vec![ty]));
+      &ser_type
+    }
     [serialized] if serialized != "Option" => {
       ser_type = format!("required {} ", serialized);
       &ser_type
@@ -125,7 +133,7 @@ fn dart_type<'a>(str_ty: &Vec<&str>) -> String {
       ser_type = format!("{}? ", serialized);
       &ser_type
     }
-    _ => unreachable!(),
+    _ => unreachable!("[dart_type] macro checks should make this code unreachable"),
   }
   .to_string()
 }
@@ -180,6 +188,23 @@ fn cast_dart_type_to_c(str_ty: &Vec<&str>, variable: &str, ty: &Type) -> String 
       serializer.serializeLength({variable}.length);
       for (final value in {variable}) {{
         {serializer};
+      }}
+      final data = serializer.bytes;
+      {serialize}
+    }}()"#,
+      variable = variable.to_mixed_case(),
+      serializer = serializer(ty),
+      serialize = serialization_partial(),
+    ),
+    ["Vec", "Option", ty] => format!(
+      r#"(){{
+      final serializer = BincodeSerializer();
+      serializer.serializeLength({variable}.length);
+      for (final value in {variable}) {{
+        serializer.serializeOptionTag(value != null);
+        if (value != null) {{
+          {serializer};
+        }}
       }}
       final data = serializer.bytes;
       {serialize}
@@ -256,7 +281,7 @@ fn cast_dart_type_to_c(str_ty: &Vec<&str>, variable: &str, ty: &Type) -> String 
       variable = variable.to_mixed_case(),
       serialize = serialization_partial(),
     ),
-    _ => unreachable!(),
+    _ => unreachable!("[cast_dart_type_to_c] macro checks should make this code unreachable"),
   }
 }
 
