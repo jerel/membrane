@@ -9,9 +9,3 @@ error: expected enum `Result`
    |
 26 | pub fn two_failure() -> impl Stream<Item = i32, String> {}
    |                                            ^^^
-
-error: expected a struct or scalar type
-  --> tests/ui/stream.rs:29:53
-   |
-29 | pub fn three_failure() -> impl Stream<Item = Result<Option<i32>, String>> {}
-   |                                                     ^^^^^^

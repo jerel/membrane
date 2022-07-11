@@ -4,34 +4,18 @@ error: expected enum `Result`
 23 | pub async fn no_result() -> i32 {}
    |                             ^^^
 
-error: expected enum `Result`
-  --> tests/ui/single.rs:26:38
-   |
-26 | pub async fn no_result_bare_vec() -> Vec<i32> {}
-   |                                      ^^^
-
-error: A vector may not be returned from an `async_dart` function. If a vector is needed return a struct containing the vector.
-  --> tests/ui/single.rs:29:35
-   |
-29 | pub async fn bare_vec() -> Result<Vec<i32>, String> {}
-   |                                   ^^^
-
 error: A tuple may not be returned from an `async_dart` function. If a tuple is needed return a struct containing the tuple.
-  --> tests/ui/single.rs:32:37
+  --> tests/ui/single.rs:25:1
    |
-32 | pub async fn bare_tuple() -> Result<(i32, i32), String> {}
-   |                                     ^
-
-error: expected a struct or scalar type
-  --> tests/ui/single.rs:35:33
+25 | #[async_dart(namespace = "a")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-35 | pub async fn option() -> Result<Option<i32>, String> {}
-   |                                 ^^^^^^
+   = note: this error originates in the attribute macro `async_dart` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: custom attribute panicked
-  --> tests/ui/single.rs:42:1
+  --> tests/ui/single.rs:38:1
    |
-42 | #[sync_dart(namespace = "a")]
+38 | #[sync_dart(namespace = "a")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: message: #[sync_dart] expected a return type of `Result<T, E>` found an emitter
