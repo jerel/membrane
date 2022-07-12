@@ -218,16 +218,28 @@ void main() {
         ]));
   });
 
-  test('can handle a vec of nullable vecs', () async {
+  test('can handle a vec of optional nullable vecs', () async {
     final accounts = AccountsApi();
     expect(
         (await accounts.vecVecOption(values: [
-          [1, 2],
-          [null, 4]
+          [
+            [1, null],
+            [3, 4]
+          ],
+          [
+            null,
+            [5, 6]
+          ]
         ])),
         equals([
-          [1, 2],
-          [null, 4]
+          [
+            [1, null],
+            [3, 4]
+          ],
+          [
+            null,
+            [5, 6]
+          ]
         ]));
   });
 

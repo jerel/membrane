@@ -296,9 +296,12 @@ pub async fn vec_vec(values: Vec<Vec<i64>>) -> Result<Vec<Vec<i64>>, String> {
 
 #[async_dart(namespace = "accounts")]
 pub async fn vec_vec_option(
-  values: Vec<Vec<Option<i64>>>,
-) -> Result<Vec<Vec<Option<i64>>>, String> {
-  println!("\n[Rust] Received nested vec of options: {:?}", values);
+  values: Vec<Vec<Option<Vec<Option<i64>>>>>,
+) -> Result<Vec<Vec<Option<Vec<Option<i64>>>>>, String> {
+  println!(
+    "\n[Rust] Received nested vec of optional vecs: {:?}",
+    values
+  );
 
   Ok(values)
 }
