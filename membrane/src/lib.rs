@@ -79,7 +79,7 @@ pub mod emitter;
 #[doc(hidden)]
 pub mod utils;
 
-use membrane_types::dart::dart_bare_type;
+use membrane_types::dart::dart_type;
 use membrane_types::heck::CamelCase;
 use serde_reflection::{ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig};
 use std::{
@@ -754,9 +754,9 @@ impl Function {
         "Future"
       },
       return_type = if self.is_sync {
-        dart_bare_type(&self.return_type)
+        dart_type(&self.return_type)
       } else {
-        format!("<{}>", dart_bare_type(&self.return_type))
+        format!("<{}>", dart_type(&self.return_type))
       },
       fn_name = self.fn_name,
       fn_params = if self.dart_outer_params.is_empty() {
