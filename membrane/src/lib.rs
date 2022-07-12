@@ -978,28 +978,24 @@ impl Function {
       ["f64"] => "deserializer.deserializeFloat64()",
       ["bool"] => "deserializer.deserializeBool()",
       ["()"] => "null",
-      ["Vec", ty] => {
+      ["Vec", "Option", ..] => {
         de = format!(
-          "(){{
-            final length = deserializer.deserializeLength();
-            return List.generate(length, (_i) => {});
-          }}()",
-          self.deserializer(&[ty], enum_tracer_registry, config)
+          "List.generate(deserializer.deserializeLength(), (_i) {{
+            if (deserializer.deserializeOptionTag()) {{
+              return {};
+            }}
+            return null;
+          }});",
+          self.deserializer(&ty[2..], enum_tracer_registry, config)
         );
         &de
       }
-      ["Vec", "Option", ty] => {
+      ["Vec", ..] => {
         de = format!(
-          "(){{
-            final length = deserializer.deserializeLength();
-            return List.generate(length, (_i) {{
-              if (deserializer.deserializeOptionTag()) {{
-                return {};
-              }}
-              return null;
-            }});
-          }}()",
-          self.deserializer(&[ty], enum_tracer_registry, config)
+          "List.generate(deserializer.deserializeLength(), (_i) {{
+            return {};
+          }});",
+          self.deserializer(&ty[1..], enum_tracer_registry, config)
         );
         &de
       }

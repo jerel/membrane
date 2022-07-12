@@ -205,6 +205,32 @@ void main() {
     expect((await accounts.vecFloat(values: [1.0, 2.1])), equals([1.0, 2.1]));
   });
 
+  test('can handle a vec of vecs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecVec(values: [
+          [1, 2],
+          [3, 4]
+        ])),
+        equals([
+          [1, 2],
+          [3, 4]
+        ]));
+  });
+
+  test('can handle a vec of nullable vecs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecVecOption(values: [
+          [1, 2],
+          [null, 4]
+        ])),
+        equals([
+          [1, 2],
+          [null, 4]
+        ]));
+  });
+
   test('can pass a vec of optional structs', () async {
     final accounts = AccountsApi();
     expect(

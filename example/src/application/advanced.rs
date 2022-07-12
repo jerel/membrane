@@ -288,6 +288,22 @@ pub async fn vec_float(values: Vec<f64>) -> Result<Vec<f64>, String> {
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn vec_vec(values: Vec<Vec<i64>>) -> Result<Vec<Vec<i64>>, String> {
+  println!("\n[Rust] Received nested vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_vec_option(
+  values: Vec<Vec<Option<i64>>>,
+) -> Result<Vec<Vec<Option<i64>>>, String> {
+  println!("\n[Rust] Received nested vec of options: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn vec_option_struct(
   values: Vec<Option<data::Contact>>,
 ) -> Result<Vec<Option<data::Contact>>, String> {

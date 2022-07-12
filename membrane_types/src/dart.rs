@@ -113,12 +113,12 @@ fn dart_type(str_ty: &[&str]) -> String {
     ["i64"] => "required int",
     ["f64"] => "required double",
     ["bool"] => "required bool",
-    ["Vec", ty] => {
-      ser_type = format!("required List<{}>", dart_bare_type(&[ty]));
+    ["Vec", "Option", ..] => {
+      ser_type = format!("required List<{}?>", dart_bare_type(&str_ty[2..]));
       &ser_type
     }
-    ["Vec", "Option", ty] => {
-      ser_type = format!("required List<{}?>", dart_bare_type(&[ty]));
+    ["Vec", ..] => {
+      ser_type = format!("required List<{}>", dart_bare_type(&str_ty[1..]));
       &ser_type
     }
     [serialized] if serialized != "Option" => {
@@ -182,35 +182,14 @@ fn cast_dart_type_to_c(str_ty: &[&str], variable: &str, ty: &Type) -> String {
     ["bool"] => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
     ["i64"] => variable.to_mixed_case(),
     ["f64"] => variable.to_mixed_case(),
-    ["Vec", ty] => format!(
+    ["Vec", ..] => format!(
       r#"(){{
       final serializer = BincodeSerializer();
-      serializer.serializeLength({variable}.length);
-      for (final value in {variable}) {{
-        {serializer};
-      }}
+      {serializer}
       final data = serializer.bytes;
       {serialize}
     }}()"#,
-      variable = variable.to_mixed_case(),
-      serializer = serializer(ty),
-      serialize = serialization_partial(),
-    ),
-    ["Vec", "Option", ty] => format!(
-      r#"(){{
-      final serializer = BincodeSerializer();
-      serializer.serializeLength({variable}.length);
-      for (final value in {variable}) {{
-        serializer.serializeOptionTag(value != null);
-        if (value != null) {{
-          {serializer};
-        }}
-      }}
-      final data = serializer.bytes;
-      {serialize}
-    }}()"#,
-      variable = variable.to_mixed_case(),
-      serializer = serializer(ty),
+      serializer = serializer(&str_ty[..], &variable.to_mixed_case()),
       serialize = serialization_partial(),
     ),
     [ty, ..] if ty != "Option" => format!(
@@ -303,12 +282,39 @@ blobBytes.setAll(8, data);
 return ptr;"#
 }
 
-fn serializer(str_ty: &str) -> &'static str {
-  match str_ty {
-    "String" => "serializer.serializeString(value)",
-    "bool" => "serializer.serializeBool(value)",
-    "i64" => "serializer.serializeInt64(value)",
-    "f64" => "serializer.serializeFloat64(value)",
+fn serializer(str_ty: &[&str], variable: &str) -> String {
+  let se;
+  match str_ty[..] {
+    ["String"] => "serializer.serializeString(value)",
+    ["bool"] => "serializer.serializeBool(value)",
+    ["i64"] => "serializer.serializeInt64(value)",
+    ["f64"] => "serializer.serializeFloat64(value)",
+    ["Vec", "Option", ..] => {
+      se = format!(
+        "serializer.serializeLength({variable}.length);
+      {variable}.forEach((value) {{
+        serializer.serializeOptionTag(value != null);
+        if (value != null) {{
+          {serializer};
+        }}
+      }});",
+        variable = variable,
+        serializer = serializer(&str_ty[2..], "value"),
+      );
+      &se
+    }
+    ["Vec", ..] => {
+      se = format!(
+        "serializer.serializeLength({variable}.length);
+      {variable}.forEach((value) {{
+        {serializer};
+      }});",
+        variable = variable,
+        serializer = serializer(&str_ty[1..], "value"),
+      );
+      &se
+    }
     _ => "value.serialize(serializer)",
   }
+  .to_string()
 }
