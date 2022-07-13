@@ -94,11 +94,11 @@ pub fn dart_type(types: &[&str]) -> String {
     ["bool"] => "bool",
     ["()"] => "void",
     ["Vec", "Option", ..] => {
-      ty = format!("List<{}?>", dart_type(&types[2..].to_vec()));
+      ty = format!("List<{}?>", dart_type(&types[2..]));
       &ty
     }
     ["Vec", ..] => {
-      ty = format!("List<{}>", dart_type(&types[1..].to_vec()));
+      ty = format!("List<{}>", dart_type(&types[1..]));
       &ty
     }
     _ => types[0],
