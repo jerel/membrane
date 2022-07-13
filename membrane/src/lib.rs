@@ -972,7 +972,12 @@ impl Function {
     let de;
     match ty[..] {
       ["String"] => "deserializer.deserializeString()",
+      ["i8"] => "deserializer.deserializeInt8()",
+      ["u8"] => "deserializer.deserializeUint8()",
+      ["i16"] => "deserializer.deserializeInt16()",
+      ["u16"] => "deserializer.deserializeUint16()",
       ["i32"] => "deserializer.deserializeInt32()",
+      ["u32"] => "deserializer.deserializeUint32()",
       ["i64"] => "deserializer.deserializeInt64()",
       ["f32"] => "deserializer.deserializeFloat32()",
       ["f64"] => "deserializer.deserializeFloat64()",

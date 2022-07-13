@@ -87,7 +87,12 @@ pub fn dart_type(types: &[&str]) -> String {
   let ty;
   match types[..] {
     ["String"] => "String",
+    ["i8"] => "int",
+    ["u8"] => "int",
+    ["i16"] => "int",
+    ["u16"] => "int",
     ["i32"] => "int",
+    ["u32"] => "int",
     ["i64"] => "int",
     ["f32"] => "double",
     ["f64"] => "double",

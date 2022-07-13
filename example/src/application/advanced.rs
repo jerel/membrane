@@ -175,7 +175,47 @@ pub async fn scalar_empty() -> Result<(), String> {
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn scalar_i8(val: i64) -> Result<i8, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_u8(val: i64) -> Result<u8, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_i16(val: i64) -> Result<i16, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_u16(val: i64) -> Result<u16, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn scalar_i32(val: i64) -> Result<i32, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_u32(val: i64) -> Result<u32, String> {
   use std::convert::TryInto;
 
   assert!(val == 123);

@@ -101,7 +101,12 @@ void main() {
 
   test('can call a function that returns a scalar value', () async {
     final accounts = AccountsApi();
+    expect(await accounts.scalarI8(val: 123), equals(123));
+    expect(await accounts.scalarU8(val: 123), equals(123));
+    expect(await accounts.scalarI16(val: 123), equals(123));
+    expect(await accounts.scalarU16(val: 123), equals(123));
     expect(await accounts.scalarI32(val: 123), equals(123));
+    expect(await accounts.scalarU32(val: 123), equals(123));
     expect(await accounts.scalarI64(val: 10), equals(10));
     expect((await accounts.scalarF32(val: 21.1)).toStringAsFixed(1),
         equals('21.1'));
