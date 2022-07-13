@@ -15,7 +15,12 @@ impl From<&Vec<Input>> for RustExternParams {
 
     for input in inputs {
       let variable = Ident::new(&input.variable, Span::call_site());
-      let c_type = rust_c_type(&input.rust_type);
+      let c_type = rust_c_type(
+        &flatten_types(&input.ty, vec![])
+          .iter()
+          .map(|x| x.as_str())
+          .collect::<Vec<&str>>(),
+      );
       stream.push(q!(#variable: #c_type))
     }
 
@@ -29,7 +34,14 @@ impl From<&Vec<Input>> for RustTransforms {
 
     for input in inputs {
       let variable = Ident::new(&input.variable, Span::call_site());
-      let cast = cast_c_type_to_rust(&input.rust_type, &input.variable, &input.ty);
+      let cast = cast_c_type_to_rust(
+        &flatten_types(&input.ty, vec![])
+          .iter()
+          .map(|x| x.as_str())
+          .collect::<Vec<&str>>(),
+        &input.variable,
+        &input.ty,
+      );
       stream.push(q!(let #variable = #cast;))
     }
 
@@ -67,51 +79,76 @@ impl From<RustArgs> for Vec<Ident> {
   }
 }
 
-fn rust_c_type(ty: &str) -> TokenStream2 {
-  match ty {
-    "String" => q!(*const ::std::os::raw::c_char),
-    "i64" => q!(::std::os::raw::c_long),
-    "f64" => q!(::std::os::raw::c_double),
-    "bool" => q!(::std::os::raw::c_char), // i8
-    serialized if !serialized.starts_with("Option<") => q!(*const u8),
-    "Option<String>" => q!(*const ::std::os::raw::c_char),
-    "Option<i64>" => q!(*const ::std::os::raw::c_long),
-    "Option<f64>" => q!(*const ::std::os::raw::c_double),
-    "Option<bool>" => q!(*const ::std::os::raw::c_char), // i8
-    serialized if serialized.starts_with("Option<") => q!(*const u8),
-    _ => unreachable!(),
+pub fn flatten_types(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> {
+  match &ty {
+    syn::Type::Tuple(_expr) => vec!["()".to_string()],
+    syn::Type::Path(expr) => {
+      let last = expr.path.segments.last().unwrap();
+      types.push(last.ident.to_string());
+
+      if let syn::PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
+        args, ..
+      }) = &last.arguments
+      {
+        match args.last() {
+          Some(syn::GenericArgument::Type(last)) => flatten_types(last, types),
+          _ => types,
+        }
+      } else {
+        types
+      }
+    }
+    _ => unreachable!("[flatten_types] macro checks should make this code unreachable"),
   }
 }
 
-fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 {
-  match str_ty {
-    "String" => {
+fn rust_c_type(ty: &[&str]) -> TokenStream2 {
+  match ty[..] {
+    ["String"] => q!(*const ::std::os::raw::c_char),
+    ["i64"] => q!(::std::os::raw::c_long),
+    ["f64"] => q!(::std::os::raw::c_double),
+    ["bool"] => q!(::std::os::raw::c_char), // i8
+    ["Vec", ..] => q!(*const u8),
+    [serialized] if serialized != "Option" => q!(*const u8),
+    ["Option", "String"] => q!(*const ::std::os::raw::c_char),
+    ["Option", "i64"] => q!(*const ::std::os::raw::c_long),
+    ["Option", "f64"] => q!(*const ::std::os::raw::c_double),
+    ["Option", "bool"] => q!(*const ::std::os::raw::c_char), // i8
+    ["Option", _serialized] => q!(*const u8),
+    _ => unreachable!("[rust_c_type] macro checks should make this code unreachable"),
+  }
+}
+
+fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> TokenStream2 {
+  match types[..] {
+    ["String"] => {
       let variable = Ident::new(variable, Span::call_site());
       q!(cstr!(#variable, panic!("invalid C string")).to_string())
     }
-    "i64" => {
+    ["i64"] => {
       let variable = Ident::new(variable, Span::call_site());
       q!(#variable)
     }
-    "f64" => {
+    ["f64"] => {
       let variable = Ident::new(variable, Span::call_site());
       q!(#variable)
     }
-    "bool" => {
+    ["bool"] => {
       let variable = Ident::new(variable, Span::call_site());
       q!(#variable != 0)
     }
-    serialized if !serialized.starts_with("Option<") => {
+    // this also handles Vec
+    [serialized, ..] if serialized != "Option" => {
       let variable_name = variable;
       let variable = Ident::new(variable, Span::call_site());
-      let deserialize = deserialize(variable, variable_name, ty, str_ty);
+      let deserialize = deserialize(variable, variable_name, ty, types[0]);
       q! {
         {
           #deserialize
         }
       }
     }
-    "Option<String>" => {
+    ["Option", "String"] => {
       let variable_name = variable;
       let variable = Ident::new(variable, Span::call_site());
       q! {
@@ -128,7 +165,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
         }
       }
     }
-    "Option<i64>" => {
+    ["Option", "i64"] => {
       let variable = Ident::new(variable, Span::call_site());
       q! {
         match unsafe { #variable.as_ref() } {
@@ -137,7 +174,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
         }
       }
     }
-    "Option<f64>" => {
+    ["Option", "f64"] => {
       let variable = Ident::new(variable, Span::call_site());
       q! {
         match unsafe { #variable.as_ref() } {
@@ -146,7 +183,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
         }
       }
     }
-    "Option<bool>" => {
+    ["Option", "bool"] => {
       let variable = Ident::new(variable, Span::call_site());
       q! {
         match unsafe { #variable.as_ref() } {
@@ -155,7 +192,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
         }
       }
     }
-    serialized if serialized.starts_with("Option<") => {
+    ["Option", _serialized] => {
       let variable_name = variable;
       let variable = Ident::new(variable, Span::call_site());
       let ty = extract_type_from_option(ty).unwrap();
@@ -177,7 +214,7 @@ fn cast_c_type_to_rust(str_ty: &str, variable: &str, ty: &Type) -> TokenStream2 
       }
     }
 
-    _ => unreachable!(),
+    _ => unreachable!("[cast_c_type_to_rust] macro checks should make this code unreachable"),
   }
 }
 

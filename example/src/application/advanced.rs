@@ -175,7 +175,47 @@ pub async fn scalar_empty() -> Result<(), String> {
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn scalar_i8(val: i64) -> Result<i8, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_u8(val: i64) -> Result<u8, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_i16(val: i64) -> Result<i16, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_u16(val: i64) -> Result<u16, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn scalar_i32(val: i64) -> Result<i32, String> {
+  use std::convert::TryInto;
+
+  assert!(val == 123);
+  Ok(val.try_into().unwrap())
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_u32(val: i64) -> Result<u32, String> {
   use std::convert::TryInto;
 
   assert!(val == 123);
@@ -250,6 +290,97 @@ pub async fn more_types(types: data::MoreTypes) -> Result<data::MoreTypes, Strin
   assert!(return_value == types);
 
   Ok(return_value)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_struct(values: Vec<data::Contact>) -> Result<Vec<data::Contact>, String> {
+  println!("\n[Rust] Received struct vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_string(values: Vec<String>) -> Result<Vec<String>, String> {
+  println!("\n[Rust] Received string vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_bool(values: Vec<bool>) -> Result<Vec<bool>, String> {
+  println!("\n[Rust] Received bool vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_int(values: Vec<i64>) -> Result<Vec<i64>, String> {
+  println!("\n[Rust] Received int vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_float(values: Vec<f64>) -> Result<Vec<f64>, String> {
+  println!("\n[Rust] Received float vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_vec(values: Vec<Vec<i64>>) -> Result<Vec<Vec<i64>>, String> {
+  println!("\n[Rust] Received nested vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_vec_option(
+  values: Vec<Vec<Option<Vec<Option<i64>>>>>,
+) -> Result<Vec<Vec<Option<Vec<Option<i64>>>>>, String> {
+  println!(
+    "\n[Rust] Received nested vec of optional vecs: {:?}",
+    values
+  );
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_struct(
+  values: Vec<Option<data::Contact>>,
+) -> Result<Vec<Option<data::Contact>>, String> {
+  println!("\n[Rust] Received optional struct vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_string(values: Vec<Option<String>>) -> Result<Vec<Option<String>>, String> {
+  println!("\n[Rust] Received string option vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_bool(values: Vec<Option<bool>>) -> Result<Vec<Option<bool>>, String> {
+  println!("\n[Rust] Received bool option vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_int(values: Vec<Option<i64>>) -> Result<Vec<Option<i64>>, String> {
+  println!("\n[Rust] Received int option vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_option_float(values: Vec<Option<f64>>) -> Result<Vec<Option<f64>>, String> {
+  println!("\n[Rust] Received float option vec: {:?}", values);
+
+  Ok(values)
 }
 
 #[async_dart(namespace = "accounts")]

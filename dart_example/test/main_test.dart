@@ -101,7 +101,12 @@ void main() {
 
   test('can call a function that returns a scalar value', () async {
     final accounts = AccountsApi();
+    expect(await accounts.scalarI8(val: 123), equals(123));
+    expect(await accounts.scalarU8(val: 123), equals(123));
+    expect(await accounts.scalarI16(val: 123), equals(123));
+    expect(await accounts.scalarU16(val: 123), equals(123));
     expect(await accounts.scalarI32(val: 123), equals(123));
+    expect(await accounts.scalarU32(val: 123), equals(123));
     expect(await accounts.scalarI64(val: 10), equals(10));
     expect((await accounts.scalarF32(val: 21.1)).toStringAsFixed(1),
         equals('21.1'));
@@ -168,6 +173,116 @@ void main() {
 
     final returned = await accounts.moreTypes(types: types);
     expect(returned.toString(), types.toString());
+  });
+
+  test('can pass a vec of structs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecStruct(values: [
+          Contact(id: 1, fullName: 'Alice Smith', status: Status.pending),
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ])),
+        equals([
+          Contact(id: 1, fullName: 'Alice Smith', status: Status.pending),
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ]));
+  });
+
+  test('can handle a vec of strings', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecString(values: ["hello", "world"])),
+        equals(["hello", "world"]));
+  });
+
+  test('can handle a vec of booleans', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecBool(values: [true, false])), equals([true, false]));
+  });
+
+  test('can handle a vec of integers', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecInt(values: [1, 2])), equals([1, 2]));
+  });
+
+  test('can handle a vec of floats', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecFloat(values: [1.0, 2.1])), equals([1.0, 2.1]));
+  });
+
+  test('can handle a vec of vecs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecVec(values: [
+          [1, 2],
+          [3, 4]
+        ])),
+        equals([
+          [1, 2],
+          [3, 4]
+        ]));
+  });
+
+  test('can handle a vec of optional nullable vecs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecVecOption(values: [
+          [
+            [1, null],
+            [3, 4]
+          ],
+          [
+            null,
+            [5, 6]
+          ]
+        ])),
+        equals([
+          [
+            [1, null],
+            [3, 4]
+          ],
+          [
+            null,
+            [5, 6]
+          ]
+        ]));
+  });
+
+  test('can pass a vec of optional structs', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.vecOptionStruct(values: [
+          null,
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ])),
+        equals([
+          null,
+          Contact(id: 2, fullName: 'John Smith', status: Status.active)
+        ]));
+  });
+
+  test('can handle a vec of optional strings', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionString(values: [null, "hello", "world"])),
+        equals([null, "hello", "world"]));
+  });
+
+  test('can handle a vec of optional booleans', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionBool(values: [false, null, true])),
+        equals([false, null, true]));
+  });
+
+  test('can handle a vec of optional integers', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionInt(values: [1, null, 2])),
+        equals([1, null, 2]));
+  });
+
+  test('can handle a vec of optional floats', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.vecOptionFloat(values: [1.0, 2.1, null])),
+        equals([1.0, 2.1, null]));
   });
 
   test('can pass a tuple arg containing a vec of structs', () async {

@@ -1,4 +1,4 @@
-use crate::Input;
+use crate::{rust::flatten_types, Input};
 
 pub struct CHeaderTypes(Vec<String>);
 
@@ -9,7 +9,12 @@ impl From<&Vec<Input>> for CHeaderTypes {
     for input in inputs {
       stream.push(format!(
         "{c_type}{variable}",
-        c_type = c_type(&input.rust_type),
+        c_type = c_type(
+          &flatten_types(&input.ty, vec![])
+            .iter()
+            .map(|x| x.as_str())
+            .collect::<Vec<&str>>()
+        ),
         variable = &input.variable,
       ))
     }
@@ -24,19 +29,20 @@ impl From<CHeaderTypes> for Vec<String> {
   }
 }
 
-fn c_type(ty: &str) -> String {
-  match ty {
-    "String" => "const char *",
-    "i64" => "const signed long ",
-    "f64" => "const double ",
-    "bool" => "const uint8_t ",
-    serialized if !serialized.starts_with("Option<") => "const uint8_t *",
-    "Option<String>" => "const char *",
-    "Option<i64>" => "const signed long *",
-    "Option<f64>" => "const double *",
-    "Option<bool>" => "const uint8_t *",
-    serialized if serialized.starts_with("Option<") => "const uint8_t *",
-    _ => unreachable!(),
+fn c_type(ty: &[&str]) -> String {
+  match ty[..] {
+    ["String"] => "const char *",
+    ["i64"] => "const signed long ",
+    ["f64"] => "const double ",
+    ["bool"] => "const uint8_t ",
+    ["Vec", ..] => "const uint8_t *",
+    [serialized, ..] if serialized != "Option" => "const uint8_t *",
+    ["Option", "String"] => "const char *",
+    ["Option", "i64"] => "const signed long *",
+    ["Option", "f64"] => "const double *",
+    ["Option", "bool"] => "const uint8_t *",
+    ["Option", _serialized] => "const uint8_t *",
+    _ => unreachable!("[c_type] macro checks should make this code unreachable"),
   }
   .to_string()
 }

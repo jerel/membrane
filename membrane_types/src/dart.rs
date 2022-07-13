@@ -1,4 +1,4 @@
-use crate::Input;
+use crate::{rust::flatten_types, Input};
 use heck::{CamelCase, MixedCase};
 use syn::Type;
 
@@ -13,7 +13,12 @@ impl From<&Vec<Input>> for DartParams {
     for input in inputs {
       stream.push(format!(
         "{dart_type} {variable}",
-        dart_type = dart_type(&input.rust_type),
+        dart_type = dart_param_type(
+          &flatten_types(&input.ty, vec![])
+            .iter()
+            .map(|x| x.as_str())
+            .collect::<Vec<&str>>()
+        ),
         variable = &input.variable.to_mixed_case(),
       ))
     }
@@ -30,7 +35,14 @@ impl From<&Vec<Input>> for DartTransforms {
       stream.push(format!(
         "final c{variable} = {cast}",
         variable = &input.variable.to_camel_case(),
-        cast = cast_dart_type_to_c(&input.rust_type, &input.variable, &input.ty)
+        cast = cast_dart_type_to_c(
+          &flatten_types(&input.ty, vec![])
+            .iter()
+            .map(|x| x.as_str())
+            .collect::<Vec<&str>>(),
+          &input.variable,
+          &input.ty
+        )
       ))
     }
 
@@ -71,85 +83,94 @@ impl From<DartArgs> for Vec<String> {
   }
 }
 
-pub fn dart_fn_return_type(str_ty: &str) -> &str {
-  match str_ty {
-    "String" => "String",
-    "i32" => "int",
-    "i64" => "int",
-    "f32" => "double",
-    "f64" => "double",
-    "bool" => "bool",
-    "()" => "void",
-    _ => str_ty,
-  }
-}
-
-fn dart_type(str_ty: &str) -> String {
-  let ser_type;
-  match str_ty {
-    "String" => "required String",
-    "i64" => "required int",
-    "f64" => "required double",
-    "bool" => "required bool",
-    serialized if !serialized.starts_with("Option<") => {
-      ser_type = format!(
-        "required {} ",
-        str_ty.split(['<', ':'].as_ref()).last().unwrap().trim()
-      );
-      &ser_type
+pub fn dart_type(types: &[&str]) -> String {
+  let ty;
+  match types[..] {
+    ["String"] => "String",
+    ["i8"] => "int",
+    ["u8"] => "int",
+    ["i16"] => "int",
+    ["u16"] => "int",
+    ["i32"] => "int",
+    ["u32"] => "int",
+    ["i64"] => "int",
+    ["f32"] => "double",
+    ["f64"] => "double",
+    ["bool"] => "bool",
+    ["()"] => "void",
+    ["Vec", "Option", ..] => {
+      ty = format!("List<{}?>", dart_type(&types[2..]));
+      &ty
     }
-    "Option<String>" => "String?",
-    "Option<i64>" => "int?",
-    "Option<f64>" => "double?",
-    "Option<bool>" => "bool?",
-    serialized if serialized.starts_with("Option<") => {
-      ser_type = format!(
-        "{}? ",
-        str_ty
-          .split(['<', ':'].as_ref())
-          .last()
-          .unwrap()
-          .trim_end_matches(|c| c == ' ' || c == '>')
-      );
-      &ser_type
+    ["Vec", ..] => {
+      ty = format!("List<{}>", dart_type(&types[1..]));
+      &ty
     }
-    _ => unreachable!(),
+    _ => types[0],
   }
   .to_string()
 }
 
-fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
-  match ty {
-    &syn::Type::Reference(_) => panic!("{}", unsupported_type_error(str_ty, variable, "a struct")),
-    &syn::Type::Tuple(_) | &syn::Type::Slice(_) | &syn::Type::Array(_) => {
-      panic!("{}", unsupported_type_error(str_ty, variable, "a struct"))
+fn dart_param_type(types: &[&str]) -> String {
+  let ty;
+  match types[..] {
+    ["String"] => "required String",
+    ["i64"] => "required int",
+    ["f64"] => "required double",
+    ["bool"] => "required bool",
+    ["Vec", "Option", ..] => {
+      ty = format!("required List<{}?>", dart_type(&types[2..]));
+      &ty
     }
-    &syn::Type::Path(ref p) => match p.path.segments.first() {
-      Some(segment) if segment.ident == "Vec" => {
-        panic!("{}", unsupported_type_error(str_ty, variable, "a struct"))
-      }
-      _ => (),
-    },
+    ["Vec", ..] => {
+      ty = format!("required List<{}>", dart_type(&types[1..]));
+      &ty
+    }
+    [serialized] if serialized != "Option" => {
+      ty = format!("required {} ", serialized);
+      &ty
+    }
+    ["Option", "String"] => "String?",
+    ["Option", "i64"] => "int?",
+    ["Option", "f64"] => "double?",
+    ["Option", "bool"] => "bool?",
+    ["Option", serialized] => {
+      ty = format!("{}? ", serialized);
+      &ty
+    }
+    _ => unreachable!("[dart_type] macro checks should make this code unreachable"),
+  }
+  .to_string()
+}
+
+fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> String {
+  match ty {
+    &syn::Type::Reference(_) => {
+      panic!("{}", unsupported_type_error(types[0], variable, "a struct"))
+    }
+    &syn::Type::Tuple(_) | &syn::Type::Slice(_) | &syn::Type::Array(_) => {
+      panic!("{}", unsupported_type_error(types[0], variable, "a struct"))
+    }
     _ => (),
   };
 
-  match str_ty {
-    "&str" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
-    "char" => panic!("{}", unsupported_type_error(str_ty, variable, "String")),
-    "i8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "i16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "i32" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "i128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "u8" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "u16" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "u32" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "u64" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "u128" => panic!("{}", unsupported_type_error(str_ty, variable, "i64")),
-    "f32" => panic!("{}", unsupported_type_error(str_ty, variable, "f64")),
+  match types[..] {
+    ["&str"] => panic!("{}", unsupported_type_error(types[0], variable, "String")),
+    ["char"] => panic!("{}", unsupported_type_error(types[0], variable, "String")),
+    ["i8"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["i16"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["i32"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["i128"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["u8"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["u16"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["u32"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["u64"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["u128"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
+    ["f32"] => panic!("{}", unsupported_type_error(types[0], variable, "f64")),
     //
     // supported types
     //
-    "String" => {
+    ["String"] => {
       format!(
         r#"(){{
           final ptr = {variable}.toNativeUtf8().cast<Int8>();
@@ -159,18 +180,28 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
         variable = variable.to_mixed_case()
       )
     }
-    "bool" => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
-    "i64" => variable.to_mixed_case(),
-    "f64" => variable.to_mixed_case(),
-    serialized if !serialized.starts_with("Option<") => format!(
+    ["bool"] => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
+    ["i64"] => variable.to_mixed_case(),
+    ["f64"] => variable.to_mixed_case(),
+    ["Vec", ..] => format!(
+      r#"(){{
+      final serializer = BincodeSerializer();
+      {serializer}
+      final data = serializer.bytes;
+      {ser_partial}
+    }}()"#,
+      serializer = serializer(types, &variable.to_mixed_case()),
+      ser_partial = serialization_partial(),
+    ),
+    [ty, ..] if ty != "Option" => format!(
       r#"(){{
       final data = {variable}.bincodeSerialize();
-      {serialize}
+      {ser_partial}
     }}()"#,
       variable = variable.to_mixed_case(),
-      serialize = serialization_partial(),
+      ser_partial = serialization_partial(),
     ),
-    "Option<String>" => {
+    ["Option", "String"] => {
       format!(
         r#"(){{
       if ({variable} == null) {{
@@ -183,7 +214,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
         variable = variable.to_mixed_case()
       )
     }
-    "Option<bool>" => format!(
+    ["Option", "bool"] => format!(
       r#"(){{
       if ({variable} == null) {{
         return nullptr;
@@ -195,7 +226,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     }}()"#,
       variable = variable.to_mixed_case()
     ),
-    "Option<i64>" => format!(
+    ["Option", "i64"] => format!(
       r#"(){{
       if ({variable} == null) {{
         return nullptr;
@@ -207,7 +238,7 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     }}()"#,
       variable = variable.to_mixed_case()
     ),
-    "Option<f64>" => format!(
+    ["Option", "f64"] => format!(
       r#"(){{
       if ({variable} == null) {{
         return nullptr;
@@ -219,18 +250,18 @@ fn cast_dart_type_to_c(str_ty: &str, variable: &str, ty: &Type) -> String {
     }}()"#,
       variable = variable.to_mixed_case()
     ),
-    serialized if serialized.starts_with("Option<") => format!(
+    ["Option", ..] => format!(
       r#"(){{
       if ({variable} == null) {{
         return nullptr;
       }}
       final data = {variable}.bincodeSerialize();
-      {serialize}
+      {ser_partial}
     }}()"#,
       variable = variable.to_mixed_case(),
-      serialize = serialization_partial(),
+      ser_partial = serialization_partial(),
     ),
-    _ => unreachable!(),
+    _ => unreachable!("[cast_dart_type_to_c] macro checks should make this code unreachable"),
   }
 }
 
@@ -250,4 +281,41 @@ final blobBytes = ptr.asTypedList(data.length + 8);
 blobBytes.buffer.asUint64List(0, 1)[0] = data.length + 8;
 blobBytes.setAll(8, data);
 return ptr;"#
+}
+
+fn serializer(types: &[&str], variable: &str) -> String {
+  let se;
+  match types[..] {
+    ["String"] => "serializer.serializeString(value)",
+    ["bool"] => "serializer.serializeBool(value)",
+    ["i64"] => "serializer.serializeInt64(value)",
+    ["f64"] => "serializer.serializeFloat64(value)",
+    ["Vec", "Option", ..] => {
+      se = format!(
+        "serializer.serializeLength({variable}.length);
+      {variable}.forEach((value) {{
+        serializer.serializeOptionTag(value != null);
+        if (value != null) {{
+          {serializer};
+        }}
+      }});",
+        variable = variable,
+        serializer = serializer(&types[2..], "value"),
+      );
+      &se
+    }
+    ["Vec", ..] => {
+      se = format!(
+        "serializer.serializeLength({variable}.length);
+      {variable}.forEach((value) {{
+        {serializer};
+      }});",
+        variable = variable,
+        serializer = serializer(&types[1..], "value"),
+      );
+      &se
+    }
+    _ => "value.serialize(serializer)",
+  }
+  .to_string()
 }

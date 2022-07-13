@@ -23,20 +23,16 @@ static RUNTIME: Runtime = Runtime {};
 pub async fn no_result() -> i32 {}
 
 #[async_dart(namespace = "a")]
-pub async fn no_result_bare_vec() -> Vec<i32> {}
-
-#[async_dart(namespace = "a")]
-pub async fn bare_vec() -> Result<Vec<i32>, String> {}
-
-#[async_dart(namespace = "a")]
 pub async fn bare_tuple() -> Result<(i32, i32), String> {}
 
 #[async_dart(namespace = "a")]
-pub async fn option() -> Result<Option<i32>, String> {}
+pub async fn option_success() -> Result<Option<i32>, String> {
+  Ok(Some(1))
+}
 
 #[async_dart(namespace = "a")]
-pub async fn one_success() -> Result<i32, String> {
-  Ok(10)
+pub async fn one_success() -> Result<Vec<i32>, String> {
+  Ok(vec![10])
 }
 
 #[sync_dart(namespace = "a")]
