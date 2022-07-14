@@ -464,11 +464,10 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn emitter(_item: TokenStream) -> TokenStream {
-  quote! {
-    {
-      use ::membrane::emitter::Emitter;
-      ::membrane::emitter::Handle::new(_membrane_port)
-    }
-  }
-  .into()
+  "{
+    use ::membrane::emitter::Emitter;
+    ::membrane::emitter::Handle::new(_membrane_port)
+  }"
+  .parse()
+  .unwrap()
 }

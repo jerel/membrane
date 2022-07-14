@@ -68,9 +68,9 @@ pub(crate) fn extract_options(
 }
 
 fn invalid_option(macr: &str, opt: &str) -> Result<Options, String> {
-  return Err(format!(
+  Err(format!(
     "`{opt}` is not a valid option for `{m}`",
     m = macr,
     opt = opt
-  ));
+  ))
 }
