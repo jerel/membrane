@@ -2,24 +2,27 @@ use crate::{rust::flatten_types, Input};
 
 pub struct CHeaderTypes(Vec<String>);
 
-impl From<&Vec<Input>> for CHeaderTypes {
-  fn from(inputs: &Vec<Input>) -> Self {
+impl std::convert::TryFrom<&Vec<Input>> for CHeaderTypes {
+  type Error = syn::Error;
+
+  fn try_from(inputs: &Vec<Input>) -> Result<Self, Self::Error> {
     let mut stream = vec![];
 
     for input in inputs {
       stream.push(format!(
         "{c_type}{variable}",
         c_type = c_type(
-          &flatten_types(&input.ty, vec![])
+          &flatten_types(&input.ty, vec![])?
             .iter()
             .map(|x| x.as_str())
-            .collect::<Vec<&str>>()
-        ),
+            .collect::<Vec<&str>>(),
+          &input.ty
+        )?,
         variable = &input.variable,
       ))
     }
 
-    Self(stream)
+    Ok(Self(stream))
   }
 }
 
@@ -29,8 +32,8 @@ impl From<CHeaderTypes> for Vec<String> {
   }
 }
 
-fn c_type(ty: &[&str]) -> String {
-  match ty[..] {
+fn c_type(ty: &[&str], type_: &syn::Type) -> syn::Result<String> {
+  let type_ = match ty[..] {
     ["String"] => "const char *",
     ["i64"] => "const signed long ",
     ["f64"] => "const double ",
@@ -42,7 +45,14 @@ fn c_type(ty: &[&str]) -> String {
     ["Option", "f64"] => "const double *",
     ["Option", "bool"] => "const uint8_t *",
     ["Option", _serialized] => "const uint8_t *",
-    _ => unreachable!("[c_type] macro checks should make this code unreachable"),
+    _ => {
+      return Err(syn::Error::new_spanned(
+        type_,
+        "not a supported argument type for Dart interop",
+      ))
+    }
   }
-  .to_string()
+  .to_string();
+
+  Ok(type_)
 }

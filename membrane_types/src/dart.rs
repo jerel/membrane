@@ -6,29 +6,34 @@ pub struct DartParams(Vec<String>);
 pub struct DartTransforms(Vec<String>);
 pub struct DartArgs(Vec<String>);
 
-impl From<&Vec<Input>> for DartParams {
-  fn from(inputs: &Vec<Input>) -> Self {
+impl std::convert::TryFrom<&Vec<Input>> for DartParams {
+  type Error = syn::Error;
+
+  fn try_from(inputs: &Vec<Input>) -> Result<Self, Self::Error> {
     let mut stream = vec![];
 
     for input in inputs {
       stream.push(format!(
         "{dart_type} {variable}",
         dart_type = dart_param_type(
-          &flatten_types(&input.ty, vec![])
+          &flatten_types(&input.ty, vec![])?
             .iter()
             .map(|x| x.as_str())
-            .collect::<Vec<&str>>()
-        ),
+            .collect::<Vec<&str>>(),
+          &input.ty
+        )?,
         variable = &input.variable.to_mixed_case(),
       ))
     }
 
-    Self(stream)
+    Ok(Self(stream))
   }
 }
 
-impl From<&Vec<Input>> for DartTransforms {
-  fn from(inputs: &Vec<Input>) -> Self {
+impl std::convert::TryFrom<&Vec<Input>> for DartTransforms {
+  type Error = syn::Error;
+
+  fn try_from(inputs: &Vec<Input>) -> Result<Self, Self::Error> {
     let mut stream = vec![];
 
     for input in inputs {
@@ -36,17 +41,17 @@ impl From<&Vec<Input>> for DartTransforms {
         "final c{variable} = {cast}",
         variable = &input.variable.to_camel_case(),
         cast = cast_dart_type_to_c(
-          &flatten_types(&input.ty, vec![])
+          &flatten_types(&input.ty, vec![])?
             .iter()
             .map(|x| x.as_str())
             .collect::<Vec<&str>>(),
           &input.variable,
           &input.ty
-        )
+        )?
       ))
     }
 
-    Self(stream)
+    Ok(Self(stream))
   }
 }
 
@@ -111,9 +116,9 @@ pub fn dart_type(types: &[&str]) -> String {
   .to_string()
 }
 
-fn dart_param_type(types: &[&str]) -> String {
+fn dart_param_type(types: &[&str], type_: &syn::Type) -> syn::Result<String> {
   let ty;
-  match types[..] {
+  let result = match types[..] {
     ["String"] => "required String",
     ["i64"] => "required int",
     ["f64"] => "required double",
@@ -138,35 +143,40 @@ fn dart_param_type(types: &[&str]) -> String {
       ty = format!("{}? ", serialized);
       &ty
     }
-    _ => unreachable!("[dart_type] macro checks should make this code unreachable"),
+    _ => {
+      return Err(syn::Error::new_spanned(
+        type_,
+        "not a supported argument type for Dart interop",
+      ))
+    }
   }
-  .to_string()
+  .to_string();
+
+  Ok(result)
 }
 
-fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> String {
+fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result<String> {
   match ty {
-    &syn::Type::Reference(_) => {
-      panic!("{}", unsupported_type_error(types[0], variable, "a struct"))
-    }
+    &syn::Type::Reference(_) => return unsupported_type_error(ty, "a struct"),
     &syn::Type::Tuple(_) | &syn::Type::Slice(_) | &syn::Type::Array(_) => {
-      panic!("{}", unsupported_type_error(types[0], variable, "a struct"))
+      return unsupported_type_error(ty, "a struct")
     }
     _ => (),
   };
 
-  match types[..] {
-    ["&str"] => panic!("{}", unsupported_type_error(types[0], variable, "String")),
-    ["char"] => panic!("{}", unsupported_type_error(types[0], variable, "String")),
-    ["i8"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["i16"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["i32"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["i128"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["u8"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["u16"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["u32"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["u64"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["u128"] => panic!("{}", unsupported_type_error(types[0], variable, "i64")),
-    ["f32"] => panic!("{}", unsupported_type_error(types[0], variable, "f64")),
+  let cast = match types[..] {
+    ["&str"] => return unsupported_type_error(ty, "String"),
+    ["char"] => return unsupported_type_error(ty, "String"),
+    ["i8"] => return unsupported_type_error(ty, "i64"),
+    ["i16"] => return unsupported_type_error(ty, "i64"),
+    ["i32"] => return unsupported_type_error(ty, "i64"),
+    ["i128"] => return unsupported_type_error(ty, "i64"),
+    ["u8"] => return unsupported_type_error(ty, "i64"),
+    ["u16"] => return unsupported_type_error(ty, "i64"),
+    ["u32"] => return unsupported_type_error(ty, "i64"),
+    ["u64"] => return unsupported_type_error(ty, "i64"),
+    ["u128"] => return unsupported_type_error(ty, "i64"),
+    ["f32"] => return unsupported_type_error(ty, "f64"),
     //
     // supported types
     //
@@ -261,17 +271,25 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> String {
       variable = variable.to_mixed_case(),
       ser_partial = serialization_partial(),
     ),
-    _ => unreachable!("[cast_dart_type_to_c] macro checks should make this code unreachable"),
-  }
+    _ => {
+      return Err(syn::Error::new_spanned(
+        ty,
+        "not a supported argument type for Dart interop",
+      ))
+    }
+  };
+
+  Ok(cast)
 }
 
-fn unsupported_type_error(ty: &str, variable: &str, new_ty: &str) -> String {
-  format!(
-    "A Rust type of {ty} is invalid for `{var}: {ty}`. Please use {new_ty} instead.",
-    ty = ty,
-    var = variable,
-    new_ty = new_ty
-  )
+fn unsupported_type_error(ty: &syn::Type, new_ty: &str) -> Result<String, syn::Error> {
+  Err(syn::Error::new_spanned(
+    ty,
+    format!(
+      "not a supported argument type for Dart interop, please use {new_ty} instead.",
+      new_ty = new_ty
+    ),
+  ))
 }
 
 fn serialization_partial() -> &'static str {

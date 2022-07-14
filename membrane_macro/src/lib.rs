@@ -8,6 +8,7 @@ use options::{extract_options, Options};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
+use std::convert::TryFrom;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{parse_macro_input, AttributeArgs, Block, Ident, Token, Type};
 
@@ -91,18 +92,49 @@ pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream {
-  let Options {
-    namespace,
-    disable_logging,
-    timeout,
-    os_thread,
-  } = extract_options(
+  let options = match extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
     sync,
-  );
+  ) {
+    Ok(options) => options,
+    Err(err) => {
+      return syn::Error::new(Span::call_site(), err)
+        .to_compile_error()
+        .into();
+    }
+  };
+
+  // get the most helpful span we can, either the function name if we can find it or else the beginning of that line
+  let span: Span = if let Some(tree) = input
+    .clone()
+    .into_iter()
+    .take_while(|x| matches!(x, proc_macro::TokenTree::Ident { .. }))
+    .last()
+  {
+    tree.span().into()
+  } else if let Some(tree) = input.clone().into_iter().next() {
+    tree.span().into()
+  } else {
+    Span::call_site()
+  };
 
   let input_two = input.clone();
+  let repr_dart = parse_macro_input!(input as ReprDart);
+
+  match to_token_stream(repr_dart, input_two, sync, span, options) {
+    Ok(tokens) => tokens,
+    Err(err) => err.to_compile_error().into(),
+  }
+}
+
+fn to_token_stream(
+  repr_dart: ReprDart,
+  input: TokenStream,
+  sync: bool,
+  span: Span,
+  options: Options,
+) -> Result<TokenStream> {
   let ReprDart {
     fn_name,
     output_style,
@@ -110,40 +142,51 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
     error,
     inputs,
     ..
-  } = parse_macro_input!(input as ReprDart);
+  } = repr_dart;
+
+  let Options {
+    namespace,
+    disable_logging,
+    timeout,
+    os_thread,
+  } = options;
 
   let mut functions = TokenStream::new();
 
   match output_style {
     OutputStyle::StreamEmitterSerialized | OutputStyle::EmitterSerialized => {
-      functions.extend(parsers::add_port_to_args(input_two))
+      functions.extend(parsers::add_port_to_args(input))
     }
     _ => {
-      functions.extend(input_two);
+      functions.extend(input);
     }
   }
 
   let rust_outer_params: Vec<TokenStream2> = if sync {
-    RustExternParams::from(&inputs).into()
+    RustExternParams::try_from(&inputs)?.into()
   } else {
     vec![
       vec![quote! {membrane_port: i64}],
-      RustExternParams::from(&inputs).into(),
+      RustExternParams::try_from(&inputs)?.into(),
     ]
     .concat()
   };
-  let rust_transforms: Vec<TokenStream2> = RustTransforms::from(&inputs).into();
+  let rust_transforms: Vec<TokenStream2> = RustTransforms::try_from(&inputs)?.into();
   let rust_inner_args: Vec<Ident> = RustArgs::from(&inputs).into();
 
-  let c_header_types: Vec<String> = CHeaderTypes::from(&inputs).into();
+  let c_header_types: Vec<String> = CHeaderTypes::try_from(&inputs)?.into();
 
-  let dart_outer_params: Vec<String> = DartParams::from(&inputs).into();
-  let dart_transforms: Vec<String> = DartTransforms::from(&inputs).into();
+  let dart_outer_params: Vec<String> = DartParams::try_from(&inputs)?.into();
+  let dart_transforms: Vec<String> = DartTransforms::try_from(&inputs)?.into();
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
 
   let return_statement = match output_style {
     OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized if sync => {
-      panic!("#[sync_dart] expected a return type of `Result<T, E>` found an emitter");
+      syn::Error::new(
+        span,
+        "#[sync_dart] expected a return type of `Result<T, E>` found an emitter",
+      )
+      .into_compile_error()
     }
     OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized => quote! {
       let membrane_emitter = #fn_name(membrane_port, #(#rust_inner_args),*);
@@ -274,10 +317,10 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   ]
   .contains(&output_style);
 
-  let types = flatten_types(&output, vec![]);
+  let types = flatten_types(&output, vec![])?;
   let return_type = quote! { vec![#(#types),*] };
 
-  let types = flatten_types(&error, vec![]);
+  let types = flatten_types(&error, vec![])?;
   let error_type = quote! { vec![#(#types),*] };
 
   let rust_arg_types = inputs
@@ -335,7 +378,7 @@ fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream 
   ))]
   functions.extend::<TokenStream>(_deferred_trace.into());
 
-  functions
+  Ok(functions)
 }
 
 #[derive(Debug)]
@@ -357,11 +400,18 @@ impl Parse for ReprDartEnum {
 
 #[proc_macro_attribute]
 pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
-  let Options { namespace, .. } = extract_options(
+  let Options { namespace, .. } = match extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
     false,
-  );
+  ) {
+    Ok(options) => options,
+    Err(err) => {
+      return syn::Error::new(Span::call_site(), err)
+        .to_compile_error()
+        .into();
+    }
+  };
 
   let mut variants = TokenStream::new();
   variants.extend(input.clone());
@@ -414,7 +464,10 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro]
 pub fn emitter(_item: TokenStream) -> TokenStream {
-  "::membrane::emitter::Handle::new(_membrane_port)"
-    .parse()
-    .unwrap()
+  "{
+    use ::membrane::emitter::Emitter;
+    ::membrane::emitter::Handle::new(_membrane_port)
+  }"
+  .parse()
+  .unwrap()
 }

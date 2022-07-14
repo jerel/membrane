@@ -1,5 +1,6 @@
 use crate::quote::quote;
 use membrane_types::proc_macro2::Span;
+use membrane_types::syn::spanned::Spanned;
 use membrane_types::{syn, Input, OutputStyle};
 use proc_macro::TokenStream;
 use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
@@ -68,7 +69,7 @@ fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
       syn::Type::Path(_path) => return Ok(type_.clone()),
       syn::Type::Tuple(tuple) if !tuple.elems.is_empty() => {
         return Err(Error::new(
-        Span::call_site(),
+        type_.span(),
         "A tuple may not be returned from an `async_dart` function. If a tuple is needed return a struct containing the tuple.",
       ));
       }
@@ -79,53 +80,30 @@ fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
   }
 
   Err(Error::new(
-    Span::call_site(),
+    type_.span(),
     format!(
-      "expected a struct, vec, or scalar type but found {:?}",
-      type_
+      "expected a struct, vec, or scalar type but found `{}`",
+      quote! { #type_ }
     ),
   ))
 }
 
 pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
   let args: Punctuated<Expr, Token![,]> = arg_buffer.parse_terminated(Expr::parse)?;
-  let inputs = args
+  args
     .iter()
     .map(|arg| match arg {
-      Expr::Type(syn::ExprType { ty, expr: var, .. }) => Input {
+      Expr::Type(syn::ExprType { ty, expr: var, .. }) => Ok(Input {
         variable: quote!(#var).to_string(),
         rust_type: quote!(#ty).to_string().split_whitespace().collect(),
         ty: *ty.clone(),
-      },
-      Expr::Binary(syn::ExprBinary {
-        left, right, op, ..
-      }) if op == &syn::BinOp::Add(syn::token::Add(arg_buffer.span())) => {
-        handle_binop_add(left, right)
-      }
-      _ => {
-        panic!("self is not supported in #[async_dart] functions");
-      }
+      }),
+      ty => Err(syn::Error::new_spanned(
+        ty,
+        "not a supported argument type for Dart interop",
+      )),
     })
-    .collect();
-
-  Ok(inputs)
-}
-
-fn handle_binop_add(left: &Expr, right: &Expr) -> Input {
-  match (left, right) {
-    (Expr::Type(syn::ExprType { ty, expr: var, .. }), Expr::Path(syn::ExprPath { path, .. }))
-      if path.segments.last().is_some() && path.segments.last().unwrap().ident == "Clone" =>
-    {
-      Input {
-        variable: quote!(#var).to_string(),
-        rust_type: quote!(#ty).to_string().split_whitespace().collect(),
-        ty: *ty.clone(),
-      }
-    }
-    _ => {
-      panic!("the only constraint supported in #[async_dart] function args is `+ Clone`")
-    }
-  }
+    .collect::<Result<Vec<_>>>()
 }
 
 pub(crate) fn add_port_to_args(input: TokenStream) -> TokenStream {

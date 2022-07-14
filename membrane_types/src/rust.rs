@@ -9,43 +9,48 @@ pub struct RustExternParams(Vec<TokenStream2>);
 pub struct RustTransforms(Vec<TokenStream2>);
 pub struct RustArgs(Vec<Ident>);
 
-impl From<&Vec<Input>> for RustExternParams {
-  fn from(inputs: &Vec<Input>) -> Self {
+impl std::convert::TryFrom<&Vec<Input>> for RustExternParams {
+  type Error = syn::Error;
+
+  fn try_from(inputs: &Vec<Input>) -> Result<Self, Self::Error> {
     let mut stream = vec![];
 
     for input in inputs {
       let variable = Ident::new(&input.variable, Span::call_site());
       let c_type = rust_c_type(
-        &flatten_types(&input.ty, vec![])
+        &flatten_types(&input.ty, vec![])?
           .iter()
           .map(|x| x.as_str())
           .collect::<Vec<&str>>(),
-      );
+        &input.ty,
+      )?;
       stream.push(q!(#variable: #c_type))
     }
 
-    Self(stream)
+    Ok(Self(stream))
   }
 }
 
-impl From<&Vec<Input>> for RustTransforms {
-  fn from(inputs: &Vec<Input>) -> Self {
+impl std::convert::TryFrom<&Vec<Input>> for RustTransforms {
+  type Error = syn::Error;
+
+  fn try_from(inputs: &Vec<Input>) -> Result<Self, Self::Error> {
     let mut stream = vec![];
 
     for input in inputs {
       let variable = Ident::new(&input.variable, Span::call_site());
       let cast = cast_c_type_to_rust(
-        &flatten_types(&input.ty, vec![])
+        &flatten_types(&input.ty, vec![])?
           .iter()
           .map(|x| x.as_str())
           .collect::<Vec<&str>>(),
         &input.variable,
         &input.ty,
-      );
+      )?;
       stream.push(q!(let #variable = #cast;))
     }
 
-    Self(stream)
+    Ok(Self(stream))
   }
 }
 
@@ -79,9 +84,9 @@ impl From<RustArgs> for Vec<Ident> {
   }
 }
 
-pub fn flatten_types(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> {
+pub fn flatten_types(ty: &syn::Type, mut types: Vec<String>) -> syn::Result<Vec<String>> {
   match &ty {
-    syn::Type::Tuple(_expr) => vec!["()".to_string()],
+    syn::Type::Tuple(_expr) => Ok(vec!["()".to_string()]),
     syn::Type::Path(expr) => {
       let last = expr.path.segments.last().unwrap();
       types.push(last.ident.to_string());
@@ -92,18 +97,21 @@ pub fn flatten_types(ty: &syn::Type, mut types: Vec<String>) -> Vec<String> {
       {
         match args.last() {
           Some(syn::GenericArgument::Type(last)) => flatten_types(last, types),
-          _ => types,
+          _ => Ok(types),
         }
       } else {
-        types
+        Ok(types)
       }
     }
-    _ => unreachable!("[flatten_types] macro checks should make this code unreachable"),
+    _ => Err(syn::Error::new_spanned(
+      ty,
+      "not a supported argument type for Dart interop",
+    )),
   }
 }
 
-fn rust_c_type(ty: &[&str]) -> TokenStream2 {
-  match ty[..] {
+fn rust_c_type(ty: &[&str], type_: &syn::Type) -> syn::Result<TokenStream2> {
+  let result = match ty[..] {
     ["String"] => q!(*const ::std::os::raw::c_char),
     ["i64"] => q!(::std::os::raw::c_long),
     ["f64"] => q!(::std::os::raw::c_double),
@@ -115,12 +123,19 @@ fn rust_c_type(ty: &[&str]) -> TokenStream2 {
     ["Option", "f64"] => q!(*const ::std::os::raw::c_double),
     ["Option", "bool"] => q!(*const ::std::os::raw::c_char), // i8
     ["Option", _serialized] => q!(*const u8),
-    _ => unreachable!("[rust_c_type] macro checks should make this code unreachable"),
-  }
+    _ => {
+      return Err(syn::Error::new_spanned(
+        type_,
+        "not a supported argument type for Dart interop",
+      ))
+    }
+  };
+
+  Ok(result)
 }
 
-fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> TokenStream2 {
-  match types[..] {
+fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result<TokenStream2> {
+  let result = match types[..] {
     ["String"] => {
       let variable = Ident::new(variable, Span::call_site());
       q!(cstr!(#variable, panic!("invalid C string")).to_string())
@@ -214,8 +229,15 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> TokenStream
       }
     }
 
-    _ => unreachable!("[cast_c_type_to_rust] macro checks should make this code unreachable"),
-  }
+    _ => {
+      return Err(syn::Error::new_spanned(
+        ty,
+        "not a supported argument type for Dart interop",
+      ))
+    }
+  };
+
+  Ok(result)
 }
 
 fn deserialize(variable: Ident, variable_name: &str, ty: &Type, str_ty: &str) -> TokenStream2 {

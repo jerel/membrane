@@ -13,7 +13,7 @@ pub(crate) fn extract_options(
   mut input: Vec<NestedMeta>,
   mut options: Options,
   sync: bool,
-) -> Options {
+) -> Result<Options, String> {
   let option = match input.pop() {
     Some(NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. }))) => {
       let ident = path.get_ident().unwrap().clone();
@@ -36,40 +36,41 @@ pub(crate) fn extract_options(
       options
     }
     Some((ident, _)) if ident == "os_thread" && sync => {
-      invalid_option("sync_dart", "os_thread=true")
+      return invalid_option("sync_dart", "os_thread=true");
     }
     Some((ident, Lit::Bool(val))) if ident == "os_thread" => {
       options.os_thread = val.value();
       options
     }
     Some(_) if sync => {
-      panic!(r#"#[sync_dart] only `namespace=""` and `disable_logging=true` are valid options"#);
+      return Err(
+        r#"only `namespace=""` and `disable_logging=true` are valid options"#.to_string(),
+      );
     }
     Some(_) => {
-      panic!(
-        r#"#[async_dart] only `namespace=""`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#
-      );
+      return Err(
+        r#"only `namespace=""`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#.to_string());
     }
     None => {
       // we've iterated over all options and didn't find a namespace (required)
       if options.namespace.is_empty() {
-        panic!(
+        return Err(format!(
           "#[{}] expects a `namespace` attribute",
           if sync { "sync_dart" } else { "async_dart" }
-        );
+        ));
       }
 
-      return options;
+      return Ok(options);
     }
   };
 
   extract_options(input, options, sync)
 }
 
-fn invalid_option(macr: &str, opt: &str) -> ! {
-  panic!(
-    "#[{m}] `{opt}` is not a valid option for `{m}`",
+fn invalid_option(macr: &str, opt: &str) -> Result<Options, String> {
+  Err(format!(
+    "`{opt}` is not a valid option for `{m}`",
     m = macr,
     opt = opt
-  );
+  ))
 }
