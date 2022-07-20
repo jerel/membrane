@@ -1,7 +1,7 @@
 use std::ffi::CString;
 
 use futures::stream::Stream;
-use futures::{TryStreamExt, StreamExt};
+use futures::{StreamExt, TryStreamExt};
 use membrane::async_dart;
 use tokio::net::UdpSocket;
 use tokio::time::{sleep, Duration};
@@ -19,26 +19,29 @@ extern "C" {
 pub fn render_via_c() -> impl Stream<Item = Result<String, String>> {
   let mut count = 0;
 
-    // typically you'd want to transform the error before handing it over to Dart
-    // but for this simple example we'll just turn the std::io error into a string
-  let server = server().map_err(|err| {
-    err.to_string()
-  }).map_ok(|x| { // print _every_ item via C
-    let c_string = CString::new(&*x).unwrap();
-    let ptr = c_string.into_raw();
-    unsafe {
-      print_via_c(ptr);
-    };
+  // typically you'd want to transform the error before handing it over to Dart
+  // but for this simple example we'll just turn the std::io error into a string
+  let server = server()
+    .map_err(|err| err.to_string())
+    .map_ok(|x| {
+      // print _every_ item via C
+      let c_string = CString::new(&*x).unwrap();
+      let ptr = c_string.into_raw();
+      unsafe {
+        print_via_c(ptr);
+      };
 
-    x
-  }).filter(move |_| { // only send the mod 10 items to Dart
-    count = count + 1;
-    if count % 10 == 0 {
-      futures::future::ready(true)
-    } else {
-      futures::future::ready(false)
-    }
-  });
+      x
+    })
+    .filter(move |_| {
+      // only send the mod 10 items to Dart
+      count = count + 1;
+      if count % 10 == 0 {
+        futures::future::ready(true)
+      } else {
+        futures::future::ready(false)
+      }
+    });
 
   // to keep things simple we'll spawn a task to start a client
   // instance... usually the client would be a separate program
