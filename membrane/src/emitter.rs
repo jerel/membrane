@@ -197,7 +197,7 @@ mod emitter_impl {
         return eprintln!("membrane drop_push_ctx was called with a NULL pointer");
       }
 
-      Box::from_raw(data as *mut T);
+      drop(Box::from_raw(data as *mut T));
     }
   }
 
@@ -207,7 +207,7 @@ mod emitter_impl {
         return eprintln!("membrane drop_is_done_ctx was called with a NULL pointer");
       }
 
-      Box::from_raw(data as *mut T);
+      drop(Box::from_raw(data as *mut T));
     }
   }
 
