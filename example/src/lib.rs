@@ -9,6 +9,7 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
     .worker_threads(2)
     .thread_name("example")
     .enable_time()
+    .enable_io()
     .build()
     .unwrap()
 });
@@ -18,4 +19,7 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
 pub fn load() {
   #[cfg(feature = "c-example")]
   application::c_example::load();
+
+  #[cfg(feature = "c-example")]
+  application::c_render::load();
 }
