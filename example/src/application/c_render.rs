@@ -29,6 +29,8 @@ pub fn render_via_c() -> impl Stream<Item = Result<String, String>> {
       let ptr = c_string.into_raw();
       unsafe {
         print_via_c(ptr);
+        // free the pointer after C is done with it
+        let _ = CString::from_raw(ptr);
       };
 
       x
