@@ -30,7 +30,11 @@ mod test {
 
     run_dart(
       &path.to_path_buf(),
-      vec!["test", "test/async_c_test.dart"],
+      vec![
+        "test",
+        "test/threading_c_test.dart",
+        "test/render_c_test.dart",
+      ],
       true,
     );
   }

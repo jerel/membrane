@@ -5,7 +5,8 @@ fn main() {
 
     cc::Build::new()
       .file("./c/threading_example.c")
+      .file("./c/render_example.c")
       .include(headers)
-      .compile("threading_example");
+      .compile("c_example");
   }
 }
