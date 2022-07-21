@@ -18,7 +18,7 @@ pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
 // it prevents our "unused" code from being stripped out
 pub fn load() {
   #[cfg(feature = "c-example")]
-  application::c_example::load();
+  application::c_threading::load();
 
   #[cfg(feature = "c-example")]
   application::c_render::load();
