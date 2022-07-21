@@ -51,7 +51,7 @@ pub fn render_via_c() -> impl Stream<Item = Result<String, String>> {
     client().await.unwrap();
   });
 
-  println!("[call_async_c] [Rust] finished with synchronous call to `call_async_c()`");
+  println!("[render_via_c] [Rust] stream initialized by `render_via_c()`");
 
   server
 }
@@ -65,7 +65,7 @@ async fn client() -> Result<(), std::io::Error> {
   let len = payload.len() as u8;
   let bytes = &vec![vec![len], payload.to_vec()].concat();
 
-  println!("UDP client sending to 127.0.0.1:6000");
+  println!("[render_via_c] [Rust] UDP client sending to 127.0.0.1:6000");
 
   loop {
     // pause a little to keep from spewing thousands of prints to the console
@@ -79,7 +79,7 @@ fn server() -> impl Stream<Item = Result<String, std::io::Error>> {
     let sock = UdpSocket::bind("127.0.0.1:6000").await?;
     // create a 1024 byte buffer to read the string into, we'll send a max length of 256 bytes regardless
     let mut buf = [0; 1024];
-    println!("UDP server listening on 127.0.0.1:6000");
+    println!("[render_via_c] [Rust] UDP server listening on 127.0.0.1:6000");
 
     let mut count = 0;
     loop {
