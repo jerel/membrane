@@ -241,7 +241,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       if ({variable} == null) {{
         return nullptr;
       }}
-      final ptr = calloc<Int64>();
+      final ptr = calloc<Long>();
       _toFree.add(ptr);
       ptr.asTypedList(1).setAll(0, [{variable}]);
       return ptr;
