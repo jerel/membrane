@@ -183,7 +183,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
     ["String"] => {
       format!(
         r#"(){{
-          final ptr = {variable}.toNativeUtf8().cast<Int8>();
+          final ptr = {variable}.toNativeUtf8().cast<Char>();
           _toFree.add(ptr);
           return ptr;
         }}()"#,
@@ -217,7 +217,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       if ({variable} == null) {{
         return nullptr;
       }}
-      final ptr = {variable}.toNativeUtf8().cast<Int8>();
+      final ptr = {variable}.toNativeUtf8().cast<Char>();
       _toFree.add(ptr);
       return ptr;
     }}()"#,
