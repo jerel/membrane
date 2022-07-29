@@ -97,7 +97,7 @@ void main() {
             four: true,
             five: Arg(value: 20)),
         equals(high));
-  }, skip: true);
+  });
 
   test('can call a function that returns a scalar value', () async {
     final accounts = AccountsApi();
