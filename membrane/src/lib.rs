@@ -461,23 +461,30 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
       self.package_name.as_str().to_string()
     };
     let path = self.destination.join("pubspec.yaml");
-    let re = regex::Regex::new(r"^name:(.*?)\n").unwrap();
+
     if let Ok(old) = std::fs::read_to_string(&path) {
-      let pubspec = re
-        .replace(
-          old.as_str().trim(),
-          "name: ".to_string() + &package_name + "\n",
-        )
-        .to_string();
+      let pubspec = old
+      .lines()
+      .map(|ln| {
+        if ln.contains("name:") {
+          format!("name: {}", package_name)
+        } else if ln.contains("sdk:") {
+          // ffigen >= 5 requires dart >= 2.17, so replace dart version from serde-reflection
+          "  sdk: '>=2.17.0 <3.0.0'".to_owned()
+        } else {
+          ln.to_owned()
+        }
+      })
+      .chain([
+        "  logging: ^1.0.2\n".to_owned(),
+        "dev_dependencies:".to_owned(),
+        "  ffigen: ^6.0.1\n".to_owned()
+      ])
+      .collect::<Vec<String>>()
+      .join("\n");
 
-      let extra_deps = r#"
-  ffi: ^1.1.2
-  logging: ^1.0.2
-
-dev_dependencies:
-  ffigen: ^4.1.0
-"#;
-      std::fs::write(path, pubspec + extra_deps).expect("pubspec could not be written");
+      std::fs::write(path, pubspec).expect("pubspec could not be written");
+      let _ = std::fs::remove_file(self.destination.join("pubspec.lock"));
     }
 
     self
