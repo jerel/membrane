@@ -39,49 +39,8 @@
     * `apt-get install libclang-dev`
   * MacOS
     * `brew install llvm`
-  * MacOS M1
-    * there's a couple more steps, see below
 
 On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you may need to symlink to the version specific library: `ln -s /usr/lib/llvm-11/lib/libclang.so.1 /usr/lib/llvm-11/lib/libclang.so`.
-
-On MacOS M1, ffigen still uses llvm for x86 architecture so far, while M1 is arm64: you might get an error mentioning *incompatible architecture (have 'arm64', need 'x86_64')*.
-
-<details>
-<summary>click & follow steps</summary>
-
-Essentially, you will need to install x86_64 variants of tools.
-Grab a coffee, this might take a while :coffee:
-
-- Rosetta2 (optional, only if asked)
-- Rust toolchain
-  ```sh
-  rustup target add x86_64-apple-darwin
-  ```
-- brew
-  ```sh
-  arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-  ```
-- llvm
-  ```sh
-  arch -x86_64 /usr/local/bin/brew install llvm
-  ```
-  ⚠️ if asked to install additional packages,
-  just follow recommendations in the console, e.g. :
-  ```sh
-  arch -x86_64 /usr/local/bin/brew install python@3.10
-  ```
-- ffi
-  ```sh
-  arch -x86_64 sudo gem install ffi
-  ```
-- finally run!
-  ```sh
-  # MEMBRANE_LLVM_PATHS must be set to folder's path
-  # where llvm for x86_64 is installed
-  export MEMBRANE_LLVM_PATHS=/usr/local/opt/llvm && cargo run --target=x86_64-apple-darwin
-  ```
-
-</details>
 
 ## Usage
 
