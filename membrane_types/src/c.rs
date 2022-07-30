@@ -35,13 +35,13 @@ impl From<CHeaderTypes> for Vec<String> {
 fn c_type(ty: &[&str], type_: &syn::Type) -> syn::Result<String> {
   let type_ = match ty[..] {
     ["String"] => "const char *",
-    ["i64"] => "const signed long ",
+    ["i64"] => "const int64_t ",
     ["f64"] => "const double ",
     ["bool"] => "const uint8_t ",
     ["Vec", ..] => "const uint8_t *",
     [serialized, ..] if serialized != "Option" => "const uint8_t *",
     ["Option", "String"] => "const char *",
-    ["Option", "i64"] => "const signed long *",
+    ["Option", "i64"] => "const int64_t *",
     ["Option", "f64"] => "const double *",
     ["Option", "bool"] => "const uint8_t *",
     ["Option", _serialized] => "const uint8_t *",
