@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@1.49.0
+      - uses: dtolnay/rust-toolchain@1.54.0
       - run: cargo build --verbose --features c-example --manifest-path membrane/Cargo.toml
   build-stable:
     name: build and test stable
