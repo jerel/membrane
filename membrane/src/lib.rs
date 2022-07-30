@@ -464,24 +464,24 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
 
     if let Ok(old) = std::fs::read_to_string(&path) {
       let pubspec = old
-      .lines()
-      .map(|ln| {
-        if ln.contains("name:") {
-          format!("name: {}", package_name)
-        } else if ln.contains("sdk:") {
-          // ffigen >= 5 requires dart >= 2.17, so replace dart version from serde-reflection
-          "  sdk: '>=2.17.0 <3.0.0'".to_owned()
-        } else {
-          ln.to_owned()
-        }
-      })
-      .chain([
-        "  logging: ^1.0.2\n".to_owned(),
-        "dev_dependencies:".to_owned(),
-        "  ffigen: ^6.0.1\n".to_owned()
-      ])
-      .collect::<Vec<String>>()
-      .join("\n");
+        .lines()
+        .map(|ln| {
+          if ln.contains("name:") {
+            format!("name: {}", package_name)
+          } else if ln.contains("sdk:") {
+            // ffigen >= 5 requires dart >= 2.17, so replace dart version from serde-reflection
+            "  sdk: '>=2.17.0 <3.0.0'".to_owned()
+          } else {
+            ln.to_owned()
+          }
+        })
+        .chain([
+          "  logging: ^1.0.2\n".to_owned(),
+          "dev_dependencies:".to_owned(),
+          "  ffigen: ^6.0.1\n".to_owned(),
+        ])
+        .collect::<Vec<String>>()
+        .join("\n");
 
       std::fs::write(path, pubspec).expect("pubspec could not be written");
       let _ = std::fs::remove_file(self.destination.join("pubspec.lock"));
