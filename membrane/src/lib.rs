@@ -475,7 +475,7 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
             ln.to_owned()
           }
         })
-        .chain([
+        .chain(vec![
           "  logging: ^1.0.2\n".to_owned(),
           "dev_dependencies:".to_owned(),
           "  ffigen: ^6.0.1\n".to_owned(),
