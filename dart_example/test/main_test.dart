@@ -323,6 +323,14 @@ void main() {
         isNot(equals(Status.active)));
   });
 
+  test('can receive a complex data enum', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts.enumData()),
+        equals(ReportsReportsItem(
+            value: ReportsNameItem(value: "Example Report"))));
+  });
+
   test('can fetch a vector from a separate namespace', () async {
     final locations = LocationsApi();
     expect(

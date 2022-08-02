@@ -81,7 +81,9 @@ pub mod utils;
 
 use membrane_types::dart::dart_type;
 use membrane_types::heck::CamelCase;
-use serde_reflection::{ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig};
+use serde_reflection::{
+  ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig, VariantFormat,
+};
 use std::{
   collections::HashMap,
   io::Write,
@@ -1019,7 +1021,10 @@ impl Function {
       }
       [ty, ..] => {
         de = match enum_tracer_registry.get(ty) {
-          Some(ContainerFormat::Enum { .. }) if config.c_style_enums => {
+          Some(ContainerFormat::Enum(variants))
+            if config.c_style_enums
+              && variants.values().all(|f| f.value == VariantFormat::Unit) =>
+          {
             format!("{}Extension.deserialize(deserializer)", ty)
           }
           _ => format!("{}.deserialize(deserializer)", ty),
