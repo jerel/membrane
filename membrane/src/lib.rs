@@ -486,6 +486,7 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
     if let Ok(old) = std::fs::read_to_string(&path) {
       let pubspec = old
         .lines()
+        .filter(|l| !l.is_empty())
         .map(|ln| {
           if ln.contains("name:") {
             format!("name: {}", package_name)
@@ -497,8 +498,8 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
           }
         })
         .chain(vec![
-          "  ffi: ^2.0.0\n".to_owned(),
-          "  logging: ^1.0.2\n".to_owned(),
+          "  ffi: ^2.0.0".to_owned(),
+          "  logging: ^1.0.2".to_owned(),
           "dev_dependencies:".to_owned(),
           "  ffigen: ^6.0.1\n".to_owned(),
         ])
