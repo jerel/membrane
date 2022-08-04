@@ -7,7 +7,8 @@ import 'package:dart_example/accounts.dart';
 // defaults to `.with_c_style_enums(true)` and consequently expects `Status.active` enums.
 // You may accomplish this by modifying generator.rs and then running `cargo run`
 void main() {
-  test('can handle a class enum', () async {
+  test('can handle a class enum when `with_c_style_enums` is set to `false`',
+      () async {
     final accounts = AccountsApi();
     expect((await accounts.enumReturn(status: StatusActiveItem())),
         equals(StatusActiveItem()));

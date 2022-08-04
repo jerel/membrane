@@ -423,6 +423,12 @@ pub async fn enum_return(status: data::Status) -> Result<data::Status, String> {
   Ok(status)
 }
 
+#[async_dart(namespace = "accounts")]
+pub async fn enum_data() -> Result<data::Reports, String> {
+  let reports = data::Reports::Reports(Box::new(data::Reports::Name("Example Report".to_string())));
+  Ok(reports)
+}
+
 #[async_dart(namespace = "accounts", timeout = 100)]
 pub async fn slow_function(sleep_for: i64) -> Result<(), String> {
   use tokio::time::{sleep, Duration};

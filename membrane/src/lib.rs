@@ -81,7 +81,9 @@ pub mod utils;
 
 use membrane_types::dart::dart_type;
 use membrane_types::heck::CamelCase;
-use serde_reflection::{ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig};
+use serde_reflection::{
+  ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig, VariantFormat,
+};
 use std::{
   collections::HashMap,
   io::Write,
@@ -438,6 +440,25 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
       panic!("dart ffigen returned an error");
     }
 
+    // TODO, this is a temporary hack to get around ffigen bug https://github.com/dart-lang/ffigen/issues/384
+    let path = self.destination.join("lib/src/ffi_bindings.dart");
+    let mut bindings = std::fs::read_to_string(&path).unwrap();
+    let vecs = regex::RegexBuilder::new(r#"^\s*int membrane_free_membrane_vec\d+\(.*?>\(\);\s*$"#)
+      .multi_line(true)
+      .dot_matches_new_line(true)
+      .build()
+      .unwrap();
+    let tasks =
+      regex::RegexBuilder::new(r#"^\s*int membrane_cancel_membrane_task\d+\(.*?>\(\);\s*$"#)
+        .multi_line(true)
+        .dot_matches_new_line(true)
+        .build()
+        .unwrap();
+    bindings = vecs.replace_all(&bindings, "").to_string();
+    bindings = tasks.replace_all(&bindings, "").to_string();
+    std::fs::write(path, bindings).expect("ffi_bindings.dart could not be written");
+    // end ffigen workaround
+
     self
   }
 
@@ -465,6 +486,7 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
     if let Ok(old) = std::fs::read_to_string(&path) {
       let pubspec = old
         .lines()
+        .filter(|l| !l.is_empty())
         .map(|ln| {
           if ln.contains("name:") {
             format!("name: {}", package_name)
@@ -476,7 +498,8 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
           }
         })
         .chain(vec![
-          "  logging: ^1.0.2\n".to_owned(),
+          "  ffi: ^2.0.0".to_owned(),
+          "  logging: ^1.0.2".to_owned(),
           "dev_dependencies:".to_owned(),
           "  ffigen: ^6.0.1\n".to_owned(),
         ])
@@ -1019,7 +1042,10 @@ impl Function {
       }
       [ty, ..] => {
         de = match enum_tracer_registry.get(ty) {
-          Some(ContainerFormat::Enum { .. }) if config.c_style_enums => {
+          Some(ContainerFormat::Enum(variants))
+            if config.c_style_enums
+              && variants.values().all(|f| f.value == VariantFormat::Unit) =>
+          {
             format!("{}Extension.deserialize(deserializer)", ty)
           }
           _ => format!("{}.deserialize(deserializer)", ty),

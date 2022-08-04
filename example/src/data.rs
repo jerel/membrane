@@ -10,6 +10,14 @@ pub enum Status {
   Active,
 }
 
+#[dart_enum(namespace = "accounts")]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum Reports {
+  None,
+  Name(String),
+  Reports(Box<Self>),
+}
+
 impl Default for Status {
   fn default() -> Self {
     Status::Pending
