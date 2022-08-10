@@ -1034,7 +1034,7 @@ impl Function {
         );
         &de
       }
-      ["Option", _ty] => {
+      ["Option", ..] => {
         panic!(
           "Option is not supported as a bare return type. Return the inner type from {} instead",
           self.fn_name

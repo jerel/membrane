@@ -285,6 +285,20 @@ void main() {
         equals([1.0, 2.1, null]));
   });
 
+  test('can handle an optional vec arg', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.optionalVecArg(values: [1.0, 2.1])), equals(true));
+
+    expect((await accounts.optionalVecArg()), equals(false));
+  });
+
+  test('can handle an optional float arg', () async {
+    final accounts = AccountsApi();
+    expect((await accounts.optionalFloatArg(value: 1.0)), equals(true));
+
+    expect((await accounts.optionalFloatArg()), equals(false));
+  });
+
   test('can pass a tuple arg containing a vec of structs', () async {
     final accounts = AccountsApi();
     expect(
