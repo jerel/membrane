@@ -122,7 +122,7 @@ fn rust_c_type(ty: &[&str], type_: &syn::Type) -> syn::Result<TokenStream2> {
     ["Option", "i64"] => q!(*const ::std::os::raw::c_long),
     ["Option", "f64"] => q!(*const ::std::os::raw::c_double),
     ["Option", "bool"] => q!(*const ::std::os::raw::c_char), // i8
-    ["Option", _serialized] => q!(*const u8),
+    ["Option", ..] => q!(*const u8),
     _ => {
       return Err(syn::Error::new_spanned(
         type_,
@@ -207,7 +207,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
         }
       }
     }
-    ["Option", _serialized] => {
+    ["Option", ..] => {
       let variable_name = variable;
       let variable = Ident::new(variable, Span::call_site());
       let ty = extract_type_from_option(ty).unwrap();

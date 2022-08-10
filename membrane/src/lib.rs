@@ -1034,11 +1034,17 @@ impl Function {
         );
         &de
       }
-      ["Option", _ty] => {
-        panic!(
-          "Option is not supported as a bare return type. Return the inner type from {} instead",
-          self.fn_name
-        )
+      ["Option", ..] => {
+        de = format!(
+          "() {{
+            if (deserializer.deserializeOptionTag()) {{
+              return {};
+            }}
+            return null;
+          }}();",
+          self.deserializer(&ty[1..], enum_tracer_registry, config)
+        );
+        &de
       }
       [ty, ..] => {
         de = match enum_tracer_registry.get(ty) {

@@ -384,6 +384,16 @@ pub async fn vec_option_float(values: Vec<Option<f64>>) -> Result<Vec<Option<f64
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn optional_vec_arg(values: Option<Vec<f64>>) -> Result<Option<Vec<f64>>, String> {
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn optional_float_arg(value: Option<f64>) -> Result<Option<f64>, String> {
+  Ok(value)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn filter_arg(filter: data::Filter) -> Result<data::Contacts, String> {
   println!("\n[Rust] Received filter: {:?}", filter);
 

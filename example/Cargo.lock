@@ -778,8 +778,9 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.23.0"
-source = "git+https://github.com/jerel/serde-reflection?rev=04be37b#04be37b8f26ca9f138951d2c11e191de3e0f1375"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30f6496661c4b50af439d30e60c496c582aa98e55b7686a8d2c274b3f2a67d36"
 dependencies = [
  "bcs",
  "bincode",
@@ -798,7 +799,8 @@ dependencies = [
 [[package]]
 name = "serde-reflection"
 version = "0.3.6"
-source = "git+https://github.com/jerel/serde-reflection?rev=04be37b#04be37b8f26ca9f138951d2c11e191de3e0f1375"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f05a5f801ac62a51a49d378fdb3884480041b99aced450b28990673e8ff99895"
 dependencies = [
  "once_cell",
  "serde",

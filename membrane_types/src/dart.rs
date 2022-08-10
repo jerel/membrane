@@ -103,6 +103,10 @@ pub fn dart_type(types: &[&str]) -> String {
     ["f64"] => "double",
     ["bool"] => "bool",
     ["()"] => "void",
+    ["Option", ..] => {
+      ty = format!("{}?", dart_type(&types[1..]));
+      &ty
+    }
     ["Vec", "Option", ..] => {
       ty = format!("List<{}?>", dart_type(&types[2..]));
       &ty
@@ -139,8 +143,8 @@ fn dart_param_type(types: &[&str], type_: &syn::Type) -> syn::Result<String> {
     ["Option", "i64"] => "int?",
     ["Option", "f64"] => "double?",
     ["Option", "bool"] => "bool?",
-    ["Option", serialized] => {
-      ty = format!("{}? ", serialized);
+    ["Option", ..] => {
+      ty = format!("{}? ", dart_type(&types[1..]));
       &ty
     }
     _ => {
@@ -260,6 +264,20 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
     }}()"#,
       variable = variable.to_mixed_case()
     ),
+    ["Option", "Vec", ..] => format!(
+      r#"(){{
+      if ({variable} == null) {{
+        return nullptr;
+      }}
+      final serializer = BincodeSerializer();
+      {serializer}
+      final data = serializer.bytes;
+      {ser_partial}
+    }}()"#,
+      variable = variable.to_mixed_case(),
+      serializer = serializer(types, &variable.to_mixed_case()),
+      ser_partial = serialization_partial(),
+    ),
     ["Option", ..] => format!(
       r#"(){{
       if ({variable} == null) {{
@@ -330,6 +348,15 @@ fn serializer(types: &[&str], variable: &str) -> String {
       }});",
         variable = variable,
         serializer = serializer(&types[1..], "value"),
+      );
+      &se
+    }
+    ["Option", ..] => {
+      se = format!(
+        // the containing serialization code does an early return if the
+        // value is null so we don't have to do a null check here
+        "{serializer};",
+        serializer = serializer(&types[1..], variable),
       );
       &se
     }

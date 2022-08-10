@@ -44,7 +44,7 @@ fn c_type(ty: &[&str], type_: &syn::Type) -> syn::Result<String> {
     ["Option", "i64"] => "const int64_t *",
     ["Option", "f64"] => "const double *",
     ["Option", "bool"] => "const uint8_t *",
-    ["Option", _serialized] => "const uint8_t *",
+    ["Option", ..] => "const uint8_t *",
     _ => {
       return Err(syn::Error::new_spanned(
         type_,
