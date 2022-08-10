@@ -103,6 +103,10 @@ pub fn dart_type(types: &[&str]) -> String {
     ["f64"] => "double",
     ["bool"] => "bool",
     ["()"] => "void",
+    ["Option", ..] => {
+      ty = format!("{}?", dart_type(&types[1..]));
+      &ty
+    }
     ["Vec", "Option", ..] => {
       ty = format!("List<{}?>", dart_type(&types[2..]));
       &ty
@@ -270,6 +274,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       final data = serializer.bytes;
       {ser_partial}
     }}()"#,
+      variable = variable.to_mixed_case(),
       serializer = serializer(types, &variable.to_mixed_case()),
       ser_partial = serialization_partial(),
     ),
