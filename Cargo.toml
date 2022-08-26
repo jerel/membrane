@@ -1,6 +1,6 @@
 [workspace]
 exclude = [
-  "example",
+  "membrane_tests",
 ]
 members = [
   "membrane_types",

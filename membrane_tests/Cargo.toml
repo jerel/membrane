@@ -1,8 +1,8 @@
 [package]
-description = "An example application using Membrane"
+description = "An example/test application using Membrane"
 edition = "2018"
 license = "Apache-2.0"
-name = "example"
+name = "membrane_tests"
 repository = "https://github.com/jerel/membrane"
 version = "0.1.0"
 

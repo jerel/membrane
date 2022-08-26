@@ -32,7 +32,7 @@ serde-generate = "0.24"
 serde-reflection = "0.3"
 
 [dev-dependencies]
-example = {path = "../example", features = ["c-example"]}
+membrane_tests = {path = "../membrane_tests", features = ["c-example"]}
 pretty_assertions = "1.2"
 serial_test = "0.6"
 trybuild = "1.0"

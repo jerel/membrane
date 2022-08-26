@@ -2,8 +2,8 @@ mod test_utils;
 
 mod test {
   use super::test_utils::*;
-  use example;
   use membrane::Membrane;
+  use membrane_tests;
   use serial_test::serial;
   use std::{fs::read_to_string, path::Path};
 
@@ -45,7 +45,7 @@ mod test {
     let path = Path::new("../dart_example");
 
     // reference the example lib so it doesn't get optimized away
-    let _ = example::load();
+    let _ = membrane_tests::load();
 
     Membrane::new()
       .timeout(200)
@@ -110,7 +110,7 @@ class Contact {
     let path = Path::new("../dart_example");
 
     // reference the example lib so it doesn't get optimized away
-    let _ = example::load();
+    let _ = membrane_tests::load();
 
     Membrane::new()
       .with_c_style_enums(false)

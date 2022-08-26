@@ -187,21 +187,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
 
 [[package]]
-name = "example"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "cc",
- "futures",
- "membrane",
- "once_cell",
- "serde",
- "serde_bytes",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
 name = "failure"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -501,11 +486,11 @@ version = "0.6.3"
 dependencies = [
  "allo-isolate",
  "bincode",
- "example",
  "ffi_helpers",
  "futures",
  "inventory",
  "membrane_macro",
+ "membrane_tests",
  "membrane_types",
  "pretty_assertions",
  "regex",
@@ -521,6 +506,21 @@ name = "membrane_macro"
 version = "0.5.0"
 dependencies = [
  "membrane_types",
+]
+
+[[package]]
+name = "membrane_tests"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "cc",
+ "futures",
+ "membrane",
+ "once_cell",
+ "serde",
+ "serde_bytes",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
