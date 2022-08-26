@@ -37,7 +37,7 @@
 //! fn main() {
 //!   let mut project = membrane::Membrane::new();
 //!   project
-//!     .package_destination_dir("../dart_example")
+//!     .package_destination_dir("../dart_tests")
 //!     .package_name("example")
 //!     .using_lib("libexample")
 //!     .create_pub_package()
@@ -48,7 +48,7 @@
 //! # static SILENCE_CLIPPY_MAIN = 1;
 //! ```
 //! For a runnable example see the [`example`](https://github.com/jerel/membrane/tree/main/example) directory
-//! and run `cargo run` to inspect the Dart output in the `dart_example` directory.
+//! and run `cargo run` to inspect the Dart output in the `dart_tests` directory.
 //!
 //! By default Membrane stores metadata during the compile step whenever the project is
 //! compiled in debug mode. This has two implications:

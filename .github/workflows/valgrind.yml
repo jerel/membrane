@@ -34,12 +34,12 @@ jobs:
       run: cargo run
 
     - name: Dart compile example
-      working-directory: ./dart_example
-      run: dart compile exe -D --enable-asserts bin/dart_example.dart
+      working-directory: ./dart_tests
+      run: dart compile exe -D --enable-asserts bin/dart_tests.dart
 
     - name: Test binary via Valgrind
-      working-directory: ./dart_example
+      working-directory: ./dart_tests
       run: |
         sudo apt install -y valgrind
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
-        ../.github/workflows/valgrind.py ./bin/dart_example.exe
+        ../.github/workflows/valgrind.py ./bin/dart_tests.exe

@@ -44,7 +44,7 @@ On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you 
 
 ## Usage
 
-_View the [example](https://github.com/jerel/membrane/tree/main/example) directory for a runnable example._
+_View the [membrane_tests](https://github.com/jerel/membrane/tree/main/membrane_tests) directory or download the [membrane_template](https://github.com/jerel/membrane_template) quickstart for a Dart/Flutter/Rust example that you can run._
 
 In your crate's `lib.rs` add a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a `spawn` function, in this case we're using `tokio`:
 ``` rust
@@ -93,7 +93,7 @@ fn main() {
   let mut project = membrane::Membrane::new();
   project
     // name the output pub directory
-    .package_destination_dir("../dart_example")
+    .package_destination_dir("../dart_tests")
     // the pub package name, if different than the directory
     .package_name("example")
     // give the basename of the .so or .dylib that your Rust program provides
@@ -113,14 +113,14 @@ If everything went as planned you can now call Rust from Dart with:
 cd example
 cargo run
 cargo build
-cd ../dart_example
+cd ../dart_tests
 cp ../example/target/debug/libexample.dylib .
 dart --enable-asserts run
 ```
 (`--enable-asserts` enables a pretty print `toString()` in the generated classes)
 
 ``` dart
-import 'package:dart_example/accounts.dart';
+import 'package:dart_tests/accounts.dart';
 
 void main(List<String> arguments) async {
   var accounts = AccountsApi();

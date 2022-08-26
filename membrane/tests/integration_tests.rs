@@ -11,15 +11,15 @@ mod test {
   #[serial]
   #[cfg(feature = "c-example")]
   fn test_c_project() {
-    let path = Path::new("../dart_example");
+    let path = Path::new("../dart_tests");
 
-    // reference the example lib so it doesn't get optimized away
-    let _ = example::load();
+    // reference the membrane_tests lib so it doesn't get optimized away
+    let _ = membrane_tests::load();
 
     Membrane::new()
       .timeout(200)
       .package_destination_dir(path)
-      .using_lib("libexample")
+      .using_lib("libmembrane_tests")
       .create_pub_package()
       .write_api()
       .write_c_headers()
@@ -42,15 +42,15 @@ mod test {
   #[test]
   #[serial]
   fn base_project() {
-    let path = Path::new("../dart_example");
+    let path = Path::new("../dart_tests");
 
-    // reference the example lib so it doesn't get optimized away
+    // reference the membrane_tests lib so it doesn't get optimized away
     let _ = membrane_tests::load();
 
     Membrane::new()
       .timeout(200)
       .package_destination_dir(path)
-      .using_lib("libexample")
+      .using_lib("libmembrane_tests")
       .create_pub_package()
       .write_api()
       .write_c_headers()
@@ -107,15 +107,15 @@ class Contact {
   #[test]
   #[serial]
   fn test_class_enums() {
-    let path = Path::new("../dart_example");
+    let path = Path::new("../dart_tests");
 
-    // reference the example lib so it doesn't get optimized away
+    // reference the membrane_tests lib so it doesn't get optimized away
     let _ = membrane_tests::load();
 
     Membrane::new()
       .with_c_style_enums(false)
       .package_destination_dir(path)
-      .using_lib("libexample")
+      .using_lib("libmembrane_tests")
       .create_pub_package()
       .write_api()
       .write_c_headers()

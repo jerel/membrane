@@ -28,7 +28,7 @@ impl<'a> fmt::Debug for PrettyString<'a> {
 }
 
 pub fn build_lib(path: &PathBuf, additional_args: &mut Vec<&str>) {
-  let mut args = vec!["build", "-p", "example"];
+  let mut args = vec!["build", "-p", "membrane_tests"];
   args.append(additional_args);
 
   Command::new("cargo")
@@ -37,13 +37,16 @@ pub fn build_lib(path: &PathBuf, additional_args: &mut Vec<&str>) {
     .expect("lib could not be compiled for integration tests");
 
   // unlink the symlinks because they might be stale
-  let _ = fs::remove_file(path.join("libexample.so"));
-  let _ = fs::remove_file(path.join("libexample.dylib"));
+  let _ = fs::remove_file(path.join("libmembrane_tests.so"));
+  let _ = fs::remove_file(path.join("libmembrane_tests.dylib"));
   // link the workspace compiled artifacts to the temp test folder
-  let _ = fs::hard_link("../target/debug/libexample.so", path.join("libexample.so"));
   let _ = fs::hard_link(
-    "../target/debug/libexample.dylib",
-    path.join("libexample.dylib"),
+    "../target/debug/libmembrane_tests.so",
+    path.join("libmembrane_tests.so"),
+  );
+  let _ = fs::hard_link(
+    "../target/debug/libmembrane_tests.dylib",
+    path.join("libmembrane_tests.dylib"),
   );
 }
 

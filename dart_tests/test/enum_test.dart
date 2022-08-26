@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:dart_example/accounts.dart';
+import 'package:dart_tests/accounts.dart';
 
 // This test is exercised by `cargo test` which generates Dart code
 // with the `.with_c_style_enums(false)` membrane option enabled. To run this test

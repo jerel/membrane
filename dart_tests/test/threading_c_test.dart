@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:dart_example/c_example.dart';
+import 'package:dart_tests/c_example.dart';
 
 // This test is exercised by `cargo test` which compiles a C program via build.rs.
 // To run this test run via `cargo test --features c-example`

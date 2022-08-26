@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
-import 'package:dart_example/accounts.dart';
-import 'package:dart_example/locations.dart';
+import 'package:dart_tests/accounts.dart';
+import 'package:dart_tests/locations.dart';
 
 void main() {
   test('can take one item from a stream', () async {

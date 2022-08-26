@@ -1,6 +1,6 @@
 target
-dart_example/*
-!dart_example/test/
+dart_tests/*
+!dart_tests/test/
 *.lock
 !Cargo.lock
 !example/Cargo.lock

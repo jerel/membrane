@@ -45,8 +45,8 @@ jobs:
       run: cargo run
 
     - name: Dart run example
-      working-directory: ./dart_example
+      working-directory: ./dart_tests
       run: |
-        dart compile exe -D --enable-asserts bin/dart_example.dart
+        dart compile exe -D --enable-asserts bin/dart_tests.dart
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
-        ./bin/dart_example.exe
+        ./bin/dart_tests.exe
