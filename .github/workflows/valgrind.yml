@@ -26,11 +26,11 @@ jobs:
       run: sudo apt-get install -y libclang-dev
 
     - name: Rust build example
-      working-directory: ./example
+      working-directory: ./membrane_tests
       run: cargo build --verbose
 
     - name: Rust generate Dart example
-      working-directory: ./example
+      working-directory: ./membrane_tests
       run: cargo run
 
     - name: Dart compile example
@@ -41,5 +41,5 @@ jobs:
       working-directory: ./dart_tests
       run: |
         sudo apt install -y valgrind
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../membrane_tests/target/debug/"
         ../.github/workflows/valgrind.py ./bin/dart_tests.exe

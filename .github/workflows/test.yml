@@ -37,16 +37,16 @@ jobs:
       run: cargo build --verbose
 
     - name: Rust build example
-      working-directory: ./example
+      working-directory: ./membrane_tests
       run: cargo build --verbose
 
     - name: Rust generate Dart example
-      working-directory: ./example
+      working-directory: ./membrane_tests
       run: cargo run
 
     - name: Dart run example
       working-directory: ./dart_tests
       run: |
         dart compile exe -D --enable-asserts bin/dart_tests.dart
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../membrane_tests/target/debug/"
         ./bin/dart_tests.exe
