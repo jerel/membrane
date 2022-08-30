@@ -19,6 +19,9 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: Versions
+      run: rustc --version && cargo --version && dart --version
+
     - name: Update apt
       run: sudo apt-get update
 
