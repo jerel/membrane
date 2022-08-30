@@ -44,7 +44,8 @@ On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you 
 
 ## Usage
 
-_View the [membrane_tests](https://github.com/jerel/membrane/tree/main/membrane_tests) directory or download the [membrane_template](https://github.com/jerel/membrane_template) quickstart for a Dart/Flutter/Rust example that you can run._
+_Download the [membrane_template](https://github.com/jerel/membrane_template) quickstart for a Dart/Flutter/Rust example that you can run
+or browse the [membrane_tests](https://github.com/jerel/membrane/tree/main/membrane_tests) directory._
 
 In your crate's `lib.rs` add a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a `spawn` function, in this case we're using `tokio`:
 ``` rust

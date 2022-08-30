@@ -181,21 +181,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "example"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "cc",
- "futures",
- "membrane",
- "once_cell",
- "serde",
- "serde_bytes",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
 name = "failure"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -496,6 +481,21 @@ name = "membrane_macro"
 version = "0.5.0"
 dependencies = [
  "membrane_types",
+]
+
+[[package]]
+name = "membrane_tests"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "cc",
+ "futures",
+ "membrane",
+ "once_cell",
+ "serde",
+ "serde_bytes",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
