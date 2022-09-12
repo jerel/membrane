@@ -56,9 +56,13 @@ mod test {
       .write_c_headers()
       .write_bindings();
 
-    let api = read_to_string(path.join("lib").join("accounts.dart")).unwrap();
+    let api = read_to_string(path.join("lib").join("accounts_ffi.dart")).unwrap();
     assert!(api.contains("@immutable\nclass AccountsApi {"));
     assert!(api.contains("Future<Contact> contact({required String userId}) async {"));
+
+    let web_api = read_to_string(path.join("lib").join("accounts_web.dart")).unwrap();
+    assert!(web_api.contains("@immutable\nclass AccountsApi {"));
+    assert!(web_api.contains("Future<Contact> contact({required String userId}) async {"));
 
     let dart_type = read_to_string(
       path
