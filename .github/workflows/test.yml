@@ -50,3 +50,7 @@ jobs:
         dart compile exe -D --enable-asserts bin/dart_example.dart
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$(pwd)/../example/target/debug/"
         ./bin/dart_example.exe
+
+    - name: Compile web
+      working-directory: ./dart_example
+      run: dart compile js -o example.js bin/dart_example.dart
