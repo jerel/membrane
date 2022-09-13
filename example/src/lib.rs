@@ -23,3 +23,10 @@ pub fn load() {
   #[cfg(feature = "c-example")]
   application::c_render::load();
 }
+
+// Prevent extern "C" functions from being opitmized out by the linker
+#[used]
+static CANCEL_CALLBACK: unsafe extern "C" fn(*mut membrane::TaskHandle) -> i32 =
+  membrane::membrane_cancel_membrane_task;
+#[used]
+static FREE_VEC: unsafe extern "C" fn(i64, *const u8) -> i32 = membrane::membrane_free_membrane_vec;
