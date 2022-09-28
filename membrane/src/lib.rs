@@ -82,12 +82,13 @@ pub mod utils;
 mod generators;
 
 use generators::functions::{Builder, Writable};
-use membrane_types::heck::CamelCase;
+use membrane_types::heck::{CamelCase, SnakeCase};
 use serde_reflection::{
   ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig, VariantFormat,
 };
 use std::{
-  collections::HashMap,
+  collections::{HashMap, HashSet},
+  fs::{read_to_string, remove_file},
   io::Write,
   path::{Path, PathBuf},
 };
@@ -105,6 +106,7 @@ pub struct Function {
   pub namespace: String,
   pub disable_logging: bool,
   pub timeout: Option<i32>,
+  pub borrow: Vec<&'static str>,
   pub output: String,
   pub dart_outer_params: String,
   pub dart_transforms: String,
@@ -112,6 +114,7 @@ pub struct Function {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct DeferredTrace {
   pub function: Function,
   pub namespace: String,
@@ -119,7 +122,9 @@ pub struct DeferredTrace {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct DeferredEnumTrace {
+  pub name: String,
   pub namespace: String,
   pub trace: fn(tracer: &mut serde_reflection::Tracer),
 }
@@ -138,28 +143,72 @@ pub struct Membrane {
   generated: bool,
   c_style_enums: bool,
   timeout: Option<i32>,
+  borrows: HashMap<String, HashMap<String, HashSet<String>>>,
 }
 
 impl<'a> Membrane {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    let mut namespaces = vec![];
+    let enums = inventory::iter::<DeferredEnumTrace>();
+    let functions = inventory::iter::<DeferredTrace>();
+    let mut namespaces = vec![
+      enums
+        .clone()
+        .map(|x| x.namespace.clone())
+        .collect::<Vec<String>>(),
+      functions
+        .clone()
+        .map(|x| x.namespace.clone())
+        .collect::<Vec<String>>(),
+    ]
+    .concat();
+
+    namespaces.sort();
+    namespaces.dedup();
+
     let mut namespaced_enum_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
-    for item in inventory::iter::<DeferredEnumTrace> {
-      namespaces.push(item.namespace.clone());
+    let mut borrows: HashMap<String, HashMap<String, HashSet<String>>> = HashMap::new();
 
+    // collect all the metadata about functions (without tracing them yet)
+    functions.clone().for_each(|item| {
+      namespaced_fn_registry
+        .entry(item.namespace.clone())
+        .or_insert_with(Vec::new)
+        .push(item.function.clone());
+    });
+
+    // work out which namespaces borrow which types from other namespaces
+    namespaces.iter().for_each(|namespace| {
+      Self::create_borrows(&namespaced_fn_registry, namespace.to_string(), &mut borrows);
+    });
+
+    // trace all the enums at least once
+    enums.for_each(|item| {
+      // trace the enum into the borrowing namespace's registry
+      borrows.iter().for_each(|(for_namespace, from_namespaces)| {
+        if let Some(types) = from_namespaces.get(&item.namespace) {
+          if types.contains(&item.name) {
+            let tracer = namespaced_enum_registry
+              .entry(for_namespace.to_string())
+              .or_insert_with(|| Tracer::new(TracerConfig::default()));
+
+            (item.trace)(tracer);
+          }
+        }
+      });
+
+      // trace the enum into the owning namespace's registry
       let tracer = namespaced_enum_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
       (item.trace)(tracer);
-    }
+    });
 
-    for item in inventory::iter::<DeferredTrace> {
-      namespaces.push(item.namespace.clone());
-
+    // now that we have the enums in the registry we'll trace each of the functions
+    functions.for_each(|item| {
       let tracer = namespaced_enum_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
@@ -169,15 +218,7 @@ impl<'a> Membrane {
         .or_insert_with(Samples::new);
 
       (item.trace)(tracer, samples);
-
-      namespaced_fn_registry
-        .entry(item.namespace.clone())
-        .or_insert_with(Vec::new)
-        .push(item.function.clone());
-    }
-
-    namespaces.sort();
-    namespaces.dedup();
+    });
 
     Self {
       package_name: match std::env::var_os("MEMBRANE_PACKAGE_NAME") {
@@ -210,6 +251,7 @@ impl<'a> Membrane {
       generated: false,
       c_style_enums: true,
       timeout: None,
+      borrows,
     }
   }
 
@@ -298,7 +340,7 @@ impl<'a> Membrane {
         Ok(reg) => reg,
         Err(Error::MissingVariants(names)) => {
           panic!(
-            "An enum was used that has not had the membrane::dart_enum macro applied. Please add #[dart_enum(namespace = \"{}\")] to the {} enum.",
+            "An enum was used that has not had the membrane::dart_enum macro applied. Please `borrow` it from an existing namespace or add #[dart_enum(namespace = \"{}\")] to the {} enum.",
             namespace,
             names.first().unwrap()
           );
@@ -410,6 +452,8 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
       self.create_web_impl(x.to_string());
       self.create_class(x.to_string());
     });
+
+    self.create_imports();
 
     if self.generated {
       self.create_loader();
@@ -809,6 +853,87 @@ class {class_name}Api {{
 
   fn namespace_path(&mut self, namespace: String) -> PathBuf {
     self.destination.join("lib").join("src").join(&namespace)
+  }
+
+  fn create_borrows(
+    namespaced_fn_registry: &HashMap<String, Vec<Function>>,
+    namespace: String,
+    borrows: &mut HashMap<String, HashMap<String, HashSet<String>>>,
+  ) {
+    let fns = namespaced_fn_registry.get(&namespace).unwrap();
+
+    fns.iter().for_each(move |fun| {
+      fun
+        .borrow
+        .iter()
+        .map(|borrow| borrow.split("::").map(|x| x.trim()).collect::<Vec<&str>>())
+        .for_each(|borrow_list| {
+          if let [from_namespace, r#type] = borrow_list[..] {
+            let imports = borrows.entry(namespace.to_string()).or_default();
+            let types = imports.entry(from_namespace.to_string()).or_default();
+            types.insert(r#type.to_string());
+          } else {
+            panic!("Found an invalid `borrow`: `{:?}`. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow);
+          }
+        });
+
+    });
+  }
+
+  fn create_imports(&mut self) -> &mut Self {
+    self.borrows.iter().for_each(|(namespace, imports)| {
+      imports.iter().for_each(|(from_namespace, borrowed_types)| {
+        let borrowed_types: Vec<String> = borrowed_types.iter().map(|x| x.to_string()).collect();
+        let file_name = format!("{ns}.dart", ns = namespace);
+        let namespace_path = self.destination.join("lib/src").join(namespace);
+        let barrel_file_path = namespace_path.join(file_name);
+
+        let barrel_file = read_to_string(&barrel_file_path)
+          .unwrap()
+          .lines()
+          .filter_map(|line| {
+            if borrowed_types.contains(
+              &line
+                .replace("part '", "")
+                .replace(".dart';", "")
+                .to_camel_case(),
+            ) {
+              None
+            } else if line.starts_with("import '../bincode") {
+              Some(vec![
+                line.to_string(),
+                format!(
+                  "import '../{ns}/{ns}.dart' show {types};",
+                  ns = from_namespace,
+                  types = borrowed_types.join(",")
+                ),
+              ])
+            } else if line.starts_with("export '../serde") {
+              Some(vec![
+                line.to_string(),
+                format!(
+                  "export '../{ns}/{ns}.dart' show {types};",
+                  ns = from_namespace,
+                  types = borrowed_types.join(",")
+                ),
+              ])
+            } else {
+              Some(vec![line.to_string()])
+            }
+          })
+          .flatten()
+          .collect::<Vec<String>>();
+
+        borrowed_types.iter().for_each(|borrowed_type| {
+          let filename = format!("{}.dart", borrowed_type.to_snake_case());
+          let _ = remove_file(namespace_path.join(filename));
+        });
+
+        std::fs::write(barrel_file_path, barrel_file.join("\n")).unwrap();
+      });
+    });
+
+    self
   }
 }
 

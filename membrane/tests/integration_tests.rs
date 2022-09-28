@@ -99,6 +99,18 @@ class Contact {
       "MembraneResponse membrane_accounts_contact(int64_t port, const char *user_id);",
     );
 
+    // verify that borrowed types are no longer created in the borrowing namespace
+    assert!(path.join("lib/src/locations/location.dart").exists() == true);
+    assert!(path.join("lib/src/accounts/contact.dart").exists() == true);
+    assert!(path.join("lib/src/accounts/status.dart").exists() == true);
+    assert!(path.join("lib/src/accounts/filter.dart").exists() == true);
+    assert!(path.join("lib/src/accounts/match.dart").exists() == true);
+    assert!(path.join("lib/src/orgs/location.dart").exists() == false);
+    assert!(path.join("lib/src/orgs/contact.dart").exists() == false);
+    assert!(path.join("lib/src/orgs/status.dart").exists() == false);
+    assert!(path.join("lib/src/orgs/filter.dart").exists() == false);
+    assert!(path.join("lib/src/orgs/match.dart").exists() == false);
+
     build_lib(&path.to_path_buf(), &mut vec![]);
     run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
     run_dart(
