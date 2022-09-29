@@ -466,7 +466,7 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 ///
-/// For use inside `#[async_dart]` functions. Used to create an emitter for use with `impl Emitter<result<T, E>>` and `impl StreamEmitter<Result<T, E>>`
+/// For use inside `#[async_dart]` functions. Used to create an emitter for use with `impl Emitter<Result<T, E>>` and `impl StreamEmitter<Result<T, E>>`
 /// return types.
 ///
 /// Example:
