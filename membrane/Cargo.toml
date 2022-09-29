@@ -28,8 +28,8 @@ membrane_macro = {version = "0.5", path = "../membrane_macro"}
 membrane_types = {version = "0.3", path = "../membrane_types"}
 regex = "1.5"
 serde = {version = "1.0", features = ["derive"]}
-serde-generate = {git = "https://github.com/jerel/serde-reflection", rev = "c588f7d"}
-serde-reflection = {git = "https://github.com/jerel/serde-reflection", rev = "c588f7d"}
+serde-generate = {git = "https://github.com/jerel/serde-reflection", rev = "cd66898"}
+serde-reflection = {git = "https://github.com/jerel/serde-reflection", rev = "cd66898"}
 
 [dev-dependencies]
 example = {path = "../example", features = ["c-example"]}
