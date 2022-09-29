@@ -166,7 +166,7 @@ impl Function {
     "\n  }\n".to_string()
   }
 
-  #[allow(clippy::main_recursion)]
+  #[allow(clippy::only_used_in_recursion)]
   fn deserializer(
     &self,
     ty: &[&str],
