@@ -6,7 +6,7 @@ error: #[async_dart] expects a `namespace` attribute
    |
    = note: this error originates in the attribute macro `async_dart` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: only `namespace=""`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options
+error: only `namespace=""`, `borrow="namespace::Type"`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options
   --> tests/ui/single.rs:27:1
    |
 27 | #[async_dart(namespace = "a", foo = true)]
