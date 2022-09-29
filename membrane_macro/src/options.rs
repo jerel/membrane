@@ -7,6 +7,7 @@ pub(crate) struct Options {
   pub disable_logging: bool,
   pub timeout: Option<i32>,
   pub os_thread: bool,
+  pub borrow: Vec<String>,
 }
 
 pub(crate) fn extract_options(
@@ -27,6 +28,20 @@ pub(crate) fn extract_options(
       options.namespace = val.value();
       options
     }
+    Some((ident, Lit::Str(val))) if ident == "borrow" => {
+      let value = val.value();
+      let borrow = value.split("::").collect::<Vec<&str>>();
+      // check the given borrow for correctness, then push the string
+      if let [_namespace, _type] = borrow[..] {
+        options.borrow.push(value);
+        options
+      } else {
+        return Err(format!(
+          "`{value}` is not a valid option for `borrow`, must be of the form `borrow = \"namespace::Type\"`",
+          value = value
+        ));
+      }
+    }
     Some((ident, Lit::Bool(val))) if ident == "disable_logging" => {
       options.disable_logging = val.value();
       options
@@ -44,12 +59,12 @@ pub(crate) fn extract_options(
     }
     Some(_) if sync => {
       return Err(
-        r#"only `namespace=""` and `disable_logging=true` are valid options"#.to_string(),
+        r#"only `namespace=""`, `borrow="namespace::Type"`, and `disable_logging=true` are valid options"#.to_string(),
       );
     }
     Some(_) => {
       return Err(
-        r#"only `namespace=""`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#.to_string());
+        r#"only `namespace=""`, `borrow="namespace::Type"`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options"#.to_string());
     }
     None => {
       // we've iterated over all options and didn't find a namespace (required)

@@ -112,3 +112,10 @@ pub struct MoreTypes {
 pub struct Location {
   pub polyline_coords: Vec<(f64, f64)>,
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct Organization {
+  pub id: i64,
+  pub owner: Contact,
+  pub location: Location,
+}

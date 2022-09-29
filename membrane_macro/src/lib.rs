@@ -149,6 +149,7 @@ fn to_token_stream(
     disable_logging,
     timeout,
     os_thread,
+    borrow,
   } = options;
 
   let mut functions = TokenStream::new();
@@ -336,6 +337,7 @@ fn to_token_stream(
   } else {
     quote! { None }
   };
+  let borrow = quote! { vec![#(#borrow),*] };
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
@@ -352,6 +354,7 @@ fn to_token_stream(
                 namespace: #namespace.to_string(),
                 disable_logging: #disable_logging,
                 timeout: #timeout,
+                borrow: #borrow,
                 dart_outer_params: #dart_outer_params.to_string(),
                 dart_transforms: #dart_transforms.to_string(),
                 dart_inner_args: #dart_inner_args.to_string(),
@@ -398,9 +401,16 @@ impl Parse for ReprDartEnum {
   }
 }
 
+///
+/// Apply this macro to enums to mark them for Dart code generation.
+///
+/// Valid options:
+///   * `namespace`, used to select the Dart implementation code directory.
 #[proc_macro_attribute]
 pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
-  let Options { namespace, .. } = match extract_options(
+  let Options {
+    namespace, borrow, ..
+  } = match extract_options(
     parse_macro_input!(attrs as AttributeArgs),
     Options::default(),
     false,
@@ -416,12 +426,25 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let mut variants = TokenStream::new();
   variants.extend(input.clone());
 
+  if !borrow.is_empty() {
+    variants.extend::<TokenStream>(
+      syn::Error::new(
+        Span::call_site(),
+        "`borrow` is not a valid option for #[dart_enum]",
+      )
+      .to_compile_error()
+      .into(),
+    );
+  }
+
   let ReprDartEnum { name } = parse_macro_input!(input as ReprDartEnum);
+  let enum_name = name.to_string();
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
           #![crate = ::membrane]
           ::membrane::DeferredEnumTrace {
+              name: #enum_name.to_string(),
               namespace: #namespace.to_string(),
               trace: |
                 tracer: &mut ::membrane::serde_reflection::Tracer

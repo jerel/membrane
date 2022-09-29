@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'package:dart_example/accounts.dart';
 import 'package:dart_example/locations.dart';
+import 'package:dart_example/orgs.dart';
 
 void main() {
   test('can take one item from a stream', () async {
@@ -451,5 +452,14 @@ void main() {
     } on AccountsApiError catch (err) {
       expect(err.e, "The sync rust code panicked");
     }
+  });
+
+  test('test that borrowing from other namespaces works', () async {
+    final accounts = AccountsApi();
+    await accounts.borrowedTypes(id: 10);
+
+    final orgs = OrgsApi();
+    await orgs.getOrgWithBorrowedType(
+        id: Filter(value: [Match(field: "id", value: "1")]));
   });
 }

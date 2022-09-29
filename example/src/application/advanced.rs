@@ -466,6 +466,15 @@ pub fn slow_stream(sleep_for: i64) -> impl Stream<Item = Result<i32, String>> {
   }
 }
 
+#[async_dart(namespace = "accounts", borrow = "locations::Location")]
+pub async fn borrowed_types(id: i64) -> Result<data::Location, String> {
+  let _id = id;
+
+  Ok(data::Location {
+    polyline_coords: vec![(-104.0185546875, 43.004647127794435)],
+  })
+}
+
 #[async_dart(namespace = "locations")]
 pub async fn get_location(id: i64) -> Result<data::Location, String> {
   let _id = id;
@@ -477,4 +486,34 @@ pub async fn get_location(id: i64) -> Result<data::Location, String> {
       (-94.130859375, 37.85750715625203),
     ],
   })
+}
+
+#[async_dart(
+  namespace = "orgs",
+  borrow = "locations::Location",
+  borrow = "accounts::Contact",
+  borrow = "accounts::Filter",
+  borrow = "accounts::Match",
+  borrow = "accounts::Status"
+)]
+pub async fn get_org_with_borrowed_type(id: data::Filter) -> Result<data::Organization, String> {
+  let _ = id;
+  Ok(data::Organization {
+    id: 1,
+    owner: data::Contact::default(),
+    location: data::Location {
+      polyline_coords: vec![(-104.0185546875, 43.004647127794435)],
+    },
+  })
+}
+
+// this is only to duplicate the above borrows to test import generation, it's never called
+#[async_dart(
+  namespace = "orgs",
+  borrow = "locations::Location",
+  borrow = "accounts::Contact",
+  borrow = "accounts::Contact"
+)]
+pub async fn unused_duplicate_borrows(_id: i64) -> Result<data::Organization, String> {
+  todo!()
 }
