@@ -512,7 +512,8 @@ pub async fn get_org_with_borrowed_type(id: data::Filter) -> Result<data::Organi
   namespace = "orgs",
   borrow = "locations::Location",
   borrow = "accounts::Contact",
-  borrow = "accounts::Contact"
+  borrow = "accounts::Contact",
+  borrow = "common::SharedType"
 )]
 pub async fn unused_duplicate_borrows(_id: i64) -> Result<data::Organization, String> {
   todo!()

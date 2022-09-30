@@ -24,6 +24,15 @@ impl Default for Status {
   }
 }
 
+// this is to test that an enum could be generated to an empty shared namespace which itself exports no functions
+#[dart_enum(namespace = "common")]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+enum SharedType {
+  Yes,
+  No,
+  Maybe,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Contact {
   pub id: i64,

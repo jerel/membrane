@@ -602,7 +602,11 @@ headers:
     let path = self
       .namespace_path(namespace.clone())
       .join(namespace.to_string() + ".h");
-    let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
+    let default = &vec![];
+    let fns = self
+      .namespaced_fn_registry
+      .get(&namespace)
+      .unwrap_or(default);
 
     let head = r#"/*
  * AUTO GENERATED FILE, DO NOT EDIT
@@ -749,7 +753,11 @@ export './{ns}_ffi.dart' if (dart.library.html) './{ns}_web.dart';
       return self;
     }
 
-    let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
+    let default = &vec![];
+    let fns = self
+      .namespaced_fn_registry
+      .get(&namespace)
+      .unwrap_or(default);
 
     let head = format!(
       r#"// AUTO GENERATED FILE, DO NOT EDIT
@@ -813,7 +821,11 @@ class {class_name}Api {{
       return self;
     }
 
-    let fns = self.namespaced_fn_registry.get(&namespace).unwrap();
+    let default = &vec![];
+    let fns = self
+      .namespaced_fn_registry
+      .get(&namespace)
+      .unwrap_or(default);
 
     let head = format!(
       r#"// AUTO GENERATED FILE, DO NOT EDIT
@@ -860,7 +872,8 @@ class {class_name}Api {{
     namespace: String,
     borrows: &mut HashMap<String, HashMap<String, HashSet<String>>>,
   ) {
-    let fns = namespaced_fn_registry.get(&namespace).unwrap();
+    let default = &vec![];
+    let fns = namespaced_fn_registry.get(&namespace).unwrap_or(default);
 
     fns.iter().for_each(move |fun| {
       fun
