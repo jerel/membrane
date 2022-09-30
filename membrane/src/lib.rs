@@ -87,7 +87,7 @@ use serde_reflection::{
   ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig, VariantFormat,
 };
 use std::{
-  collections::{HashMap, HashSet},
+  collections::{BTreeMap, BTreeSet, HashMap},
   fs::{read_to_string, remove_file},
   io::Write,
   path::{Path, PathBuf},
@@ -143,7 +143,7 @@ pub struct Membrane {
   generated: bool,
   c_style_enums: bool,
   timeout: Option<i32>,
-  borrows: HashMap<String, HashMap<String, HashSet<String>>>,
+  borrows: HashMap<String, BTreeMap<String, BTreeSet<String>>>,
 }
 
 impl<'a> Membrane {
@@ -169,7 +169,7 @@ impl<'a> Membrane {
     let mut namespaced_enum_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
-    let mut borrows: HashMap<String, HashMap<String, HashSet<String>>> = HashMap::new();
+    let mut borrows: HashMap<String, BTreeMap<String, BTreeSet<String>>> = HashMap::new();
 
     // collect all the metadata about functions (without tracing them yet)
     functions.clone().for_each(|item| {
@@ -870,7 +870,7 @@ class {class_name}Api {{
   fn create_borrows(
     namespaced_fn_registry: &HashMap<String, Vec<Function>>,
     namespace: String,
-    borrows: &mut HashMap<String, HashMap<String, HashSet<String>>>,
+    borrows: &mut HashMap<String, BTreeMap<String, BTreeSet<String>>>,
   ) {
     let default = &vec![];
     let fns = namespaced_fn_registry.get(&namespace).unwrap_or(default);
@@ -895,55 +895,60 @@ class {class_name}Api {{
 
   fn create_imports(&mut self) -> &mut Self {
     self.borrows.iter().for_each(|(namespace, imports)| {
-      imports.iter().for_each(|(from_namespace, borrowed_types)| {
-        let borrowed_types: Vec<String> = borrowed_types.iter().map(|x| x.to_string()).collect();
-        let file_name = format!("{ns}.dart", ns = namespace);
-        let namespace_path = self.destination.join("lib/src").join(namespace);
-        let barrel_file_path = namespace_path.join(file_name);
+      imports
+        .iter()
+        // sort the imports in reverse order so that we can append them to existing
+        // lines and up with a descending order
+        .rev()
+        .for_each(|(from_namespace, borrowed_types)| {
+          let borrowed_types: Vec<String> = borrowed_types.iter().map(|x| x.to_string()).collect();
+          let file_name = format!("{ns}.dart", ns = namespace);
+          let namespace_path = self.destination.join("lib/src").join(namespace);
+          let barrel_file_path = namespace_path.join(file_name);
 
-        let barrel_file = read_to_string(&barrel_file_path)
-          .unwrap()
-          .lines()
-          .filter_map(|line| {
-            if borrowed_types.contains(
-              &line
-                .replace("part '", "")
-                .replace(".dart';", "")
-                .to_camel_case(),
-            ) {
-              None
-            } else if line.starts_with("import '../bincode") {
-              Some(vec![
-                line.to_string(),
-                format!(
-                  "import '../{ns}/{ns}.dart' show {types};",
-                  ns = from_namespace,
-                  types = borrowed_types.join(",")
-                ),
-              ])
-            } else if line.starts_with("export '../serde") {
-              Some(vec![
-                line.to_string(),
-                format!(
-                  "export '../{ns}/{ns}.dart' show {types};",
-                  ns = from_namespace,
-                  types = borrowed_types.join(",")
-                ),
-              ])
-            } else {
-              Some(vec![line.to_string()])
-            }
-          })
-          .flatten()
-          .collect::<Vec<String>>();
+          let barrel_file = read_to_string(&barrel_file_path)
+            .unwrap()
+            .lines()
+            .filter_map(|line| {
+              if borrowed_types.contains(
+                &line
+                  .replace("part '", "")
+                  .replace(".dart';", "")
+                  .to_camel_case(),
+              ) {
+                None
+              } else if line.starts_with("import '../bincode") {
+                Some(vec![
+                  line.to_string(),
+                  format!(
+                    "import '../{ns}/{ns}.dart' show {types};",
+                    ns = from_namespace,
+                    types = borrowed_types.join(",")
+                  ),
+                ])
+              } else if line.starts_with("export '../serde") {
+                Some(vec![
+                  line.to_string(),
+                  format!(
+                    "export '../{ns}/{ns}.dart' show {types};",
+                    ns = from_namespace,
+                    types = borrowed_types.join(",")
+                  ),
+                ])
+              } else {
+                Some(vec![line.to_string()])
+              }
+            })
+            .flatten()
+            .collect::<Vec<String>>();
 
-        borrowed_types.iter().for_each(|borrowed_type| {
-          let filename = format!("{}.dart", borrowed_type.to_snake_case());
-          let _ = remove_file(namespace_path.join(filename));
+          borrowed_types.iter().for_each(|borrowed_type| {
+            let filename = format!("{}.dart", borrowed_type.to_snake_case());
+            let _ = remove_file(namespace_path.join(filename));
+          });
+
+          std::fs::write(barrel_file_path, barrel_file.join("\n")).unwrap();
         });
-
-        std::fs::write(barrel_file_path, barrel_file.join("\n")).unwrap();
-      });
     });
 
     self

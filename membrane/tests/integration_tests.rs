@@ -105,11 +105,24 @@ class Contact {
     assert!(path.join("lib/src/accounts/status.dart").exists() == true);
     assert!(path.join("lib/src/accounts/filter.dart").exists() == true);
     assert!(path.join("lib/src/accounts/match.dart").exists() == true);
+    assert!(path.join("lib/src/common/shared_type.dart").exists() == true);
     assert!(path.join("lib/src/orgs/location.dart").exists() == false);
     assert!(path.join("lib/src/orgs/contact.dart").exists() == false);
     assert!(path.join("lib/src/orgs/status.dart").exists() == false);
     assert!(path.join("lib/src/orgs/filter.dart").exists() == false);
     assert!(path.join("lib/src/orgs/match.dart").exists() == false);
+    assert!(path.join("lib/src/orgs/shared_type.dart").exists() == false);
+
+    let imports =
+      read_to_string(path.join("lib").join("src").join("orgs").join("orgs.dart")).unwrap();
+
+    assert_contains_part(
+      &imports,
+      "import '../accounts/accounts.dart' show Contact, Filter, Match, Status;
+import '../common/common.dart' show SharedType;
+import '../locations/locations.dart' show Location;
+",
+    );
 
     build_lib(&path.to_path_buf(), &mut vec![]);
     run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
