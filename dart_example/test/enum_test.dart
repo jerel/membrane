@@ -10,9 +10,9 @@ void main() {
   test('can handle a class enum when `with_c_style_enums` is set to `false`',
       () async {
     final accounts = AccountsApi();
-    expect((await accounts.enumReturn(status: StatusActiveItem())),
-        equals(StatusActiveItem()));
-    expect((await accounts.enumReturn(status: StatusPendingItem())),
-        isNot(equals(StatusActiveItem())));
+    expect((await accounts.enumReturn(status: StatusActive())),
+        equals(StatusActive()));
+    expect((await accounts.enumReturn(status: StatusPending())),
+        isNot(equals(StatusActive())));
   });
 }
