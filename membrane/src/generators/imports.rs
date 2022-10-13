@@ -39,9 +39,9 @@ impl crate::Membrane {
             }
             VariantFormat::NewType(format) => match extract_name(format) {
               // if this type matches the parent type then we quit recursing
-              Some(names) if !names.contains(&r#type) => Some(names.iter().map(|r#type| {
+              Some(names) if !names.contains(&r#type) => Some(names.iter().flat_map(|r#type| {
                 self.with_child_borrows(from_namespace, r#type.to_string())
-              }).flatten().collect()),
+              }).collect()),
               _ => None
             },
             _ => None,
@@ -50,21 +50,21 @@ impl crate::Membrane {
           .collect::<Vec<String>>();
 
         // unless C style enums have been disabled we will import a C style enum's extension
-        if self.c_style_enums == true
+        if self.c_style_enums
           && btree
             .values()
             .all(|item| matches!(&item.value, VariantFormat::Unit))
         {
-          variants.extend([format!("{}Extension", r#type)]);
+          variants.extend(vec![format!("{}Extension", r#type)]);
         }
 
         variants
       }
       Some(ContainerFormat::NewTypeStruct(format)) => {
         match extract_name(format) {
-          Some(names) => names.iter().map(|r#type| {
+          Some(names) => names.iter().flat_map(|r#type| {
             self.with_child_borrows(from_namespace, r#type.to_string())
-          }).flatten().collect(),
+          }).collect(),
           None => vec![]
         }
       }
@@ -85,8 +85,8 @@ impl crate::Membrane {
 fn extract_name(format: &Format) -> Option<Vec<String>> {
   match format {
     Format::TypeName(name) => Some(vec![name.clone()]),
-    Format::Option(boxed_name) => extract_name(&*boxed_name),
-    Format::Seq(seq) => extract_name(&*seq),
+    Format::Option(boxed_name) => extract_name(boxed_name),
+    Format::Seq(seq) => extract_name(seq),
     Format::Tuple(formats) => Some(formats.iter().filter_map(extract_name).flatten().collect()),
     _ => None,
   }

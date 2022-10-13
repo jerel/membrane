@@ -154,6 +154,11 @@ pub struct Membrane {
 impl<'a> Membrane {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
+    std::env::set_var(
+      "RUST_LOG",
+      std::env::var("RUST_LOG").unwrap_or_else(|_| "warn".to_string()),
+    );
+
     let _ = pretty_env_logger::try_init();
 
     let enums = inventory::iter::<DeferredEnumTrace>();
@@ -872,7 +877,7 @@ class {class_name}Api {{
         .rev()
         .for_each(|(from_namespace, borrowed_types)| {
           let mut borrowed_types: Vec<String> = borrowed_types.iter().map(|x| x.to_string()).flat_map(|r#type| {
-            self.with_child_borrows(&from_namespace, r#type)
+            self.with_child_borrows(from_namespace, r#type)
           }).collect();
 
           borrowed_types.sort();
