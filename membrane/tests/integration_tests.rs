@@ -118,8 +118,8 @@ class Contact {
 
     assert_contains_part(
       &imports,
-      "import '../accounts/accounts.dart' show Contact, Filter, Match, Status;
-import '../common/common.dart' show SharedType;
+      "import '../accounts/accounts.dart' show Contact, Filter, Match, Reports, Status, StatusExtension;
+import '../common/common.dart' show Arg, Error, Mixed, SharedType, VecWrapper;
 import '../locations/locations.dart' show Location;
 ",
     );

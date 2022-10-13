@@ -152,7 +152,11 @@ pub fn contact_async_stream_emitter(
   stream
 }
 
-#[async_dart(namespace = "accounts")]
+#[async_dart(
+  namespace = "accounts",
+  // instead of generating our own copy of `Arg` we borrow the shared copy from the `common` namespace
+  borrow = "common::Arg"
+)]
 pub async fn options_demo(
   one: Option<String>,
   two: Option<i64>,
@@ -257,7 +261,11 @@ pub async fn scalar_error() -> Result<bool, String> {
   Err("an error message".to_string())
 }
 
-#[async_dart(namespace = "accounts")]
+#[async_dart(
+  namespace = "accounts",
+  // instead of generating our own copy of `VecWrapper` we borrow the shared copy from the `common` namespace
+  borrow = "common::VecWrapper"
+)]
 pub async fn vec(v: data::VecWrapper) -> Result<data::VecWrapper, String> {
   Ok(v)
 }
@@ -510,9 +518,14 @@ pub async fn get_org_with_borrowed_type(id: data::Filter) -> Result<data::Organi
 // this is only to duplicate the above borrows to test import generation, it's never called
 #[async_dart(
   namespace = "orgs",
+  // borrow from a couple different namespaces
   borrow = "locations::Location",
   borrow = "accounts::Contact",
+  // test duplication
   borrow = "accounts::Contact",
+  // recursive type
+  borrow = "accounts::Reports",
+  // borrow a type that's not exported itself by a function but is a common type
   borrow = "common::SharedType"
 )]
 pub async fn unused_duplicate_borrows(_id: i64) -> Result<data::Organization, String> {

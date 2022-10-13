@@ -30,7 +30,15 @@ impl Default for Status {
 enum SharedType {
   Yes,
   No,
-  Maybe,
+  Maybe(Mixed),
+}
+
+// demonstrate borrowing a couple of the data shapes that we don't use elsewhere
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Mixed {
+  one: (Arg, Error),
+  two: Vec<Arg>,
+  three: Option<VecWrapper>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -64,7 +72,7 @@ pub struct OptionsDemo {
   pub five: Option<Arg>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Arg {
   pub value: i64,
 }
@@ -88,7 +96,7 @@ pub struct Contacts {
 #[derive(Deserialize, Serialize)]
 pub struct SyncContacts(pub Vec<Contact>);
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VecWrapper {
   data: Vec<f64>,
 }

@@ -26,10 +26,12 @@ futures = {version = "0.3", features = ["executor"]}
 inventory = "0.1"
 membrane_macro = {version = "0.5", path = "../membrane_macro"}
 membrane_types = {version = "0.3", path = "../membrane_types"}
+pretty_env_logger = "0.4"
 regex = "1.5"
 serde = {version = "1.0", features = ["derive"]}
 serde-generate = {git = "https://github.com/jerel/serde-reflection", rev = "2eb54dd"}
 serde-reflection = {git = "https://github.com/jerel/serde-reflection", rev = "2eb54dd"}
+tracing = {version = "0.1", features = ["log"]}
 
 [dev-dependencies]
 example = {path = "../example", features = ["c-example"]}

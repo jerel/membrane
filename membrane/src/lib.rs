@@ -94,7 +94,9 @@ use std::{
   fs::{read_to_string, remove_file},
   io::Write,
   path::{Path, PathBuf},
+  process::exit,
 };
+use tracing::info;
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -141,7 +143,7 @@ pub struct Membrane {
   library: String,
   llvm_paths: Vec<String>,
   namespaces: Vec<String>,
-  namespaced_enum_registry: HashMap<String, serde_reflection::Result<Registry>>,
+  namespaced_registry: HashMap<String, serde_reflection::Result<Registry>>,
   namespaced_fn_registry: HashMap<String, Vec<Function>>,
   generated: bool,
   c_style_enums: bool,
@@ -152,6 +154,8 @@ pub struct Membrane {
 impl<'a> Membrane {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
+    let _ = pretty_env_logger::try_init();
+
     let enums = inventory::iter::<DeferredEnumTrace>();
     let functions = inventory::iter::<DeferredTrace>();
     let mut namespaces = vec![
@@ -169,7 +173,7 @@ impl<'a> Membrane {
     namespaces.sort();
     namespaces.dedup();
 
-    let mut namespaced_enum_registry = HashMap::new();
+    let mut namespaced_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
     let mut borrows: HashMap<String, BTreeMap<String, BTreeSet<String>>> = HashMap::new();
@@ -193,7 +197,7 @@ impl<'a> Membrane {
       borrows.iter().for_each(|(for_namespace, from_namespaces)| {
         if let Some(types) = from_namespaces.get(&item.namespace) {
           if types.contains(&item.name) {
-            let tracer = namespaced_enum_registry
+            let tracer = namespaced_registry
               .entry(for_namespace.to_string())
               .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
@@ -203,7 +207,7 @@ impl<'a> Membrane {
       });
 
       // trace the enum into the owning namespace's registry
-      let tracer = namespaced_enum_registry
+      let tracer = namespaced_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
@@ -212,7 +216,7 @@ impl<'a> Membrane {
 
     // now that we have the enums in the registry we'll trace each of the functions
     functions.for_each(|item| {
-      let tracer = namespaced_enum_registry
+      let tracer = namespaced_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
@@ -245,7 +249,7 @@ impl<'a> Membrane {
           .collect(),
         None => vec![],
       },
-      namespaced_enum_registry: namespaced_enum_registry
+      namespaced_registry: namespaced_registry
         .into_iter()
         .map(|(key, val)| (key, val.registry()))
         .collect(),
@@ -335,18 +339,20 @@ impl<'a> Membrane {
     installer.install_bincode_runtime().unwrap();
 
     for namespace in self.namespaces.iter() {
+      info!("Generating lib/src/ code for namespace {}", namespace);
       let config = serde_generate::CodeGeneratorConfig::new(namespace.to_string())
         .with_encodings(vec![serde_generate::Encoding::Bincode])
         .with_c_style_enums(self.c_style_enums);
 
-      let registry = match self.namespaced_enum_registry.get(namespace).unwrap() {
+      let registry = match self.namespaced_registry.get(namespace).unwrap() {
         Ok(reg) => reg,
         Err(Error::MissingVariants(names)) => {
-          panic!(
+          tracing::error!(
             "An enum was used that has not had the membrane::dart_enum macro applied. Please `borrow` it from an existing namespace or add #[dart_enum(namespace = \"{}\")] to the {} enum.",
             namespace,
             names.first().unwrap()
           );
+          exit(1);
         }
         Err(err) => panic!("{}", err),
       };
@@ -371,7 +377,7 @@ impl<'a> Membrane {
     if pub_get.status.code() != Some(0) {
       std::io::stderr().write_all(&pub_get.stderr).unwrap();
       std::io::stdout().write_all(&pub_get.stdout).unwrap();
-      panic!("'dart pub get' returned an error");
+      tracing::error!("'dart pub get' returned an error");
     }
 
     self
@@ -435,7 +441,8 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
 
     let path = self.destination.join("lib/src/membrane_types.h");
     std::fs::write(&path, head).unwrap_or_else(|_| {
-      panic!("unable to write {}", path.to_str().unwrap());
+      tracing::error!("unable to write {}", path.to_str().unwrap());
+      exit(1);
     });
 
     let namespaces = self.namespaces.clone();
@@ -488,7 +495,8 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
     if ffigen.status.code() != Some(0) {
       std::io::stderr().write_all(&ffigen.stderr).unwrap();
       std::io::stdout().write_all(&ffigen.stdout).unwrap();
-      panic!("dart ffigen returned an error");
+      tracing::error!("dart ffigen returned an error");
+      exit(1);
     }
 
     self
@@ -594,7 +602,8 @@ headers:
 
     let path = self.destination.join("ffigen.yaml");
     std::fs::write(&path, config).unwrap_or_else(|_| {
-      panic!("unable to write ffigen config {}", path.to_str().unwrap());
+      tracing::error!("unable to write ffigen config {}", path.to_str().unwrap());
+      exit(1);
     });
 
     self
@@ -623,7 +632,8 @@ headers:
     let mut buffer =
       std::fs::File::create(path.clone()).expect("header could not be written at namespace path");
     buffer.write_all(head.as_bytes()).unwrap_or_else(|_| {
-      panic!("unable to write C header file {}", path.to_str().unwrap());
+      tracing::error!("unable to write C header file {}", path.to_str().unwrap());
+      exit(1);
     });
 
     fns.iter().for_each(|x| {
@@ -845,7 +855,8 @@ class {class_name}Api {{
             let types = imports.entry(from_namespace.to_string()).or_default();
             types.insert(r#type.to_string());
           } else {
-            panic!("Found an invalid `borrow`: `{:?}`. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow);
+            tracing::error!("Found an invalid `borrow`: `{:?}`. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow);
+            exit(1);
           }
         });
 
@@ -860,7 +871,13 @@ class {class_name}Api {{
         // lines and up with a descending order
         .rev()
         .for_each(|(from_namespace, borrowed_types)| {
-          let borrowed_types: Vec<String> = borrowed_types.iter().map(|x| x.to_string()).collect();
+          let mut borrowed_types: Vec<String> = borrowed_types.iter().map(|x| x.to_string()).flat_map(|r#type| {
+            self.with_child_borrows(&from_namespace, r#type)
+          }).collect();
+
+          borrowed_types.sort();
+          borrowed_types.dedup();
+
           let file_name = format!("{ns}.dart", ns = namespace);
           let namespace_path = self.destination.join("lib/src").join(namespace);
           let barrel_file_path = namespace_path.join(file_name);
