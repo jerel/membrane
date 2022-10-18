@@ -96,7 +96,7 @@ use std::{
   path::{Path, PathBuf},
   process::exit,
 };
-use tracing::info;
+use tracing::{info, warn};
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -353,7 +353,7 @@ impl<'a> Membrane {
         Ok(reg) => reg,
         Err(Error::MissingVariants(names)) => {
           tracing::error!(
-            "An enum was used that has not had the membrane::dart_enum macro applied. Please `borrow` it from an existing namespace or add #[dart_enum(namespace = \"{}\")] to the {} enum.",
+            "An enum was used that has not had the membrane::dart_enum macro applied for the consuming namespace. Please add #[dart_enum(namespace = \"{}\")] to the {} enum.",
             namespace,
             names.first().unwrap()
           );
@@ -876,8 +876,16 @@ class {class_name}Api {{
         // lines and up with a descending order
         .rev()
         .for_each(|(from_namespace, borrowed_types)| {
-          let mut borrowed_types: Vec<String> = borrowed_types.iter().map(|x| x.to_string()).flat_map(|r#type| {
-            self.with_child_borrows(from_namespace, r#type)
+          let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
+            let auto_import = self.with_child_borrows(from_namespace, r#type);
+            auto_import.iter().for_each(|x| {
+              if borrowed_types.contains(x) && x != r#type {
+                warn!("{ns}::{import} was explicitly borrowed but it is already implicitly borrowed because it is a subtype of `{ns}::{type}`. Remove the `{ns}::{import}` borrow.",
+                ns = from_namespace, import = x, r#type = r#type);
+              }
+            });
+
+            auto_import
           }).collect();
 
           borrowed_types.sort();

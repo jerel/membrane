@@ -3,7 +3,7 @@ use std::default::Default;
 use membrane::dart_enum;
 use serde::{Deserialize, Serialize};
 
-#[dart_enum(namespace = "accounts")]
+#[dart_enum(namespace = "orgs")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Status {
   Pending,

@@ -3,7 +3,7 @@ use std::process::exit;
 use tracing::error;
 
 impl crate::Membrane {
-  pub fn with_child_borrows(&self, from_namespace: &str, r#type: String) -> Vec<String> {
+  pub fn with_child_borrows(&self, from_namespace: &str, r#type: &str) -> Vec<String> {
     let namespace_registry = match self.namespaced_registry.get(from_namespace) {
       Some(Ok(registry)) => registry,
       _ => {
@@ -18,11 +18,12 @@ impl crate::Membrane {
       }
     };
 
-    let mut children = match namespace_registry.get(&r#type) {
+    let mut children = match namespace_registry.get(r#type) {
       Some(ContainerFormat::Struct(named)) => named
         .iter()
         .filter_map(filter_named)
         .flatten()
+        .flat_map(|x| self.with_child_borrows(from_namespace, &x))
         .collect::<Vec<String>>(),
       Some(ContainerFormat::Enum(btree)) => {
         let mut variants = btree
@@ -39,8 +40,8 @@ impl crate::Membrane {
             }
             VariantFormat::NewType(format) => match extract_name(format) {
               // if this type matches the parent type then we quit recursing
-              Some(names) if !names.contains(&r#type) => Some(names.iter().flat_map(|r#type| {
-                self.with_child_borrows(from_namespace, r#type.to_string())
+              Some(names) if !names.contains(&r#type.to_string()) => Some(names.iter().flat_map(|r#type| {
+                self.with_child_borrows(from_namespace, r#type)
               }).collect()),
               _ => None
             },
@@ -63,7 +64,7 @@ impl crate::Membrane {
       Some(ContainerFormat::NewTypeStruct(format)) => {
         match extract_name(format) {
           Some(names) => names.iter().flat_map(|r#type| {
-            self.with_child_borrows(from_namespace, r#type.to_string())
+            self.with_child_borrows(from_namespace, r#type)
           }).collect(),
           None => vec![]
         }
@@ -77,7 +78,7 @@ impl crate::Membrane {
       }
     };
 
-    children.push(r#type);
+    children.push(r#type.to_string());
     children
   }
 }

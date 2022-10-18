@@ -500,9 +500,7 @@ pub async fn get_location(id: i64) -> Result<data::Location, String> {
   namespace = "orgs",
   borrow = "locations::Location",
   borrow = "accounts::Contact",
-  borrow = "accounts::Filter",
-  borrow = "accounts::Match",
-  borrow = "accounts::Status"
+  borrow = "accounts::Filter"
 )]
 pub async fn get_org_with_borrowed_type(id: data::Filter) -> Result<data::Organization, String> {
   let _ = id;
