@@ -523,7 +523,7 @@ pub async fn get_org_with_borrowed_type(id: data::Filter) -> Result<data::Organi
   borrow = "accounts::Contact",
   // recursive type
   borrow = "accounts::Reports",
-  // borrow a type that's not exported itself by a function but is a common type
+  // borrow an enum that's not exported itself by a function but is a common type
   borrow = "common::SharedType"
 )]
 pub async fn unused_duplicate_borrows(_id: i64) -> Result<data::Organization, String> {

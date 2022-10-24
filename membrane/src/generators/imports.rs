@@ -13,7 +13,6 @@ impl crate::Membrane {
           ns = from_namespace
         );
 
-        // TODO, make nicer error handling
         exit(1);
       }
     };
