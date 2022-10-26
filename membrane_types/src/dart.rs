@@ -99,6 +99,9 @@ pub fn dart_type(types: &[&str]) -> String {
     ["i32"] => "int",
     ["u32"] => "int",
     ["i64"] => "int",
+    ["u64"] => "Uint64",
+    ["i128"] => "Int128",
+    ["u128"] => "Uint128",
     ["f32"] => "double",
     ["f64"] => "double",
     ["bool"] => "bool",
@@ -204,7 +207,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       final data = serializer.bytes;
       {ser_partial}
     }}()"#,
-      serializer = serializer(types, &variable.to_mixed_case()),
+      serializer = serializer(types, &variable.to_mixed_case(), ty)?,
       ser_partial = serialization_partial(),
     ),
     [ty, ..] if ty != "Option" => format!(
@@ -275,7 +278,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       {ser_partial}
     }}()"#,
       variable = variable.to_mixed_case(),
-      serializer = serializer(types, &variable.to_mixed_case()),
+      serializer = serializer(types, &variable.to_mixed_case(), ty)?,
       ser_partial = serialization_partial(),
     ),
     ["Option", ..] => format!(
@@ -319,48 +322,49 @@ blobBytes.setAll(8, data);
 return ptr;"#
 }
 
-fn serializer(types: &[&str], variable: &str) -> String {
-  let se;
+fn serializer(types: &[&str], variable: &str, ty: &Type) -> Result<String, syn::Error> {
   match types[..] {
-    ["String"] => "serializer.serializeString(value)",
-    ["bool"] => "serializer.serializeBool(value)",
-    ["i64"] => "serializer.serializeInt64(value)",
-    ["f64"] => "serializer.serializeFloat64(value)",
-    ["Vec", "Option", ..] => {
-      se = format!(
-        "serializer.serializeLength({variable}.length);
+    ["i8"] => unsupported_type_error(ty, "i64"),
+    ["i16"] => unsupported_type_error(ty, "i64"),
+    ["i32"] => unsupported_type_error(ty, "i64"),
+    ["u8"] => unsupported_type_error(ty, "i64"),
+    ["u16"] => unsupported_type_error(ty, "i64"),
+    ["u32"] => unsupported_type_error(ty, "i64"),
+    ["f32"] => unsupported_type_error(ty, "f64"),
+    ["String"] => Ok("serializer.serializeString(value)".to_string()),
+    ["bool"] => Ok("serializer.serializeBool(value)".to_string()),
+    ["i64"] => Ok("serializer.serializeInt64(value)".to_string()),
+    ["u64"] => Ok("serializer.serializeUint64(value)".to_string()),
+    ["i128"] => Ok("serializer.serializeInt128(value)".to_string()),
+    ["u128"] => Ok("serializer.serializeUint128(value)".to_string()),
+    ["f64"] => Ok("serializer.serializeFloat64(value)".to_string()),
+    ["Vec", "Option", ..] => Ok(format!(
+      "serializer.serializeLength({variable}.length);
       {variable}.forEach((value) {{
         serializer.serializeOptionTag(value != null);
         if (value != null) {{
           {serializer};
         }}
       }});",
-        variable = variable,
-        serializer = serializer(&types[2..], "value"),
-      );
-      &se
-    }
-    ["Vec", ..] => {
-      se = format!(
-        "serializer.serializeLength({variable}.length);
+      variable = variable,
+      serializer = serializer(&types[2..], "value", ty)?,
+    )),
+    ["Vec", ..] => Ok(format!(
+      "serializer.serializeLength({variable}.length);
       {variable}.forEach((value) {{
         {serializer};
       }});",
-        variable = variable,
-        serializer = serializer(&types[1..], "value"),
-      );
-      &se
-    }
+      variable = variable,
+      serializer = serializer(&types[1..], "value", ty)?,
+    )),
     ["Option", ..] => {
-      se = format!(
+      Ok(format!(
         // the containing serialization code does an early return if the
         // value is null so we don't have to do a null check here
         "{serializer};",
-        serializer = serializer(&types[1..], variable),
-      );
-      &se
+        serializer = serializer(&types[1..], variable, ty)?,
+      ))
     }
-    _ => "value.serialize(serializer)",
+    _ => Ok("value.serialize(serializer)".to_string()),
   }
-  .to_string()
 }

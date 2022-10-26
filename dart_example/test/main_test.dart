@@ -206,6 +206,30 @@ void main() {
     expect((await accounts.vecInt(values: [1, 2])), equals([1, 2]));
   });
 
+  test('can handle a vec of unsigned integers', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts
+            .vecUint64(values: [Uint64.parse('1'), Uint64.parse('2')])),
+        equals([Uint64.parse('1'), Uint64.parse('2')]));
+  });
+
+  test('can handle a vec of 128 bit signed integers', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts
+            .vecInt128(values: [Int128.parse('1'), Int128.parse('2')])),
+        equals([Int128.parse('1'), Int128.parse('2')]));
+  });
+
+  test('can handle a vec of 128 bit unsigned integers', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts
+            .vecUint128(values: [Uint128.parse('1'), Uint128.parse('2')])),
+        equals([Uint128.parse('1'), Uint128.parse('2')]));
+  });
+
   test('can handle a vec of floats', () async {
     final accounts = AccountsApi();
     expect((await accounts.vecFloat(values: [1.0, 2.1])), equals([1.0, 2.1]));

@@ -64,8 +64,14 @@ error: not a supported argument type for Dart interop, please use i64 instead.
 65 | pub async fn bad_arg_type(one: i32) -> Result<i32, String> {}
    |                                ^^^
 
-error: not a supported argument type for Dart interop
-  --> tests/ui/single.rs:68:35
+error: not a supported argument type for Dart interop, please use i64 instead.
+  --> tests/ui/single.rs:68:39
    |
-68 | pub async fn failing_arg_two(foo: &[i8]) -> Result<(), String> {
+68 | pub async fn bad_nested_arg_type(one: Vec<i32>) -> Result<i32, String> {}
+   |                                       ^^^^^^^^
+
+error: not a supported argument type for Dart interop
+  --> tests/ui/single.rs:71:35
+   |
+71 | pub async fn failing_arg_two(foo: &[i8]) -> Result<(), String> {
    |                                   ^^^^^

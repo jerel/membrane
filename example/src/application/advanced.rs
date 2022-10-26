@@ -329,6 +329,27 @@ pub async fn vec_int(values: Vec<i64>) -> Result<Vec<i64>, String> {
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn vec_uint_64(values: Vec<u64>) -> Result<Vec<u64>, String> {
+  println!("\n[Rust] Received uint 64 vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_int_128(values: Vec<i128>) -> Result<Vec<i128>, String> {
+  println!("\n[Rust] Received int 128 vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_uint_128(values: Vec<u128>) -> Result<Vec<u128>, String> {
+  println!("\n[Rust] Received uint 128 vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn vec_float(values: Vec<f64>) -> Result<Vec<f64>, String> {
   println!("\n[Rust] Received float vec: {:?}", values);
 
