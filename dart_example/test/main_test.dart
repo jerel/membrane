@@ -109,6 +109,9 @@ void main() {
     expect(await accounts.scalarI32(val: 123), equals(123));
     expect(await accounts.scalarU32(val: 123), equals(123));
     expect(await accounts.scalarI64(val: 10), equals(10));
+    expect(await accounts.scalarU64(val: 10), equals(Uint64.parse('10')));
+    expect(await accounts.scalarI128(val: 10), equals(Int128.parse('10')));
+    expect(await accounts.scalarU128(val: 10), equals(Uint128.parse('10')));
     expect((await accounts.scalarF32(val: 21.1)).toStringAsFixed(1),
         equals('21.1'));
     expect(await accounts.scalarF64(val: 11.1), equals(11.1));
