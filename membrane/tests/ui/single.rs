@@ -65,6 +65,9 @@ pub async fn failing_arg(self) -> Result<(), String> {
 pub async fn bad_arg_type(one: i32) -> Result<i32, String> {}
 
 #[async_dart(namespace = "a")]
+pub async fn bad_nested_arg_type(one: Vec<i32>) -> Result<i32, String> {}
+
+#[async_dart(namespace = "a")]
 pub async fn failing_arg_two(foo: &[i8]) -> Result<(), String> {
   Ok(())
 }

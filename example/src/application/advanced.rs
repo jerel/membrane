@@ -233,6 +233,24 @@ pub async fn scalar_i64(val: i64) -> Result<i64, String> {
 }
 
 #[async_dart(namespace = "accounts")]
+pub async fn scalar_u64(val: i64) -> Result<u64, String> {
+  assert!(val == 10);
+  Ok(val as u64)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_i128(val: i64) -> Result<i128, String> {
+  assert!(val == 10);
+  Ok(val as i128)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn scalar_u128(val: i64) -> Result<u128, String> {
+  assert!(val == 10);
+  Ok(val as u128)
+}
+
+#[async_dart(namespace = "accounts")]
 pub async fn scalar_f32(val: f64) -> Result<f32, String> {
   assert!(val == 21.1);
   Ok(21.1)
@@ -324,6 +342,27 @@ pub async fn vec_bool(values: Vec<bool>) -> Result<Vec<bool>, String> {
 #[async_dart(namespace = "accounts")]
 pub async fn vec_int(values: Vec<i64>) -> Result<Vec<i64>, String> {
   println!("\n[Rust] Received int vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_uint_64(values: Vec<u64>) -> Result<Vec<u64>, String> {
+  println!("\n[Rust] Received uint 64 vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_int_128(values: Vec<i128>) -> Result<Vec<i128>, String> {
+  println!("\n[Rust] Received int 128 vec: {:?}", values);
+
+  Ok(values)
+}
+
+#[async_dart(namespace = "accounts")]
+pub async fn vec_uint_128(values: Vec<u128>) -> Result<Vec<u128>, String> {
+  println!("\n[Rust] Received uint 128 vec: {:?}", values);
 
   Ok(values)
 }

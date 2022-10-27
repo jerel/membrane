@@ -109,6 +109,9 @@ void main() {
     expect(await accounts.scalarI32(val: 123), equals(123));
     expect(await accounts.scalarU32(val: 123), equals(123));
     expect(await accounts.scalarI64(val: 10), equals(10));
+    expect(await accounts.scalarU64(val: 10), equals(Uint64.parse('10')));
+    expect(await accounts.scalarI128(val: 10), equals(Int128.parse('10')));
+    expect(await accounts.scalarU128(val: 10), equals(Uint128.parse('10')));
     expect((await accounts.scalarF32(val: 21.1)).toStringAsFixed(1),
         equals('21.1'));
     expect(await accounts.scalarF64(val: 11.1), equals(11.1));
@@ -204,6 +207,30 @@ void main() {
   test('can handle a vec of integers', () async {
     final accounts = AccountsApi();
     expect((await accounts.vecInt(values: [1, 2])), equals([1, 2]));
+  });
+
+  test('can handle a vec of unsigned integers', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts
+            .vecUint64(values: [Uint64.parse('1'), Uint64.parse('2')])),
+        equals([Uint64.parse('1'), Uint64.parse('2')]));
+  });
+
+  test('can handle a vec of 128 bit signed integers', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts
+            .vecInt128(values: [Int128.parse('1'), Int128.parse('2')])),
+        equals([Int128.parse('1'), Int128.parse('2')]));
+  });
+
+  test('can handle a vec of 128 bit unsigned integers', () async {
+    final accounts = AccountsApi();
+    expect(
+        (await accounts
+            .vecUint128(values: [Uint128.parse('1'), Uint128.parse('2')])),
+        equals([Uint128.parse('1'), Uint128.parse('2')]));
   });
 
   test('can handle a vec of floats', () async {
