@@ -1,77 +1,77 @@
 error: #[async_dart] expects a `namespace` attribute
-  --> tests/ui/single.rs:24:1
+  --> tests/ui/single.rs:34:1
    |
-24 | #[async_dart]
+34 | #[async_dart]
    | ^^^^^^^^^^^^^
    |
    = note: this error originates in the attribute macro `async_dart` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: only `namespace=""`, `borrow="namespace::Type"`, `disable_logging=true`, `os_thread=true`, and `timeout=1000` are valid options
-  --> tests/ui/single.rs:27:1
+  --> tests/ui/single.rs:37:1
    |
-27 | #[async_dart(namespace = "a", foo = true)]
+37 | #[async_dart(namespace = "a", foo = true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the attribute macro `async_dart` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `os_thread=true` is not a valid option for `sync_dart`
-  --> tests/ui/single.rs:30:1
+  --> tests/ui/single.rs:40:1
    |
-30 | #[sync_dart(namespace = "a", os_thread = true)]
+40 | #[sync_dart(namespace = "a", os_thread = true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in the attribute macro `sync_dart` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected enum `Result`
-  --> tests/ui/single.rs:36:29
+  --> tests/ui/single.rs:46:29
    |
-36 | pub async fn no_result() -> i32 {}
+46 | pub async fn no_result() -> i32 {}
    |                             ^^^
 
 error: A tuple may not be returned from an `async_dart` function. If a tuple is needed return a struct containing the tuple.
-  --> tests/ui/single.rs:39:37
+  --> tests/ui/single.rs:49:37
    |
-39 | pub async fn bare_tuple() -> Result<(i32, i32), String> {}
+49 | pub async fn bare_tuple() -> Result<(i32, i32), String> {}
    |                                     ^^^^^^^^^^
 
 error: expected enum `Result`
-  --> tests/ui/single.rs:42:36
+  --> tests/ui/single.rs:52:36
    |
-42 | pub async fn top_level_option() -> Option<String> {}
+52 | pub async fn top_level_option() -> Option<String> {}
    |                                    ^^^^^^
 
 error: expected a struct, vec, or scalar type but found `dyn Fn()`
-  --> tests/ui/single.rs:45:36
+  --> tests/ui/single.rs:55:36
    |
-45 | pub async fn return_fn() -> Result<dyn Fn(), String> {}
+55 | pub async fn return_fn() -> Result<dyn Fn(), String> {}
    |                                    ^^^
 
 error: #[sync_dart] expected a return type of `Result<T, E>` found an emitter
-  --> tests/ui/single.rs:53:8
+  --> tests/ui/single.rs:63:8
    |
-53 | pub fn emitter_in_sync_return() -> impl membrane::emitter::Emitter<Result<String, String>> {
+63 | pub fn emitter_in_sync_return() -> impl membrane::emitter::Emitter<Result<String, String>> {
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
 error: not a supported argument type for Dart interop
-  --> tests/ui/single.rs:60:26
+  --> tests/ui/single.rs:70:26
    |
-60 | pub async fn failing_arg(self) -> Result<(), String> {
+70 | pub async fn failing_arg(self) -> Result<(), String> {
    |                          ^^^^
 
 error: not a supported argument type for Dart interop, please use i64 instead.
-  --> tests/ui/single.rs:65:32
+  --> tests/ui/single.rs:75:32
    |
-65 | pub async fn bad_arg_type(one: i32) -> Result<i32, String> {}
+75 | pub async fn bad_arg_type(one: i32) -> Result<i32, String> {}
    |                                ^^^
 
 error: not a supported argument type for Dart interop, please use i64 instead.
-  --> tests/ui/single.rs:68:39
+  --> tests/ui/single.rs:78:39
    |
-68 | pub async fn bad_nested_arg_type(one: Vec<i32>) -> Result<i32, String> {}
+78 | pub async fn bad_nested_arg_type(one: Vec<i32>) -> Result<i32, String> {}
    |                                       ^^^^^^^^
 
 error: not a supported argument type for Dart interop
-  --> tests/ui/single.rs:71:35
+  --> tests/ui/single.rs:81:35
    |
-71 | pub async fn failing_arg_two(foo: &[i8]) -> Result<(), String> {
+81 | pub async fn failing_arg_two(foo: &[i8]) -> Result<(), String> {
    |                                   ^^^^^

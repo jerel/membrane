@@ -197,7 +197,7 @@ fn to_token_stream(
       ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::StreamSerialized => quote! {
-      let membrane_join_handle = crate::RUNTIME.spawn(
+      let membrane_join_handle = crate::RUNTIME.get().spawn(
         async move {
           use ::membrane::futures::stream::StreamExt;
           let mut stream = #fn_name(#(#rust_inner_args),*);
@@ -237,7 +237,7 @@ fn to_token_stream(
     OutputStyle::Serialized if os_thread => quote! {
       let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
 
-      crate::RUNTIME.spawn_blocking(
+      crate::RUNTIME.get().spawn_blocking(
         move || {
           ::futures::executor::block_on(
             ::futures::future::Abortable::new(
@@ -254,7 +254,7 @@ fn to_token_stream(
       ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::Serialized => quote! {
-      let membrane_join_handle = crate::RUNTIME.spawn(
+      let membrane_join_handle = crate::RUNTIME.get().spawn(
         async move {
           let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
           let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
@@ -277,7 +277,7 @@ fn to_token_stream(
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
       pub extern "C" fn #extern_c_fn_name(#(#rust_outer_params),*) -> ::membrane::MembraneResponse {
         let func = || {
-          use ::membrane::{cstr, error, ffi_helpers};
+          use ::membrane::{cstr, error, ffi_helpers, runtime::Interface};
           use ::std::ffi::CStr;
 
           #(#rust_transforms)*

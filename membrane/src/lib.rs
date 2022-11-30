@@ -71,6 +71,7 @@ pub use futures;
 pub use inventory;
 #[doc(hidden)]
 pub use membrane_macro::{async_dart, dart_enum, sync_dart};
+pub mod runtime;
 #[doc(hidden)]
 pub use serde_reflection;
 
@@ -97,6 +98,18 @@ use std::{
   process::exit,
 };
 use tracing::{info, warn};
+
+pub struct Metadata;
+
+impl Metadata {
+  pub fn enums(&self) -> Vec<&'static DeferredEnumTrace> {
+    inventory::iter::<DeferredEnumTrace>().collect()
+  }
+
+  pub fn functions(&self) -> Vec<&'static DeferredTrace> {
+    inventory::iter::<DeferredTrace>().collect()
+  }
+}
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]

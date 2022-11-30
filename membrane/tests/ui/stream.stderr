@@ -1,11 +1,11 @@
 error: expected `impl Stream<Item = Result>`
-  --> tests/ui/stream.rs:23:30
+  --> tests/ui/stream.rs:34:30
    |
-23 | pub fn one_failure() -> impl Stream<i32, String> {}
+34 | pub fn one_failure() -> impl Stream<i32, String> {}
    |                              ^^^^^^
 
 error: expected enum `Result`
-  --> tests/ui/stream.rs:26:44
+  --> tests/ui/stream.rs:37:44
    |
-26 | pub fn two_failure() -> impl Stream<Item = i32, String> {}
+37 | pub fn two_failure() -> impl Stream<Item = i32, String> {}
    |                                            ^^^

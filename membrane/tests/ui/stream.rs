@@ -1,23 +1,34 @@
-use futures::{Future, Stream};
+use futures::Stream;
 use membrane::async_dart;
+use membrane::runtime::{App, Interface, JoinHandle};
+use std::{fmt::Debug, future::Future};
 
-struct JoinHandle {}
-impl JoinHandle {
-  pub fn abort(&self) {}
-}
-
-struct Runtime {}
-impl Runtime {
-  pub fn spawn<T>(&self, future: T) -> JoinHandle
+struct TestRuntime();
+impl Interface for TestRuntime {
+  fn spawn<T>(&self, future: T) -> JoinHandle
   where
     T: Future + Send + 'static,
     T::Output: Send + 'static,
   {
-    JoinHandle {}
+    JoinHandle {
+      debug_id: String::new(),
+      abort: Box::new(|| {}),
+    }
+  }
+
+  fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
+  where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + Debug + 'static,
+  {
+    JoinHandle {
+      debug_id: String::new(),
+      abort: Box::new(|| {}),
+    }
   }
 }
 
-static RUNTIME: Runtime = Runtime {};
+static RUNTIME: App<TestRuntime> = App::new(|| TestRuntime());
 
 #[async_dart(namespace = "a")]
 pub fn one_failure() -> impl Stream<i32, String> {}
