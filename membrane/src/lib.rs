@@ -114,37 +114,55 @@ impl Metadata {
 #[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct Function {
-  pub extern_c_fn_name: String,
-  pub extern_c_fn_types: String,
-  pub fn_name: String,
+  pub extern_c_fn_name: &'static str,
+  pub extern_c_fn_types: &'static str,
+  pub fn_name: &'static str,
   pub is_stream: bool,
   pub is_sync: bool,
-  pub return_type: Vec<&'static str>,
-  pub error_type: Vec<&'static str>,
-  pub namespace: String,
+  pub return_type: &'static [&'static str],
+  pub error_type: &'static [&'static str],
+  pub namespace: &'static str,
   pub disable_logging: bool,
   pub timeout: Option<i32>,
-  pub borrow: Vec<&'static str>,
-  pub output: String,
-  pub dart_outer_params: String,
-  pub dart_transforms: String,
-  pub dart_inner_args: String,
+  pub borrow: &'static [&'static str],
+  pub output: &'static str,
+  pub dart_outer_params: &'static str,
+  pub dart_transforms: &'static str,
+  pub dart_inner_args: &'static str,
 }
 
 #[doc(hidden)]
 #[derive(Clone)]
 pub struct DeferredTrace {
   pub function: Function,
-  pub namespace: String,
+  pub namespace: &'static str,
   pub trace: fn(tracer: &mut serde_reflection::Tracer, samples: &mut serde_reflection::Samples),
+}
+
+impl std::fmt::Debug for DeferredTrace {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("DeferredTrace")
+      .field("function", &self.function)
+      .field("namespace", &self.namespace)
+      .finish()
+  }
 }
 
 #[doc(hidden)]
 #[derive(Clone)]
 pub struct DeferredEnumTrace {
-  pub name: String,
-  pub namespace: String,
+  pub name: &'static str,
+  pub namespace: &'static str,
   pub trace: fn(tracer: &mut serde_reflection::Tracer),
+}
+
+impl std::fmt::Debug for DeferredEnumTrace {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("DeferredEnumTrace")
+      .field("name", &self.name)
+      .field("namespace", &self.namespace)
+      .finish()
+  }
 }
 
 inventory::collect!(DeferredTrace);
@@ -155,13 +173,13 @@ pub struct Membrane {
   destination: PathBuf,
   library: String,
   llvm_paths: Vec<String>,
-  namespaces: Vec<String>,
-  namespaced_registry: HashMap<String, serde_reflection::Result<Registry>>,
-  namespaced_fn_registry: HashMap<String, Vec<Function>>,
+  namespaces: Vec<&'static str>,
+  namespaced_registry: HashMap<&'static str, serde_reflection::Result<Registry>>,
+  namespaced_fn_registry: HashMap<&'static str, Vec<Function>>,
   generated: bool,
   c_style_enums: bool,
   timeout: Option<i32>,
-  borrows: HashMap<String, BTreeMap<String, BTreeSet<String>>>,
+  borrows: HashMap<&'static str, BTreeMap<&'static str, BTreeSet<&'static str>>>,
 }
 
 impl<'a> Membrane {
@@ -177,14 +195,8 @@ impl<'a> Membrane {
     let enums = inventory::iter::<DeferredEnumTrace>();
     let functions = inventory::iter::<DeferredTrace>();
     let mut namespaces = vec![
-      enums
-        .clone()
-        .map(|x| x.namespace.clone())
-        .collect::<Vec<String>>(),
-      functions
-        .clone()
-        .map(|x| x.namespace.clone())
-        .collect::<Vec<String>>(),
+      enums.iter().map(|x| x.namespace).collect::<Vec<&str>>(),
+      functions.iter().map(|x| x.namespace).collect::<Vec<&str>>(),
     ]
     .concat();
 
@@ -194,10 +206,10 @@ impl<'a> Membrane {
     let mut namespaced_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
-    let mut borrows: HashMap<String, BTreeMap<String, BTreeSet<String>>> = HashMap::new();
+    let mut borrows: HashMap<&str, BTreeMap<&str, BTreeSet<&str>>> = HashMap::new();
 
     // collect all the metadata about functions (without tracing them yet)
-    functions.clone().for_each(|item| {
+    functions.iter().for_each(|item| {
       namespaced_fn_registry
         .entry(item.namespace.clone())
         .or_insert_with(Vec::new)
@@ -206,36 +218,39 @@ impl<'a> Membrane {
 
     // work out which namespaces borrow which types from other namespaces
     namespaces.iter().for_each(|namespace| {
-      Self::create_borrows(&namespaced_fn_registry, namespace.to_string(), &mut borrows);
+      Self::create_borrows(&namespaced_fn_registry, namespace, &mut borrows);
     });
 
     // trace all the enums at least once
-    enums.for_each(|item| {
+    enums.iter().for_each(|item| {
       // trace the enum into the borrowing namespace's registry
-      borrows.iter().for_each(|(for_namespace, from_namespaces)| {
-        if let Some(types) = from_namespaces.get(&item.namespace) {
-          if types.contains(&item.name) {
-            let tracer = namespaced_registry
-              .entry(for_namespace.to_string())
-              .or_insert_with(|| Tracer::new(TracerConfig::default()));
+      borrows
+        .clone()
+        .into_iter()
+        .for_each(|(for_namespace, from_namespaces)| {
+          if let Some(types) = from_namespaces.get(item.namespace) {
+            if types.contains(item.name) {
+              let tracer = namespaced_registry
+                .entry(for_namespace)
+                .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
-            (item.trace)(tracer);
+              (item.trace)(tracer);
+            }
           }
-        }
-      });
+        });
 
       // trace the enum into the owning namespace's registry
       let tracer = namespaced_registry
-        .entry(item.namespace.clone())
+        .entry(item.namespace)
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
       (item.trace)(tracer);
     });
 
     // now that we have the enums in the registry we'll trace each of the functions
-    functions.for_each(|item| {
+    functions.iter().for_each(|item| {
       let tracer = namespaced_registry
-        .entry(item.namespace.clone())
+        .entry(item.namespace)
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
       let samples = namespaced_samples
@@ -277,6 +292,7 @@ impl<'a> Membrane {
       c_style_enums: true,
       timeout: None,
       borrows,
+      _inputs: input_libs,
     }
   }
 
@@ -465,7 +481,7 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
 
     let namespaces = self.namespaces.clone();
     namespaces.iter().for_each(|x| {
-      self.write_header(x.to_string());
+      self.write_header(x);
     });
 
     self
@@ -476,8 +492,8 @@ uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
   pub fn write_api(&mut self) -> &mut Self {
     let namespaces = self.namespaces.clone();
     namespaces.iter().for_each(|x| {
-      self.create_ffi_impl(x.to_string());
-      self.create_web_impl(x.to_string());
+      self.create_ffi_impl(x);
+      self.create_web_impl(x);
       self.create_class(x.to_string());
     });
 
@@ -627,15 +643,15 @@ headers:
     self
   }
 
-  fn write_header(&mut self, namespace: String) -> &mut Self {
+  fn write_header(&mut self, namespace: &str) -> &mut Self {
     use std::io::prelude::*;
     let path = self
-      .namespace_path(namespace.clone())
+      .namespace_path(namespace)
       .join(namespace.to_string() + ".h");
     let default = &vec![];
     let fns = self
       .namespaced_fn_registry
-      .get(&namespace)
+      .get(namespace)
       .unwrap_or(default);
 
     let head = r#"/*
@@ -715,14 +731,14 @@ export './src/{ns}_ffi.dart' if (dart.library.html) './src/{ns}_web.dart';
     self
   }
 
-  fn create_ffi_impl(&mut self, namespace: String) -> &mut Self {
+  fn create_ffi_impl(&mut self, namespace: &str) -> &mut Self {
     use std::io::prelude::*;
     let path = self
       .destination
       .join("lib/src")
       .join(namespace.to_string() + "_ffi.dart");
 
-    if self.namespaced_fn_registry.get(&namespace).is_none() {
+    if self.namespaced_fn_registry.get(namespace).is_none() {
       let head = format!(
         "export './{ns}/{ns}.dart' hide TraitHelpers;",
         ns = &namespace
@@ -789,7 +805,7 @@ class {class_name}Api {{
     self
   }
 
-  fn create_web_impl(&mut self, namespace: String) -> &mut Self {
+  fn create_web_impl(&mut self, namespace: &str) -> &mut Self {
     use std::io::prelude::*;
     let path = self
       .destination
@@ -797,7 +813,7 @@ class {class_name}Api {{
       .join(namespace.to_string() + "_web.dart");
 
     // perhaps this namespace has only enums in it and no functions
-    if self.namespaced_fn_registry.get(&namespace).is_none() {
+    if self.namespaced_fn_registry.get(namespace).is_none() {
       let head = format!(
         "export './{ns}/{ns}.dart' hide TraitHelpers;",
         ns = &namespace
@@ -850,17 +866,17 @@ class {class_name}Api {{
     self
   }
 
-  fn namespace_path(&mut self, namespace: String) -> PathBuf {
+  fn namespace_path(&mut self, namespace: &str) -> PathBuf {
     self.destination.join("lib").join("src").join(&namespace)
   }
 
   fn create_borrows(
-    namespaced_fn_registry: &HashMap<String, Vec<Function>>,
-    namespace: String,
-    borrows: &mut HashMap<String, BTreeMap<String, BTreeSet<String>>>,
+    namespaced_fn_registry: &HashMap<&str, Vec<Function>>,
+    namespace: &'static str,
+    borrows: &mut HashMap<&'static str, BTreeMap<&str, BTreeSet<&str>>>,
   ) {
     let default = &vec![];
-    let fns = namespaced_fn_registry.get(&namespace).unwrap_or(default);
+    let fns = namespaced_fn_registry.get(namespace).unwrap_or(default);
 
     fns.iter().for_each(move |fun| {
       fun
@@ -869,15 +885,14 @@ class {class_name}Api {{
         .map(|borrow| borrow.split("::").map(|x| x.trim()).collect::<Vec<&str>>())
         .for_each(|borrow_list| {
           if let [from_namespace, r#type] = borrow_list[..] {
-            let imports = borrows.entry(namespace.to_string()).or_default();
-            let types = imports.entry(from_namespace.to_string()).or_default();
-            types.insert(r#type.to_string());
+            let imports = borrows.entry(namespace).or_default();
+            let types = imports.entry(from_namespace).or_default();
+            types.insert(r#type);
           } else {
             tracing::error!("Found an invalid `borrow`: `{:?}`. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow);
             exit(1);
           }
         });
-
     });
   }
 
@@ -892,7 +907,7 @@ class {class_name}Api {{
           let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
             let auto_import = self.with_child_borrows(from_namespace, r#type);
             auto_import.iter().for_each(|x| {
-              if borrowed_types.contains(x) && x != r#type {
+              if borrowed_types.contains(x.as_str()) && x != r#type {
                 warn!("{ns}::{import} was explicitly borrowed but it is already implicitly borrowed because it is a subtype of `{ns}::{type}`. Remove the `{ns}::{import}` borrow.",
                 ns = from_namespace, import = x, r#type = r#type);
               }

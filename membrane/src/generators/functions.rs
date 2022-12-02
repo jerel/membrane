@@ -49,7 +49,7 @@ impl Builder for Ffi {
   fn build(&mut self, config: &Membrane) -> Ffi {
     let enum_registry = config
       .namespaced_registry
-      .get(&self.fun.namespace)
+      .get(self.fun.namespace)
       .unwrap()
       // we've already inspected the registry for incomplete enums, now we'll have only valid ones
       .as_ref().unwrap();

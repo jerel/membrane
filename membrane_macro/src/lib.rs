@@ -319,10 +319,10 @@ fn to_token_stream(
   .contains(&output_style);
 
   let types = flatten_types(&output, vec![])?;
-  let return_type = quote! { vec![#(#types),*] };
+  let return_type = quote! { &[#(#types),*] };
 
   let types = flatten_types(&error, vec![])?;
-  let error_type = quote! { vec![#(#types),*] };
+  let error_type = quote! { &[#(#types),*] };
 
   let rust_arg_types = inputs
     .iter()
@@ -337,30 +337,29 @@ fn to_token_stream(
   } else {
     quote! { None }
   };
-  let borrow = quote! { vec![#(#borrow),*] };
+  let borrow = quote! { &[#(#borrow),*] };
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
-          #![crate = ::membrane]
           ::membrane::DeferredTrace {
               function: ::membrane::Function {
-                extern_c_fn_name: #c_name.to_string(),
-                extern_c_fn_types: #c_header_types.to_string(),
-                fn_name: #name.to_string(),
+                extern_c_fn_name: #c_name,
+                extern_c_fn_types: #c_header_types,
+                fn_name: #name,
                 is_stream: #is_stream,
                 is_sync: #sync,
                 return_type: #return_type,
                 error_type: #error_type,
-                namespace: #namespace.to_string(),
+                namespace: #namespace,
                 disable_logging: #disable_logging,
                 timeout: #timeout,
                 borrow: #borrow,
-                dart_outer_params: #dart_outer_params.to_string(),
-                dart_transforms: #dart_transforms.to_string(),
-                dart_inner_args: #dart_inner_args.to_string(),
-                output: "".to_string(),
+                dart_outer_params: #dart_outer_params,
+                dart_transforms: #dart_transforms,
+                dart_inner_args: #dart_inner_args,
+                output: "",
               },
-              namespace: #namespace.to_string(),
+              namespace: #namespace,
               trace: |
                 tracer: &mut ::membrane::serde_reflection::Tracer,
                 samples: &mut ::membrane::serde_reflection::Samples
@@ -442,10 +441,9 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
-          #![crate = ::membrane]
           ::membrane::DeferredEnumTrace {
-              name: #enum_name.to_string(),
-              namespace: #namespace.to_string(),
+              name: #enum_name,
+              namespace: #namespace,
               trace: |
                 tracer: &mut ::membrane::serde_reflection::Tracer
               | {
