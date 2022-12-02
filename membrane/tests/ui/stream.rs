@@ -1,3 +1,14 @@
+#[async_dart(namespace = "a")]
+pub fn one_failure() -> impl Stream<i32, String> {}
+
+#[async_dart(namespace = "a")]
+pub fn two_failure() -> impl Stream<Item = i32, String> {}
+
+#[async_dart(namespace = "a")]
+pub fn one_success() -> impl Stream<Item = Result<i32, String>> {
+  futures::stream::iter(vec![])
+}
+
 use futures::Stream;
 use membrane::async_dart;
 use membrane::runtime::{App, Interface, JoinHandle};
@@ -29,16 +40,5 @@ impl Interface for TestRuntime {
 }
 
 static RUNTIME: App<TestRuntime> = App::new(|| TestRuntime());
-
-#[async_dart(namespace = "a")]
-pub fn one_failure() -> impl Stream<i32, String> {}
-
-#[async_dart(namespace = "a")]
-pub fn two_failure() -> impl Stream<Item = i32, String> {}
-
-#[async_dart(namespace = "a")]
-pub fn one_success() -> impl Stream<Item = Result<i32, String>> {
-  futures::stream::iter(vec![])
-}
 
 fn main() {}
