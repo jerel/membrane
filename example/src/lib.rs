@@ -2,19 +2,17 @@ mod application;
 mod data;
 
 use membrane::runtime::{App, Interface, JoinHandle};
-use std::{fmt::Debug, future::Future};
 
 pub struct Runtime(tokio::runtime::Runtime);
 
 impl Interface for Runtime {
   fn spawn<F>(&self, future: F) -> JoinHandle
   where
-    F: Future + Send + 'static,
-    F::Output: Send + Debug + 'static,
+    F: std::future::Future + Send + 'static,
+    F::Output: Send + 'static,
   {
     let handle = self.0.spawn(future);
     JoinHandle {
-      debug_id: format!("{:?}", handle),
       abort: Box::new(move || handle.abort()),
     }
   }
@@ -22,17 +20,16 @@ impl Interface for Runtime {
   fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
   where
     F: FnOnce() -> R + Send + 'static,
-    R: Send + Debug + 'static,
+    R: Send + 'static,
   {
     let handle = self.0.spawn_blocking(future);
     JoinHandle {
-      debug_id: format!("{:?}", handle),
       abort: Box::new(move || handle.abort()),
     }
   }
 }
 
-pub static RUNTIME: App<Runtime> = App::new(|| {
+static RUNTIME: App<Runtime> = App::new(|| {
   Runtime(
     tokio::runtime::Builder::new_multi_thread()
       .worker_threads(2)

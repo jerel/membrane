@@ -1,34 +1,25 @@
 use once_cell::sync::OnceCell;
-use std::{fmt::Debug, future::Future};
+use std::future::Future;
 
 pub trait Interface {
   fn spawn<F>(&self, future: F) -> JoinHandle
   where
     F: Future + Send + 'static,
-    F::Output: Send + Debug + 'static;
+    F::Output: Send + 'static;
 
   fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
   where
     F: FnOnce() -> R + Send + 'static,
-    R: Send + Debug + 'static;
+    R: Send + 'static;
 }
 
 pub struct JoinHandle {
-  pub debug_id: String,
   pub abort: Box<dyn Fn()>,
 }
 
 impl JoinHandle {
   pub fn abort(&self) {
     (self.abort)();
-  }
-}
-
-impl Debug for JoinHandle {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("JoinHandle")
-      .field("debug_id", &self.debug_id)
-      .finish()
   }
 }
 

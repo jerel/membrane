@@ -19,8 +19,8 @@
       alt="Valgrind Memory Check" />
   </a>
   <a href="https://github.com/jerel/membrane">
-    <img src="https://img.shields.io/badge/rust-1.49%2B-orange.svg"
-      alt="Rust 1.49+" />
+    <img src="https://img.shields.io/badge/rust-1.61%2B-orange.svg"
+      alt="Rust 1.61+" />
   </a>
 </div>
 
@@ -46,17 +46,44 @@ On Linux ffigen looks for libclang at `/usr/lib/llvm-11/lib/libclang.so` so you 
 
 _View the [example](https://github.com/jerel/membrane/tree/main/example) directory for a runnable example._
 
-In your crate's `lib.rs` add a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must provide a `spawn` function, in this case we're using `tokio`:
+In your crate's `lib.rs` add a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must hold an instance of `membrane::App<Runtime>` where `Runtime` has the `membrane::Interface` trait implemented for whichever async framework you wish to use. In our examples we use `tokio` to provide the runtime behavior, you are welcome to copy it:
 ``` rust
-use once_cell::sync::Lazy;
-use tokio::runtime::{Builder, Runtime};
+use membrane::runtime::{App, Interface, JoinHandle};
 
-pub(crate) static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
-  Builder::new_multi_thread()
+pub struct Runtime(tokio::runtime::Runtime);
+
+impl Interface for Runtime {
+  fn spawn<F>(&self, future: F) -> JoinHandle
+  where
+    F: std::future::Future + Send + 'static,
+    F::Output: Send + 'static,
+  {
+    let handle = self.0.spawn(future);
+    JoinHandle {
+      abort: Box::new(move || handle.abort()),
+    }
+  }
+
+  fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
+  where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+  {
+    let handle = self.0.spawn_blocking(future);
+    JoinHandle {
+      abort: Box::new(move || handle.abort()),
+    }
+  }
+}
+
+static RUNTIME: App<Runtime> = App::new(|| {
+  Runtime(
+    tokio::runtime::Builder::new_multi_thread()
     .worker_threads(2)
     .thread_name("libexample")
     .build()
     .unwrap()
+  )
 });
 ```
 

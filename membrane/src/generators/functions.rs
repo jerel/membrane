@@ -142,9 +142,9 @@ impl Function {
         "Future"
       },
       return_type = if self.is_sync {
-        dart_type(&self.return_type)
+        dart_type(self.return_type)
       } else {
-        format!("<{}>", dart_type(&self.return_type))
+        format!("<{}>", dart_type(self.return_type))
       },
       fn_name = self.fn_name,
       fn_params = if self.dart_outer_params.is_empty() {
@@ -294,7 +294,7 @@ impl Callable for Ffi {
       fn_transforms = if self.fun.dart_transforms.is_empty() {
         String::new()
       } else {
-        "\n    ".to_string() + &self.fun.dart_transforms + ";"
+        "\n    ".to_string() + self.fun.dart_transforms + ";"
       },
       receive_port = if self.fun.is_sync {
         ""
@@ -311,9 +311,9 @@ impl Callable for Ffi {
       dart_inner_args = if self.fun.dart_inner_args.is_empty() {
         String::new()
       } else if self.fun.is_sync {
-        String::new() + &self.fun.dart_inner_args
+        String::new() + self.fun.dart_inner_args
       } else {
-        String::from(", ") + &self.fun.dart_inner_args
+        String::from(", ") + self.fun.dart_inner_args
       },
       class_name = self.fun.namespace.to_camel_case()
     )
@@ -346,8 +346,8 @@ impl Callable for Ffi {
         throw {class_name}ApiError('Resource freeing call to C failed');
       }}
     }}"#,
-        return_de = self.fun.deserializer(&self.fun.return_type, enum_tracer_registry, config),
-        error_de = self.fun.deserializer(&self.fun.error_type, enum_tracer_registry, config),
+        return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
+        error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
         class_name = self.fun.namespace.to_camel_case(),
         fn_name = self.fun.fn_name,
       )
@@ -370,8 +370,8 @@ impl Callable for Ffi {
         throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
-        return_de = self.fun.deserializer(&self.fun.return_type, enum_tracer_registry, config),
-        error_de = self.fun.deserializer(&self.fun.error_type, enum_tracer_registry, config),
+        return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
+        error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
         class_name = self.fun.namespace.to_camel_case(),
         fn_name = self.fun.fn_name,
         timeout = if let Some(val) = self.fun.timeout {
@@ -400,8 +400,8 @@ impl Callable for Ffi {
         throw {class_name}ApiError('Cancellation call to C failed');
       }}
     }}"#,
-        return_de = self.fun.deserializer(&self.fun.return_type, enum_tracer_registry, config),
-        error_de = self.fun.deserializer(&self.fun.error_type, enum_tracer_registry, config),
+        return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
+        error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
         class_name = self.fun.namespace.to_camel_case(),
         fn_name = self.fun.fn_name,
         timeout = if let Some(val) = self.fun.timeout {
@@ -464,9 +464,9 @@ impl Callable for C {
       extern_c_fn_types = if self.fun.extern_c_fn_types.is_empty() {
         String::new()
       } else if self.fun.is_sync {
-        String::new() + &self.fun.extern_c_fn_types
+        String::new() + self.fun.extern_c_fn_types
       } else {
-        String::from(", ") + &self.fun.extern_c_fn_types
+        String::from(", ") + self.fun.extern_c_fn_types
       }
     )
     .as_str();

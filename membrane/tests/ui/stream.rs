@@ -12,7 +12,7 @@ pub fn one_success() -> impl Stream<Item = Result<i32, String>> {
 use futures::Stream;
 use membrane::async_dart;
 use membrane::runtime::{App, Interface, JoinHandle};
-use std::{fmt::Debug, future::Future};
+use std::future::Future;
 
 struct TestRuntime();
 impl Interface for TestRuntime {
@@ -22,7 +22,6 @@ impl Interface for TestRuntime {
     T::Output: Send + 'static,
   {
     JoinHandle {
-      debug_id: String::new(),
       abort: Box::new(|| {}),
     }
   }
@@ -30,10 +29,9 @@ impl Interface for TestRuntime {
   fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
   where
     F: FnOnce() -> R + Send + 'static,
-    R: Send + Debug + 'static,
+    R: Send + 'static,
   {
     JoinHandle {
-      debug_id: String::new(),
       abort: Box::new(|| {}),
     }
   }

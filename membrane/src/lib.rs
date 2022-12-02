@@ -215,7 +215,7 @@ impl<'a> Membrane {
     ]
     .concat();
 
-    namespaces.sort();
+    namespaces.sort_unstable();
     namespaces.dedup();
 
     let mut namespaced_registry = HashMap::new();
@@ -226,7 +226,7 @@ impl<'a> Membrane {
     // collect all the metadata about functions (without tracing them yet)
     functions.iter().for_each(|item| {
       namespaced_fn_registry
-        .entry(item.namespace.clone())
+        .entry(item.namespace)
         .or_insert_with(Vec::new)
         .push(item.function.clone());
     });
@@ -269,7 +269,7 @@ impl<'a> Membrane {
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
       let samples = namespaced_samples
-        .entry(item.namespace.clone())
+        .entry(item.namespace)
         .or_insert_with(Samples::new);
 
       (item.trace)(tracer, samples);
