@@ -36,7 +36,6 @@ impl Debug for JoinHandle {
 pub struct App<T: Interface> {
   builder: fn() -> T,
   runtime: OnceCell<T>,
-  metadata: Vec<i32>,
 }
 
 impl<T: Interface> App<T> {
@@ -44,15 +43,10 @@ impl<T: Interface> App<T> {
     App {
       builder,
       runtime: OnceCell::new(),
-      metadata: vec![],
     }
   }
 
   pub fn get(&self) -> &T {
     self.runtime.get_or_init(self.builder)
-  }
-
-  pub fn metadata(&self) -> &Vec<i32> {
-    &self.metadata
   }
 }

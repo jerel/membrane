@@ -4,6 +4,7 @@ use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
 use membrane_types::heck::MixedCase;
 use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
+use once_cell::sync::OnceCell;
 use options::{extract_options, Options};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -14,6 +15,8 @@ use syn::{parse_macro_input, AttributeArgs, Block, Ident, Token, Type};
 
 mod options;
 mod parsers;
+
+static BOOTSTRAPPED: OnceCell<bool> = OnceCell::new();
 
 #[derive(Debug)]
 struct ReprDart {
@@ -379,6 +382,24 @@ fn to_token_stream(
     not(feature = "skip-generate")
   ))]
   functions.extend::<TokenStream>(_deferred_trace.into());
+
+  if BOOTSTRAPPED.get().is_none() {
+    BOOTSTRAPPED.set(true).unwrap();
+    functions.extend::<TokenStream>(
+      quote! {
+        #[no_mangle]
+        pub fn membrane_metadata_get_enums() -> Box<Vec<&'static ::membrane::DeferredEnumTrace>> {
+          Box::new(::membrane::metadata::enums())
+        }
+
+        #[no_mangle]
+        pub fn membrane_metadata_get_functions() -> Box<Vec<&'static ::membrane::DeferredTrace>> {
+          Box::new(::membrane::metadata::functions())
+        }
+      }
+      .into(),
+    );
+  }
 
   Ok(functions)
 }

@@ -17,3 +17,4 @@ skip-generate = []
 
 [dependencies]
 membrane_types = {version = "0.3", path = "../membrane_types"}
+once_cell = "~1.12.0"

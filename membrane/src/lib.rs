@@ -71,12 +71,14 @@ pub use futures;
 pub use inventory;
 #[doc(hidden)]
 pub use membrane_macro::{async_dart, dart_enum, sync_dart};
-pub mod runtime;
 #[doc(hidden)]
 pub use serde_reflection;
 
 #[doc(hidden)]
 pub mod emitter;
+#[doc(hidden)]
+pub mod metadata;
+pub mod runtime;
 #[doc(hidden)]
 pub mod utils;
 
@@ -98,18 +100,6 @@ use std::{
   process::exit,
 };
 use tracing::{info, warn};
-
-pub struct Metadata;
-
-impl Metadata {
-  pub fn enums(&self) -> Vec<&'static DeferredEnumTrace> {
-    inventory::iter::<DeferredEnumTrace>().collect()
-  }
-
-  pub fn functions(&self) -> Vec<&'static DeferredTrace> {
-    inventory::iter::<DeferredTrace>().collect()
-  }
-}
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -180,11 +170,14 @@ pub struct Membrane {
   c_style_enums: bool,
   timeout: Option<i32>,
   borrows: HashMap<&'static str, BTreeMap<&'static str, BTreeSet<&'static str>>>,
+  _inputs: Vec<libloading::Library>,
 }
 
 impl<'a> Membrane {
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
+    let mut input_libs = vec![];
+
     std::env::set_var(
       "RUST_LOG",
       std::env::var("RUST_LOG").unwrap_or_else(|_| "warn".to_string()),
@@ -192,8 +185,30 @@ impl<'a> Membrane {
 
     let _ = pretty_env_logger::try_init();
 
-    let enums = inventory::iter::<DeferredEnumTrace>();
-    let functions = inventory::iter::<DeferredTrace>();
+    // collect all libexample.so paths from stdin
+    let lib_paths: Vec<String> = std::env::args().skip(1).collect();
+
+    let (enums, functions) = if lib_paths.is_empty() {
+      info!("No `lib.so` paths were passed via stdin, falling back to looking for types in the local `lib` source");
+      (metadata::enums(), metadata::functions())
+    } else {
+      lib_paths.iter().fold(
+        (vec![], vec![]),
+        |(mut acc_enums, mut acc_functions), path| {
+          let (enums, functions) = utils::extract_types_from_cdylib(path, &mut input_libs);
+          acc_enums.extend(enums);
+          acc_functions.extend(functions);
+          (acc_enums, acc_functions)
+        },
+      )
+    };
+
+    if enums.is_empty() && functions.is_empty() {
+      info!(
+        "No type information could be found. Do you have #[async_dart] or #[sync_dart] in your code?"
+      );
+    }
+
     let mut namespaces = vec![
       enums.iter().map(|x| x.namespace).collect::<Vec<&str>>(),
       functions.iter().map(|x| x.namespace).collect::<Vec<&str>>(),

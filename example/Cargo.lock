@@ -201,7 +201,6 @@ dependencies = [
  "cc",
  "futures",
  "membrane",
- "once_cell",
  "serde",
  "serde_bytes",
  "tokio",
@@ -433,24 +432,12 @@ dependencies = [
 
 [[package]]
 name = "inventory"
-version = "0.1.11"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0eb5160c60ba1e809707918ee329adb99d222888155835c6feedba19f6c3fd4"
+checksum = "84344c6e0b90a9e2b6f3f9abe5cc74402684e348df7b32adca28747e0cef091a"
 dependencies = [
  "ctor",
  "ghost",
- "inventory-impl",
-]
-
-[[package]]
-name = "inventory-impl"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e41b53715c6f0c4be49510bb82dee2c1e51c8586d885abe65396e82ed518548"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -464,6 +451,16 @@ name = "libc"
 version = "0.2.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
+
+[[package]]
+name = "libloading"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
+dependencies = [
+ "cfg-if",
+ "winapi",
+]
 
 [[package]]
 name = "linked-hash-map"
@@ -505,8 +502,10 @@ dependencies = [
  "ffi_helpers",
  "futures",
  "inventory",
+ "libloading",
  "membrane_macro",
  "membrane_types",
+ "once_cell",
  "pretty_env_logger",
  "regex",
  "serde",
@@ -520,6 +519,7 @@ name = "membrane_macro"
 version = "0.5.0"
 dependencies = [
  "membrane_types",
+ "once_cell",
 ]
 
 [[package]]
