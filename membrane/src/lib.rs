@@ -68,6 +68,8 @@ pub use ffi_helpers;
 #[doc(hidden)]
 pub use futures;
 #[doc(hidden)]
+pub use git_version::git_version;
+#[doc(hidden)]
 pub use inventory;
 #[doc(hidden)]
 pub use membrane_macro::{async_dart, dart_enum, sync_dart};
@@ -99,7 +101,7 @@ use std::{
   path::{Path, PathBuf},
   process::exit,
 };
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -180,7 +182,7 @@ impl<'a> Membrane {
 
     std::env::set_var(
       "RUST_LOG",
-      std::env::var("RUST_LOG").unwrap_or_else(|_| "warn".to_string()),
+      std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()),
     );
 
     let _ = pretty_env_logger::try_init();
@@ -189,13 +191,22 @@ impl<'a> Membrane {
     let lib_paths: Vec<String> = std::env::args().skip(1).collect();
 
     let (enums, functions) = if lib_paths.is_empty() {
-      info!("No `lib.so` paths were passed via stdin, falling back to looking for types in the local `lib` source");
+      info!("No `lib.so` paths were passed via stdin, generating code from local `lib` source");
+
       (metadata::enums(), metadata::functions())
     } else {
       lib_paths.iter().fold(
         (vec![], vec![]),
         |(mut acc_enums, mut acc_functions), path| {
-          let (enums, functions) = utils::extract_types_from_cdylib(path, &mut input_libs);
+          let (enums, functions, version, git_version) =
+            metadata::extract_metadata_from_cdylib(&path, &mut input_libs);
+
+          info!(
+            "Generating code from {:?} which was compiled at version {:?} and commit {:?}",
+            path,
+            version.unwrap_or_else(|| "unknown"),
+            git_version
+          );
           acc_enums.extend(enums);
           acc_functions.extend(functions);
           (acc_enums, acc_functions)
@@ -388,7 +399,7 @@ impl<'a> Membrane {
     installer.install_bincode_runtime().unwrap();
 
     for namespace in self.namespaces.iter() {
-      info!("Generating lib/src/ code for namespace {}", namespace);
+      debug!("Generating lib/src/ code for namespace {}", namespace);
       let config = serde_generate::CodeGeneratorConfig::new(namespace.to_string())
         .with_encodings(vec![serde_generate::Encoding::Bincode])
         .with_c_style_enums(self.c_style_enums);
@@ -882,7 +893,7 @@ class {class_name}Api {{
   }
 
   fn namespace_path(&mut self, namespace: &str) -> PathBuf {
-    self.destination.join("lib").join("src").join(&namespace)
+    self.destination.join("lib").join("src").join(namespace)
   }
 
   fn create_borrows(

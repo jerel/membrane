@@ -23,6 +23,7 @@ allo-isolate = "0.1"
 bincode = "1.3"
 ffi_helpers = "0.2"
 futures = {version = "0.3", features = ["executor"]}
+git-version = "0.3.5"
 inventory = "0.2"
 libloading = "0.7"
 membrane_macro = {version = "0.5", path = "../membrane_macro"}

@@ -388,13 +388,25 @@ fn to_token_stream(
     functions.extend::<TokenStream>(
       quote! {
         #[no_mangle]
-        pub fn membrane_metadata_get_enums() -> Box<Vec<&'static ::membrane::DeferredEnumTrace>> {
+        pub fn membrane_metadata_enums() -> Box<Vec<&'static ::membrane::DeferredEnumTrace>> {
           Box::new(::membrane::metadata::enums())
         }
 
         #[no_mangle]
-        pub fn membrane_metadata_get_functions() -> Box<Vec<&'static ::membrane::DeferredTrace>> {
+        pub fn membrane_metadata_functions() -> Box<Vec<&'static ::membrane::DeferredTrace>> {
           Box::new(::membrane::metadata::functions())
+        }
+
+        #[no_mangle]
+        pub fn membrane_metadata_version() -> &'static str {
+          const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+          VERSION.unwrap_or_else(|| "unknown")
+        }
+
+        #[no_mangle]
+        pub fn membrane_metadata_git_version() -> &'static str {
+          const GIT_VERSION: &str = ::membrane::git_version!(args = ["--always"], fallback = "unknown");
+          GIT_VERSION
         }
       }
       .into(),

@@ -1,5 +1,6 @@
 fn main() {
-  // make sure the lib.rs doesn't get optimized away during our generator compilation pass
+  // Make sure the lib.rs doesn't get optimized away during our generator compilation pass.
+  // This line isn't necessary >= Rust 1.62 or when using the `cargo run -- target/debug/libexample.so` approach.
   example::load();
 
   let mut project = membrane::Membrane::new();
