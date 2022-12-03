@@ -15,6 +15,7 @@ use syn::{parse_macro_input, AttributeArgs, Block, Ident, Token, Type};
 
 mod options;
 mod parsers;
+mod utils;
 
 static BOOTSTRAPPED: OnceCell<bool> = OnceCell::new();
 
@@ -385,32 +386,42 @@ fn to_token_stream(
 
   if BOOTSTRAPPED.get().is_none() {
     BOOTSTRAPPED.set(true).unwrap();
-    functions.extend::<TokenStream>(
-      quote! {
-        #[no_mangle]
-        pub fn membrane_metadata_enums() -> Box<Vec<&'static ::membrane::DeferredEnumTrace>> {
-          Box::new(::membrane::metadata::enums())
-        }
 
-        #[no_mangle]
-        pub fn membrane_metadata_functions() -> Box<Vec<&'static ::membrane::DeferredTrace>> {
-          Box::new(::membrane::metadata::functions())
-        }
+    // we only add the metadata once and only then when we're a crate that produces a dylib, otherwise
+    // we run the risk of generating duplicate functions within shared workspace crates that all use this macro
+    if utils::get_lib_type().contains(&"cdylib".to_string()) {
+      functions.extend::<TokenStream>(
+          quote! {
+            #[no_mangle]
+            pub fn membrane_metadata_enums() -> Box<Vec<&'static ::membrane::DeferredEnumTrace>> {
+              Box::new(::membrane::metadata::enums())
+            }
 
-        #[no_mangle]
-        pub fn membrane_metadata_version() -> &'static str {
-          const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-          VERSION.unwrap_or_else(|| "unknown")
-        }
+            #[no_mangle]
+            pub fn membrane_metadata_functions() -> Box<Vec<&'static ::membrane::DeferredTrace>> {
+              Box::new(::membrane::metadata::functions())
+            }
 
-        #[no_mangle]
-        pub fn membrane_metadata_git_version() -> &'static str {
-          const GIT_VERSION: &str = ::membrane::git_version!(args = ["--always"], fallback = "unknown");
-          GIT_VERSION
-        }
-      }
-      .into(),
-    );
+            #[no_mangle]
+            pub fn membrane_metadata_version() -> &'static str {
+              const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+              VERSION.unwrap_or_else(|| "unknown")
+            }
+
+            #[no_mangle]
+            pub fn membrane_metadata_git_version() -> &'static str {
+              const GIT_VERSION: &str = ::membrane::git_version!(args = ["--always"], fallback = "unknown");
+              GIT_VERSION
+            }
+
+            #[no_mangle]
+            pub fn membrane_metadata_membrane_version() -> &'static str {
+              ::membrane::metadata::version()
+            }
+          }
+          .into(),
+        );
+    }
   }
 
   Ok(functions)
