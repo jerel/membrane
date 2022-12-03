@@ -198,7 +198,7 @@ impl<'a> Membrane {
       lib_paths.iter().fold(
         (vec![], vec![]),
         |(mut acc_enums, mut acc_functions), path| {
-          let (enums, functions, version, git_version) =
+          let (enums, functions, version, git_version, _membrane_version) =
             metadata::extract_metadata_from_cdylib(&path, &mut input_libs);
 
           info!(
