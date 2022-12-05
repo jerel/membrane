@@ -389,7 +389,7 @@ fn to_token_stream(
 
     // we only add the metadata once and only then when we're a crate that produces a dylib, otherwise
     // we run the risk of generating duplicate functions within shared workspace crates that all use this macro
-    if utils::get_lib_type().contains(&"cdylib".to_string()) {
+    if utils::is_cdylib() {
       functions.extend::<TokenStream>(
           quote! {
             #[no_mangle]

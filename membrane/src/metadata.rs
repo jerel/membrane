@@ -10,7 +10,7 @@ pub fn functions() -> Vec<&'static DeferredTrace> {
 
 pub fn version() -> &'static str {
   const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-  VERSION.unwrap_or_else(|| "unknown")
+  VERSION.unwrap_or("unknown")
 }
 
 pub(crate) fn extract_metadata_from_cdylib(

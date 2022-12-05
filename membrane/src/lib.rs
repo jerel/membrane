@@ -199,12 +199,12 @@ impl<'a> Membrane {
         (vec![], vec![]),
         |(mut acc_enums, mut acc_functions), path| {
           let (enums, functions, version, git_version, _membrane_version) =
-            metadata::extract_metadata_from_cdylib(&path, &mut input_libs);
+            metadata::extract_metadata_from_cdylib(path, &mut input_libs);
 
           info!(
             "Generating code from {:?} which was compiled at version {:?} and commit {:?}",
             path,
-            version.unwrap_or_else(|| "unknown"),
+            version.unwrap_or("unknown"),
             git_version
           );
           acc_enums.extend(enums);
