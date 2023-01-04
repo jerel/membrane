@@ -161,14 +161,17 @@ impl<'a> Membrane {
 
     let _ = pretty_env_logger::try_init();
 
-    let enums = inventory::iter::<DeferredEnumTrace>();
-    let functions = inventory::iter::<DeferredTrace>();
+    let mut enums: Vec<&'static DeferredEnumTrace> =
+      inventory::iter::<DeferredEnumTrace>().collect();
+    let mut functions: Vec<&'static DeferredTrace> = inventory::iter::<DeferredTrace>().collect();
     let mut namespaces = vec![
       enums
+        .iter()
         .clone()
         .map(|x| x.namespace.clone())
         .collect::<Vec<String>>(),
       functions
+        .iter()
         .clone()
         .map(|x| x.namespace.clone())
         .collect::<Vec<String>>(),
@@ -178,13 +181,22 @@ impl<'a> Membrane {
     namespaces.sort();
     namespaces.dedup();
 
+    enums.sort_by_cached_key(|e| &e.name);
+
+    functions.sort_by_cached_key(|f| {
+      format!(
+        "{}{}{}",
+        f.function.is_stream, f.function.is_sync, f.function.fn_name
+      )
+    });
+
     let mut namespaced_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
     let mut borrows: HashMap<String, BTreeMap<String, BTreeSet<String>>> = HashMap::new();
 
     // collect all the metadata about functions (without tracing them yet)
-    functions.clone().for_each(|item| {
+    functions.iter().clone().for_each(|item| {
       namespaced_fn_registry
         .entry(item.namespace.clone())
         .or_insert_with(Vec::new)
@@ -197,7 +209,7 @@ impl<'a> Membrane {
     });
 
     // trace all the enums at least once
-    enums.for_each(|item| {
+    enums.iter().for_each(|item| {
       // trace the enum into the borrowing namespace's registry
       borrows.iter().for_each(|(for_namespace, from_namespaces)| {
         if let Some(types) = from_namespaces.get(&item.namespace) {
@@ -220,7 +232,7 @@ impl<'a> Membrane {
     });
 
     // now that we have the enums in the registry we'll trace each of the functions
-    functions.for_each(|item| {
+    functions.iter().for_each(|item| {
       let tracer = namespaced_registry
         .entry(item.namespace.clone())
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
