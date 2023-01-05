@@ -850,7 +850,7 @@ class {class_name}Api {{
   }
 
   fn namespace_path(&mut self, namespace: String) -> PathBuf {
-    self.destination.join("lib").join("src").join(&namespace)
+    self.destination.join("lib").join("src").join(namespace)
   }
 
   fn create_borrows(
