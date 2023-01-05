@@ -940,6 +940,11 @@ class {class_name}Api {{
         .rev()
         .for_each(|(from_namespace, borrowed_types)| {
           let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
+            if namespace == from_namespace {
+              tracing::error!("{ns}::{import} was borrowed by {ns} which is a circular reference", ns = namespace, import = r#type);
+              exit(1);
+            }
+
             let auto_import = self.with_child_borrows(from_namespace, r#type);
             auto_import.iter().for_each(|x| {
               if borrowed_types.contains(x.as_str()) && x != r#type {
