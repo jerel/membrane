@@ -190,7 +190,7 @@ impl<'a> Membrane {
     // collect all libexample.so paths from stdin
     let lib_paths: Vec<String> = std::env::args().skip(1).collect();
 
-    let (enums, mut functions) = if lib_paths.is_empty() {
+    let (mut enums, mut functions) = if lib_paths.is_empty() {
       info!("No `lib.so` paths were passed via stdin, generating code from local `lib` source");
 
       (metadata::enums(), metadata::functions())
@@ -219,6 +219,8 @@ impl<'a> Membrane {
         "No type information could be found. Do you have #[async_dart] or #[sync_dart] in your code?"
       );
     }
+
+    enums.sort_by_cached_key(|e| &e.name);
 
     functions.sort_by_cached_key(|f| {
       format!(
