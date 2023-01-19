@@ -72,7 +72,7 @@ pub use git_version::git_version;
 #[doc(hidden)]
 pub use inventory;
 #[doc(hidden)]
-pub use membrane_macro::{async_dart, dart_enum, sync_dart};
+pub use membrane_macro::{async_dart, dart_enum, sync_dart, export_metadata};
 #[doc(hidden)]
 pub use serde_reflection;
 
@@ -199,7 +199,13 @@ impl<'a> Membrane {
         (vec![], vec![]),
         |(mut acc_enums, mut acc_functions), path| {
           let (enums, functions, version, git_version, _membrane_version) =
-            metadata::extract_metadata_from_cdylib(path, &mut input_libs);
+            match metadata::extract_metadata_from_cdylib(path, &mut input_libs) {
+              Ok(symbols) => symbols,
+              Err(msg) => {
+                tracing::error!("{}", msg);
+                exit(1);
+              }
+            };
 
           info!(
             "Generating code from {:?} which was compiled at version {:?} and commit {:?}",

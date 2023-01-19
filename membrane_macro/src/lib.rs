@@ -4,7 +4,6 @@ use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
 use membrane_types::heck::MixedCase;
 use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
-use once_cell::sync::OnceCell;
 use options::{extract_options, Options};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -16,8 +15,6 @@ use syn::{parse_macro_input, AttributeArgs, Block, Ident, Token, Type};
 mod options;
 mod parsers;
 mod utils;
-
-static BOOTSTRAPPED: OnceCell<bool> = OnceCell::new();
 
 #[derive(Debug)]
 struct ReprDart {
@@ -384,45 +381,7 @@ fn to_token_stream(
   ))]
   functions.extend::<TokenStream>(_deferred_trace.into());
 
-  if BOOTSTRAPPED.get().is_none() {
-    BOOTSTRAPPED.set(true).unwrap();
-
-    // we only add the metadata once and only then when we're a crate that produces a dylib, otherwise
-    // we run the risk of generating duplicate functions within shared workspace crates that all use this macro
-    if utils::is_cdylib() {
-      functions.extend::<TokenStream>(
-          quote! {
-            #[no_mangle]
-            pub fn membrane_metadata_enums() -> Box<Vec<&'static ::membrane::DeferredEnumTrace>> {
-              Box::new(::membrane::metadata::enums())
-            }
-
-            #[no_mangle]
-            pub fn membrane_metadata_functions() -> Box<Vec<&'static ::membrane::DeferredTrace>> {
-              Box::new(::membrane::metadata::functions())
-            }
-
-            #[no_mangle]
-            pub fn membrane_metadata_version() -> &'static str {
-              const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-              VERSION.unwrap_or_else(|| "unknown")
-            }
-
-            #[no_mangle]
-            pub fn membrane_metadata_git_version() -> &'static str {
-              const GIT_VERSION: &str = ::membrane::git_version!(args = ["--always"], fallback = "unknown");
-              GIT_VERSION
-            }
-
-            #[no_mangle]
-            pub fn membrane_metadata_membrane_version() -> &'static str {
-              ::membrane::metadata::version()
-            }
-          }
-          .into(),
-        );
-    }
-  }
+  functions = utils::maybe_inject_metadata(functions);
 
   Ok(functions)
 }
@@ -535,4 +494,40 @@ pub fn emitter(_item: TokenStream) -> TokenStream {
   }"
   .parse()
   .unwrap()
+}
+
+///
+/// A helper macro that can be used to ensure that Membrane types are still accessible
+/// if the workspace crate which generates the `cdylib` binary has no instances
+/// of Membrane macros such as `#[async_dart]` or `#[sync_dart]`.
+///
+/// Example:
+///
+/// // crate_one/src/lib.rs
+/// #[async_dart(namespace = "one")]
+/// pub fn example()
+///
+/// // crate_two/Cargo.toml
+/// [lib]
+/// crate-type = ["cdylib"]
+///
+/// // crate_two/src/lib.rs
+/// use crate_one::*;
+/// membrane::export_metadata!();
+///
+#[proc_macro]
+pub fn export_metadata(token_stream: TokenStream) -> TokenStream {
+  if !utils::is_cdylib() {
+    syn::Error::new(
+      Span::call_site(),
+      "membrane::export_metadata!() was used in a crate which is not `crate-type` of `cdylib`.
+      Either it is being invoked in a crate which exports code instead of generating a cdylib
+      (and is consequently unnecessary and should be removed) or it is being used in the crate which is responsible
+      for generating the cdylib but the `crate-type` was accidentally omitted from `[lib]` in `Cargo.toml`.",
+    )
+    .to_compile_error()
+    .into()
+  } else {
+    utils::maybe_inject_metadata(token_stream)
+  }
 }
