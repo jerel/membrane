@@ -1,5 +1,5 @@
 use crate::{rust::flatten_types, Input};
-use heck::{CamelCase, MixedCase};
+use heck::{ToLowerCamelCase, ToUpperCamelCase};
 use syn::Type;
 
 pub struct DartParams(Vec<String>);
@@ -22,7 +22,7 @@ impl std::convert::TryFrom<&Vec<Input>> for DartParams {
             .collect::<Vec<&str>>(),
           &input.ty
         )?,
-        variable = &input.variable.to_mixed_case(),
+        variable = &input.variable.to_lower_camel_case(),
       ))
     }
 
@@ -39,7 +39,7 @@ impl std::convert::TryFrom<&Vec<Input>> for DartTransforms {
     for input in inputs {
       stream.push(format!(
         "final c{variable} = {cast}",
-        variable = &input.variable.to_camel_case(),
+        variable = &input.variable.to_upper_camel_case(),
         cast = cast_dart_type_to_c(
           &flatten_types(&input.ty, vec![])?
             .iter()
@@ -62,7 +62,7 @@ impl From<&Vec<Input>> for DartArgs {
     for input in inputs {
       stream.push(format!(
         "c{variable}",
-        variable = &input.variable.to_camel_case()
+        variable = &input.variable.to_upper_camel_case()
       ))
     }
 
@@ -194,12 +194,15 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
           _toFree.add(ptr);
           return ptr;
         }}()"#,
-        variable = variable.to_mixed_case()
+        variable = variable.to_lower_camel_case()
       )
     }
-    ["bool"] => format!("{variable} ? 1 : 0", variable = variable.to_mixed_case()),
-    ["i64"] => variable.to_mixed_case(),
-    ["f64"] => variable.to_mixed_case(),
+    ["bool"] => format!(
+      "{variable} ? 1 : 0",
+      variable = variable.to_lower_camel_case()
+    ),
+    ["i64"] => variable.to_lower_camel_case(),
+    ["f64"] => variable.to_lower_camel_case(),
     ["Vec", ..] => format!(
       r#"(){{
       final serializer = BincodeSerializer();
@@ -207,7 +210,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       final data = serializer.bytes;
       {ser_partial}
     }}()"#,
-      serializer = serializer(types, &variable.to_mixed_case(), ty)?,
+      serializer = serializer(types, &variable.to_lower_camel_case(), ty)?,
       ser_partial = serialization_partial(),
     ),
     [ty, ..] if ty != "Option" => format!(
@@ -215,7 +218,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       final data = {variable}.bincodeSerialize();
       {ser_partial}
     }}()"#,
-      variable = variable.to_mixed_case(),
+      variable = variable.to_lower_camel_case(),
       ser_partial = serialization_partial(),
     ),
     ["Option", "String"] => {
@@ -228,7 +231,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       _toFree.add(ptr);
       return ptr;
     }}()"#,
-        variable = variable.to_mixed_case()
+        variable = variable.to_lower_camel_case()
       )
     }
     ["Option", "bool"] => format!(
@@ -241,7 +244,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       ptr.asTypedList(1).setAll(0, [{variable} ? 1 : 0]);
       return ptr;
     }}()"#,
-      variable = variable.to_mixed_case()
+      variable = variable.to_lower_camel_case()
     ),
     ["Option", "i64"] => format!(
       r#"(){{
@@ -253,7 +256,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       ptr.asTypedList(1).setAll(0, [{variable}]);
       return ptr;
     }}()"#,
-      variable = variable.to_mixed_case()
+      variable = variable.to_lower_camel_case()
     ),
     ["Option", "f64"] => format!(
       r#"(){{
@@ -265,7 +268,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       ptr.asTypedList(1).setAll(0, [{variable}]);
       return ptr;
     }}()"#,
-      variable = variable.to_mixed_case()
+      variable = variable.to_lower_camel_case()
     ),
     ["Option", "Vec", ..] => format!(
       r#"(){{
@@ -277,8 +280,8 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       final data = serializer.bytes;
       {ser_partial}
     }}()"#,
-      variable = variable.to_mixed_case(),
-      serializer = serializer(types, &variable.to_mixed_case(), ty)?,
+      variable = variable.to_lower_camel_case(),
+      serializer = serializer(types, &variable.to_lower_camel_case(), ty)?,
       ser_partial = serialization_partial(),
     ),
     ["Option", ..] => format!(
@@ -289,7 +292,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       final data = {variable}.bincodeSerialize();
       {ser_partial}
     }}()"#,
-      variable = variable.to_mixed_case(),
+      variable = variable.to_lower_camel_case(),
       ser_partial = serialization_partial(),
     ),
     _ => {

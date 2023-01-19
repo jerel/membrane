@@ -72,7 +72,7 @@ pub use git_version::git_version;
 #[doc(hidden)]
 pub use inventory;
 #[doc(hidden)]
-pub use membrane_macro::{async_dart, dart_enum, sync_dart, export_metadata};
+pub use membrane_macro::{async_dart, dart_enum, export_metadata, sync_dart};
 #[doc(hidden)]
 pub use serde_reflection;
 
@@ -90,7 +90,7 @@ use generators::{
   functions::{Builder, Writable},
   loaders,
 };
-use membrane_types::heck::{CamelCase, SnakeCase};
+use membrane_types::heck::{ToSnakeCase, ToUpperCamelCase};
 use serde_reflection::{
   ContainerFormat, Error, Registry, Samples, Tracer, TracerConfig, VariantFormat,
 };
@@ -829,7 +829,7 @@ class {class_name}Api {{
   const {class_name}Api();
 "#,
       ns = &namespace,
-      class_name = &namespace.to_camel_case()
+      class_name = &namespace.to_upper_camel_case()
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
@@ -890,7 +890,7 @@ class {class_name}Api {{
   const {class_name}Api();
 "#,
       ns = &namespace,
-      class_name = &namespace.to_camel_case()
+      class_name = &namespace.to_upper_camel_case()
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
@@ -977,7 +977,7 @@ class {class_name}Api {{
                 &line
                   .replace("part '", "")
                   .replace(".dart';", "")
-                  .to_camel_case(),
+                  .to_upper_camel_case(),
               ) {
                 None
               } else if line.starts_with("import '../bincode") {

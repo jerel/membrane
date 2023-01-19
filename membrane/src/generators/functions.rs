@@ -1,5 +1,5 @@
 use crate::{ContainerFormat, Function, Membrane, Registry, VariantFormat};
-use membrane_types::{dart::dart_type, heck::CamelCase};
+use membrane_types::{dart::dart_type, heck::ToUpperCamelCase};
 use std::io::Write;
 
 ///
@@ -315,7 +315,7 @@ impl Callable for Ffi {
       } else {
         String::from(", ") + self.fun.dart_inner_args
       },
-      class_name = self.fun.namespace.to_camel_case()
+      class_name = self.fun.namespace.to_upper_camel_case()
     )
     .as_str();
     self
@@ -348,7 +348,7 @@ impl Callable for Ffi {
     }}"#,
         return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
         error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
-        class_name = self.fun.namespace.to_camel_case(),
+        class_name = self.fun.namespace.to_upper_camel_case(),
         fn_name = self.fun.fn_name,
       )
     } else if self.fun.is_stream {
@@ -372,7 +372,7 @@ impl Callable for Ffi {
     }}"#,
         return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
         error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
-        class_name = self.fun.namespace.to_camel_case(),
+        class_name = self.fun.namespace.to_upper_camel_case(),
         fn_name = self.fun.fn_name,
         timeout = if let Some(val) = self.fun.timeout {
           // check the async_dart option configured timeout
@@ -402,7 +402,7 @@ impl Callable for Ffi {
     }}"#,
         return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
         error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
-        class_name = self.fun.namespace.to_camel_case(),
+        class_name = self.fun.namespace.to_upper_camel_case(),
         fn_name = self.fun.fn_name,
         timeout = if let Some(val) = self.fun.timeout {
           // check the async_dart option configured timeout first

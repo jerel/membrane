@@ -1,7 +1,7 @@
 extern crate proc_macro;
 use membrane_types::c::CHeaderTypes;
 use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
-use membrane_types::heck::MixedCase;
+use membrane_types::heck::ToLowerCamelCase;
 use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
 use options::{extract_options, Options};
@@ -312,7 +312,7 @@ fn to_token_stream(
 
   let c_name = extern_c_fn_name.to_string();
   let c_header_types = c_header_types.join(", ");
-  let name = fn_name.to_string().to_mixed_case();
+  let name = fn_name.to_string().to_lower_camel_case();
   let is_stream = [
     OutputStyle::StreamSerialized,
     OutputStyle::StreamEmitterSerialized,
