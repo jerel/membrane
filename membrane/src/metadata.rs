@@ -1,4 +1,5 @@
 use crate::{DeferredEnumTrace, DeferredTrace};
+use std::ffi::CString;
 
 pub fn enums() -> Vec<&'static DeferredEnumTrace> {
   inventory::iter::<DeferredEnumTrace>().collect()
@@ -20,9 +21,8 @@ pub(crate) fn extract_metadata_from_cdylib(
   (
     Vec<&'static DeferredEnumTrace>,
     Vec<&'static DeferredTrace>,
-    Option<&'static str>,
-    &'static str,
-    &'static str,
+    String,
+    String,
   ),
   String,
 > {
@@ -57,9 +57,8 @@ fn extract_metadata(
   (
     Vec<&'static DeferredEnumTrace>,
     Vec<&'static DeferredTrace>,
-    Option<&'static str>,
-    &'static str,
-    &'static str,
+    String,
+    String,
   ),
   libloading::Error,
 > {
@@ -70,19 +69,15 @@ fn extract_metadata(
       lib.get(b"membrane_metadata_enums")?;
     let functions: libloading::Symbol<fn() -> Box<Vec<&'static DeferredTrace>>> =
       lib.get(b"membrane_metadata_functions")?;
-    let version: libloading::Symbol<fn() -> Option<&'static str>> =
-      lib.get(b"membrane_metadata_version")?;
-    let git_version: libloading::Symbol<fn() -> &'static str> =
-      lib.get(b"membrane_metadata_git_version")?;
-    let membrane_version: libloading::Symbol<fn() -> &'static str> =
+    let version: libloading::Symbol<fn() -> CString> = lib.get(b"membrane_metadata_version")?;
+    let membrane_version: libloading::Symbol<fn() -> CString> =
       lib.get(b"membrane_metadata_membrane_version")?;
 
     let output = (
       (*(enums)()),
       (*(functions)()),
-      (version)(),
-      (git_version)(),
-      (membrane_version)(),
+      (version)().to_str().unwrap().to_string(),
+      (membrane_version)().to_str().unwrap().to_string(),
     );
 
     // keep a copy of the .so so that it doesn't get unloaded while we're accessing the DeferredTrace values

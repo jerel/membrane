@@ -51,20 +51,18 @@ pub(crate) fn maybe_inject_metadata(mut token_stream: TokenStream) -> TokenStrea
             }
 
             #[no_mangle]
-            pub fn membrane_metadata_version() -> &'static str {
+            pub extern "C" fn membrane_metadata_version() -> *mut i8 {
               const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-              VERSION.unwrap_or_else(|| "unknown")
-            }
-
-            #[no_mangle]
-            pub fn membrane_metadata_git_version() -> &'static str {
               const GIT_VERSION: &str = ::membrane::git_version!(args = ["--always"], fallback = "unknown");
-              GIT_VERSION
+              let cargo_version = VERSION.unwrap_or_else(|| "unknown");
+              let version = ::std::ffi::CString::new(String::new() + cargo_version + "-" + GIT_VERSION).expect("Invalid string received");
+              version.into_raw()
             }
 
             #[no_mangle]
-            pub fn membrane_metadata_membrane_version() -> &'static str {
-              ::membrane::metadata::version()
+            pub extern "C" fn membrane_metadata_membrane_version() -> *mut i8 {
+              let version = ::std::ffi::CString::new(::membrane::metadata::version()).expect("Invalid string received");
+              version.into_raw()
             }
           }
           .into(),

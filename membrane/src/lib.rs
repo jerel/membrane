@@ -172,6 +172,7 @@ pub struct Membrane {
   c_style_enums: bool,
   timeout: Option<i32>,
   borrows: HashMap<&'static str, BTreeMap<&'static str, BTreeSet<&'static str>>>,
+  git_version: String,
   _inputs: Vec<libloading::Library>,
 }
 
@@ -187,37 +188,33 @@ impl<'a> Membrane {
 
     let _ = pretty_env_logger::try_init();
 
-    // collect all libexample.so paths from stdin
-    let lib_paths: Vec<String> = std::env::args().skip(1).collect();
+    // read the libexample.so path from stdin
+    let lib_path: String = std::env::args().skip(1).take(1).collect();
 
-    let (mut enums, mut functions) = if lib_paths.is_empty() {
+    let (mut enums, mut functions, git_version) = if lib_path.is_empty() {
       info!("No `lib.so` paths were passed via stdin, generating code from local `lib` source");
 
-      (metadata::enums(), metadata::functions())
-    } else {
-      lib_paths.iter().fold(
-        (vec![], vec![]),
-        |(mut acc_enums, mut acc_functions), path| {
-          let (enums, functions, version, git_version, _membrane_version) =
-            match metadata::extract_metadata_from_cdylib(path, &mut input_libs) {
-              Ok(symbols) => symbols,
-              Err(msg) => {
-                tracing::error!("{}", msg);
-                exit(1);
-              }
-            };
-
-          info!(
-            "Generating code from {:?} which was compiled at version {:?} and commit {:?}",
-            path,
-            version.unwrap_or("unknown"),
-            git_version
-          );
-          acc_enums.extend(enums);
-          acc_functions.extend(functions);
-          (acc_enums, acc_functions)
-        },
+      (
+        metadata::enums(),
+        metadata::functions(),
+        git_version!(args = ["--always"], fallback = "unknown").to_owned(),
       )
+    } else {
+      let (enums, functions, version, _membrane_version) =
+        match metadata::extract_metadata_from_cdylib(&lib_path, &mut input_libs) {
+          Ok(symbols) => symbols,
+          Err(msg) => {
+            tracing::error!("{}", msg);
+            exit(1);
+          }
+        };
+
+      info!(
+        "Generating code from {:?} which was compiled at version {:?}",
+        lib_path,
+        version
+      );
+      (enums, functions, version)
     };
 
     if enums.is_empty() && functions.is_empty() {
@@ -333,6 +330,7 @@ impl<'a> Membrane {
       c_style_enums: true,
       timeout: None,
       borrows,
+      git_version,
       _inputs: input_libs,
     }
   }
@@ -510,6 +508,8 @@ typedef struct MembraneResponse
 
 uint8_t membrane_cancel_membrane_task(const void *task_handle);
 uint8_t membrane_free_membrane_vec(int64_t len, const void *ptr);
+char * membrane_metadata_version();
+uint8_t membrane_free_membrane_string(char *ptr);
 
 #endif
 "#;
@@ -731,7 +731,7 @@ headers:
   }
 
   fn create_loader(&mut self) -> &mut Self {
-    let ffi_loader = loaders::create_ffi_loader(&self.library);
+    let ffi_loader = loaders::create_ffi_loader(&self.library, &self.git_version);
     let path = self.destination.join("lib/src/membrane_loader_ffi.dart");
     std::fs::write(path, ffi_loader).unwrap();
 
@@ -1059,6 +1059,15 @@ pub unsafe extern "C" fn membrane_cancel_membrane_task(task_handle: *mut TaskHan
 pub unsafe extern "C" fn membrane_free_membrane_vec(len: i64, ptr: *const u8) -> i32 {
   // turn the pointer back into a vec and Rust will drop it
   let _ = ::std::slice::from_raw_parts::<u8>(ptr, len as usize);
+
+  1
+}
+
+#[doc(hidden)]
+#[no_mangle]
+pub unsafe extern "C" fn membrane_free_membrane_string(ptr: *mut i8) -> i32 {
+  // turn the pointer back into a CString and Rust will drop it
+  let _ = ::std::ffi::CString::from_raw(ptr);
 
   1
 }
