@@ -193,10 +193,7 @@ impl<'a> Membrane {
     let (mut enums, mut functions) = if lib_path.is_empty() {
       info!("No `lib.so` paths were passed via stdin, generating code from local `lib` source");
 
-      (
-        metadata::enums(),
-        metadata::functions(),
-      )
+      (metadata::enums(), metadata::functions())
     } else {
       let (enums, functions, version, _membrane_version) =
         match metadata::extract_metadata_from_cdylib(&lib_path, &mut input_libs) {
@@ -209,8 +206,7 @@ impl<'a> Membrane {
 
       info!(
         "Generating code from {:?} which was compiled at version {:?}",
-        lib_path,
-        version
+        lib_path, version
       );
       (enums, functions)
     };
