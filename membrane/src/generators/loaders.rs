@@ -1,4 +1,4 @@
-pub fn create_ffi_loader(library: &str, git_version: &str) -> String {
+pub fn create_ffi_loader(library: &str) -> String {
   format!(
     r#"// AUTO GENERATED FILE, DO NOT EDIT
 //
@@ -56,14 +56,8 @@ _load() {{
   final ptr = bindings.membrane_metadata_version();
   final version = ptr.cast<Utf8>().toDartString();
   bindings.membrane_free_membrane_string(ptr);
-  if (version == '{version}') {{
-    Logger('membrane').info('Version check passed');
-  }} else {{
-    final error = "Version mismatch detected in provided '{lib}'. Dart code is version '{version}' while {lib} is version '$version'.";
-    Logger('membrane').shout(error);
-    // also print in case of a misconfigured logger
-    print(error);
-  }}
+  final msg = "Successfully loaded '{lib}' which was built at version '$version'.";
+  Logger('membrane').info(msg);
 
   bindingsLoaded = true;
   return bindings;
@@ -80,7 +74,6 @@ bool bindingsLoaded = false;
 final bindings = _load();
 "#,
     lib = library,
-    version = git_version,
   )
 }
 

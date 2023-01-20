@@ -172,7 +172,6 @@ pub struct Membrane {
   c_style_enums: bool,
   timeout: Option<i32>,
   borrows: HashMap<&'static str, BTreeMap<&'static str, BTreeSet<&'static str>>>,
-  git_version: String,
   _inputs: Vec<libloading::Library>,
 }
 
@@ -191,13 +190,12 @@ impl<'a> Membrane {
     // read the libexample.so path from stdin
     let lib_path: String = std::env::args().skip(1).take(1).collect();
 
-    let (mut enums, mut functions, git_version) = if lib_path.is_empty() {
+    let (mut enums, mut functions) = if lib_path.is_empty() {
       info!("No `lib.so` paths were passed via stdin, generating code from local `lib` source");
 
       (
         metadata::enums(),
         metadata::functions(),
-        git_version!(args = ["--always"], fallback = "unknown").to_owned(),
       )
     } else {
       let (enums, functions, version, _membrane_version) =
@@ -214,7 +212,7 @@ impl<'a> Membrane {
         lib_path,
         version
       );
-      (enums, functions, version)
+      (enums, functions)
     };
 
     if enums.is_empty() && functions.is_empty() {
@@ -330,7 +328,6 @@ impl<'a> Membrane {
       c_style_enums: true,
       timeout: None,
       borrows,
-      git_version,
       _inputs: input_libs,
     }
   }
@@ -731,7 +728,7 @@ headers:
   }
 
   fn create_loader(&mut self) -> &mut Self {
-    let ffi_loader = loaders::create_ffi_loader(&self.library, &self.git_version);
+    let ffi_loader = loaders::create_ffi_loader(&self.library);
     let path = self.destination.join("lib/src/membrane_loader_ffi.dart");
     std::fs::write(path, ffi_loader).unwrap();
 
