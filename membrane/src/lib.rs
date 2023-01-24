@@ -176,8 +176,29 @@ pub struct Membrane {
 }
 
 impl<'a> Membrane {
+  ///
+  /// This method should be used when your project imports the crate's `lib` source code into the
+  /// `bin` where Membrane is initialized.
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
+    Self::initialize_from_metadata(None::<&std::path::Path>)
+  }
+
+  ///
+  /// This method loads the .so produced by `cargo build` and extracts type information from it.
+  /// This is a more performant approach than `Membrane::new()` as it does not do any recompilation of
+  /// application code or dependencies.
+  pub fn new_from_cdylib<P>(cdylib_path: &'a P) -> Self
+  where
+    P: AsRef<Path> + std::fmt::Debug,
+  {
+    Self::initialize_from_metadata(Some(cdylib_path))
+  }
+
+  fn initialize_from_metadata<P>(cdylib_path: Option<&'a P>) -> Self
+  where
+    P: ?Sized + AsRef<Path> + std::fmt::Debug,
+  {
     let mut input_libs = vec![];
 
     std::env::set_var(
@@ -187,28 +208,31 @@ impl<'a> Membrane {
 
     let _ = pretty_env_logger::try_init();
 
-    // read the libexample.so path from stdin
-    let lib_path: String = std::env::args().skip(1).take(1).collect();
+    let (mut enums, mut functions) = match cdylib_path {
+      None => {
+        info!("No `lib.so` paths were passed, generating code from local `lib` source");
 
-    let (mut enums, mut functions) = if lib_path.is_empty() {
-      info!("No `lib.so` paths were passed via stdin, generating code from local `lib` source");
+        (metadata::enums(), metadata::functions())
+      }
+      Some(lib_path) => {
+        let (enums, functions, version, _membrane_version) =
+          match metadata::extract_metadata_from_cdylib(
+            lib_path.as_ref().as_os_str(),
+            &mut input_libs,
+          ) {
+            Ok(symbols) => symbols,
+            Err(msg) => {
+              tracing::error!("{}", msg);
+              exit(1);
+            }
+          };
 
-      (metadata::enums(), metadata::functions())
-    } else {
-      let (enums, functions, version, _membrane_version) =
-        match metadata::extract_metadata_from_cdylib(&lib_path, &mut input_libs) {
-          Ok(symbols) => symbols,
-          Err(msg) => {
-            tracing::error!("{}", msg);
-            exit(1);
-          }
-        };
-
-      info!(
-        "Generating code from {:?} which was compiled at version {:?}",
-        lib_path, version
-      );
-      (enums, functions)
+        info!(
+          "Generating code from {:?} which was compiled at version {:?}",
+          lib_path, version
+        );
+        (enums, functions)
+      }
     };
 
     if enums.is_empty() && functions.is_empty() {

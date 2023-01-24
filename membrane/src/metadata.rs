@@ -22,7 +22,7 @@ pub fn version() -> &'static str {
 }
 
 pub(crate) fn extract_metadata_from_cdylib(
-  lib_path: &String,
+  lib_path: &std::ffi::OsStr,
   input_libs: &mut Vec<libloading::Library>,
 ) -> Result<Metadata, String> {
   match extract_metadata(lib_path, input_libs) {Ok(symbols) => Ok(symbols),
@@ -49,7 +49,7 @@ pub(crate) fn extract_metadata_from_cdylib(
 }
 
 fn extract_metadata(
-  lib_path: &String,
+  lib_path: &std::ffi::OsStr,
   input_libs: &mut Vec<libloading::Library>,
 ) -> Result<Metadata, libloading::Error> {
   unsafe {

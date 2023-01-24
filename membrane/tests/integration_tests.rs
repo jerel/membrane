@@ -158,4 +158,28 @@ import '../locations/locations.dart' show Location;
       true,
     );
   }
+
+  #[test]
+  #[serial]
+  fn base_project_loading_cdylib() {
+    let path = Path::new("../dart_example");
+
+    build_lib(&path.to_path_buf(), &mut vec![]);
+
+    Membrane::new_from_cdylib(&path.join("libexample.so"))
+      .timeout(200)
+      .package_destination_dir(path)
+      .using_lib("libexample")
+      .create_pub_package()
+      .write_api()
+      .write_c_headers()
+      .write_bindings();
+
+    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
+    run_dart(
+      &path.to_path_buf(),
+      vec!["test", "test/main_test.dart"],
+      true,
+    );
+  }
 }
