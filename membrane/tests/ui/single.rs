@@ -1,24 +1,3 @@
-use futures::Future;
-use membrane::{async_dart, sync_dart};
-
-struct JoinHandle {}
-impl JoinHandle {
-  pub fn abort(&self) {}
-}
-
-struct Runtime {}
-impl Runtime {
-  pub fn spawn<T>(&self, future: T) -> JoinHandle
-  where
-    T: Future + Send + 'static,
-    T::Output: Send + 'static,
-  {
-    JoinHandle {}
-  }
-}
-
-static RUNTIME: Runtime = Runtime {};
-
 // attribute errors
 
 #[async_dart]
@@ -76,5 +55,34 @@ pub async fn failing_arg_two(foo: &[i8]) -> Result<(), String> {
 pub async fn one_success() -> Result<Vec<i32>, String> {
   Ok(vec![10])
 }
+
+use membrane::runtime::{App, Interface, JoinHandle};
+use membrane::{async_dart, sync_dart};
+use std::future::Future;
+
+struct TestRuntime();
+impl Interface for TestRuntime {
+  fn spawn<T>(&self, future: T) -> JoinHandle
+  where
+    T: Future + Send + 'static,
+    T::Output: Send + 'static,
+  {
+    JoinHandle {
+      abort: Box::new(|| {}),
+    }
+  }
+
+  fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
+  where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+  {
+    JoinHandle {
+      abort: Box::new(|| {}),
+    }
+  }
+}
+
+static RUNTIME: App<TestRuntime> = App::new(|| TestRuntime());
 
 fn main() {}

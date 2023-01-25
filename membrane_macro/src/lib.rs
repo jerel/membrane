@@ -1,7 +1,7 @@
 extern crate proc_macro;
 use membrane_types::c::CHeaderTypes;
 use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
-use membrane_types::heck::MixedCase;
+use membrane_types::heck::ToLowerCamelCase;
 use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
 use options::{extract_options, Options};
@@ -14,6 +14,7 @@ use syn::{parse_macro_input, AttributeArgs, Block, Ident, Token, Type};
 
 mod options;
 mod parsers;
+mod utils;
 
 #[derive(Debug)]
 struct ReprDart {
@@ -197,7 +198,7 @@ fn to_token_stream(
       ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::StreamSerialized => quote! {
-      let membrane_join_handle = crate::RUNTIME.spawn(
+      let membrane_join_handle = crate::RUNTIME.get().spawn(
         async move {
           use ::membrane::futures::stream::StreamExt;
           let mut stream = #fn_name(#(#rust_inner_args),*);
@@ -237,7 +238,7 @@ fn to_token_stream(
     OutputStyle::Serialized if os_thread => quote! {
       let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
 
-      crate::RUNTIME.spawn_blocking(
+      crate::RUNTIME.get().spawn_blocking(
         move || {
           ::futures::executor::block_on(
             ::futures::future::Abortable::new(
@@ -254,7 +255,7 @@ fn to_token_stream(
       ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::Serialized => quote! {
-      let membrane_join_handle = crate::RUNTIME.spawn(
+      let membrane_join_handle = crate::RUNTIME.get().spawn(
         async move {
           let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
           let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
@@ -277,7 +278,7 @@ fn to_token_stream(
       #[allow(clippy::not_unsafe_ptr_arg_deref)]
       pub extern "C" fn #extern_c_fn_name(#(#rust_outer_params),*) -> ::membrane::MembraneResponse {
         let func = || {
-          use ::membrane::{cstr, error, ffi_helpers};
+          use ::membrane::{cstr, error, ffi_helpers, runtime::Interface};
           use ::std::ffi::CStr;
 
           #(#rust_transforms)*
@@ -311,7 +312,7 @@ fn to_token_stream(
 
   let c_name = extern_c_fn_name.to_string();
   let c_header_types = c_header_types.join(", ");
-  let name = fn_name.to_string().to_mixed_case();
+  let name = fn_name.to_string().to_lower_camel_case();
   let is_stream = [
     OutputStyle::StreamSerialized,
     OutputStyle::StreamEmitterSerialized,
@@ -319,10 +320,10 @@ fn to_token_stream(
   .contains(&output_style);
 
   let types = flatten_types(&output, vec![])?;
-  let return_type = quote! { vec![#(#types),*] };
+  let return_type = quote! { &[#(#types),*] };
 
   let types = flatten_types(&error, vec![])?;
-  let error_type = quote! { vec![#(#types),*] };
+  let error_type = quote! { &[#(#types),*] };
 
   let rust_arg_types = inputs
     .iter()
@@ -337,30 +338,29 @@ fn to_token_stream(
   } else {
     quote! { None }
   };
-  let borrow = quote! { vec![#(#borrow),*] };
+  let borrow = quote! { &[#(#borrow),*] };
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
-          #![crate = ::membrane]
           ::membrane::DeferredTrace {
               function: ::membrane::Function {
-                extern_c_fn_name: #c_name.to_string(),
-                extern_c_fn_types: #c_header_types.to_string(),
-                fn_name: #name.to_string(),
+                extern_c_fn_name: #c_name,
+                extern_c_fn_types: #c_header_types,
+                fn_name: #name,
                 is_stream: #is_stream,
                 is_sync: #sync,
                 return_type: #return_type,
                 error_type: #error_type,
-                namespace: #namespace.to_string(),
+                namespace: #namespace,
                 disable_logging: #disable_logging,
                 timeout: #timeout,
                 borrow: #borrow,
-                dart_outer_params: #dart_outer_params.to_string(),
-                dart_transforms: #dart_transforms.to_string(),
-                dart_inner_args: #dart_inner_args.to_string(),
-                output: "".to_string(),
+                dart_outer_params: #dart_outer_params,
+                dart_transforms: #dart_transforms,
+                dart_inner_args: #dart_inner_args,
+                output: "",
               },
-              namespace: #namespace.to_string(),
+              namespace: #namespace,
               trace: |
                 tracer: &mut ::membrane::serde_reflection::Tracer,
                 samples: &mut ::membrane::serde_reflection::Samples
@@ -380,6 +380,8 @@ fn to_token_stream(
     not(feature = "skip-generate")
   ))]
   functions.extend::<TokenStream>(_deferred_trace.into());
+
+  functions = utils::maybe_inject_metadata(functions);
 
   Ok(functions)
 }
@@ -442,10 +444,9 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
-          #![crate = ::membrane]
           ::membrane::DeferredEnumTrace {
-              name: #enum_name.to_string(),
-              namespace: #namespace.to_string(),
+              name: #enum_name,
+              namespace: #namespace,
               trace: |
                 tracer: &mut ::membrane::serde_reflection::Tracer
               | {
@@ -493,4 +494,40 @@ pub fn emitter(_item: TokenStream) -> TokenStream {
   }"
   .parse()
   .unwrap()
+}
+
+///
+/// A helper macro that can be used to ensure that Membrane types are still accessible
+/// if the workspace crate which generates the `cdylib` binary has no instances
+/// of Membrane macros such as `#[async_dart]` or `#[sync_dart]`.
+///
+/// Example:
+///
+/// // crate_one/src/lib.rs
+/// #[async_dart(namespace = "one")]
+/// pub fn example()
+///
+/// // crate_two/Cargo.toml
+/// [lib]
+/// crate-type = ["cdylib"]
+///
+/// // crate_two/src/lib.rs
+/// use crate_one::*;
+/// membrane::export_metadata!();
+///
+#[proc_macro]
+pub fn export_metadata(token_stream: TokenStream) -> TokenStream {
+  if !utils::is_cdylib() {
+    syn::Error::new(
+      Span::call_site(),
+      "membrane::export_metadata!() was used in a crate which is not `crate-type` of `cdylib`.
+      Either it is being invoked in a crate which exports code instead of generating a cdylib
+      (and is consequently unnecessary and should be removed) or it is being used in the crate which is responsible
+      for generating the cdylib but the `crate-type` was accidentally omitted from `[lib]` in `Cargo.toml`.",
+    )
+    .to_compile_error()
+    .into()
+  } else {
+    utils::maybe_inject_metadata(token_stream)
+  }
 }
