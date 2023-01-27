@@ -190,7 +190,7 @@ impl<'a> Membrane {
   /// application code or dependencies.
   ///
   /// At compile time (`cargo build --lib`) the Cargo and Git versions from your
-  /// source repository are stored in the lib. You can customize this version information by exporting
+  /// source repository are stored in the lib. You can override the default version information by exporting
   /// the `MEMBRANE_CDYLIB_VERSION="1.0-my-version"` environment variable before doing the
   /// cargo build of the cdylib. This version information is logged during code generation and also
   /// when Dart loads the cdylib at runtime.
