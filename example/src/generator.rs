@@ -3,7 +3,14 @@ fn main() {
   // This line isn't necessary >= Rust 1.62 or when using the `cargo run -- target/debug/libexample.so` approach.
   example::load();
 
-  let mut project = membrane::Membrane::new();
+  let cdylib_path: String = std::env::args().skip(1).take(1).collect();
+
+  let mut project = if cdylib_path.is_empty() {
+    membrane::Membrane::new()
+  } else {
+    membrane::Membrane::new_from_cdylib(&cdylib_path)
+  };
+
   project
     .timeout(200)
     .package_destination_dir("../dart_example")

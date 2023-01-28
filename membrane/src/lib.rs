@@ -188,6 +188,12 @@ impl<'a> Membrane {
   /// This method loads the .so produced by `cargo build` and extracts type information from it.
   /// This is a more performant approach than `Membrane::new()` as it does not do any recompilation of
   /// application code or dependencies.
+  ///
+  /// At compile time (`cargo build --lib`) the Cargo and Git versions from your
+  /// source repository are stored in the lib. You can override the default version information by exporting
+  /// the `MEMBRANE_CDYLIB_VERSION="1.0-my-version"` environment variable before doing the
+  /// cargo build of the cdylib. This version information is logged during code generation and also
+  /// when Dart loads the cdylib at runtime.
   pub fn new_from_cdylib<P>(cdylib_path: &'a P) -> Self
   where
     P: AsRef<Path> + std::fmt::Debug,
