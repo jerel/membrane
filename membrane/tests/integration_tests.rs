@@ -2,7 +2,7 @@ mod test_utils;
 
 mod test {
   use super::test_utils::*;
-  use example;
+
   use membrane::Membrane;
   use serial_test::serial;
   use std::{fs::read_to_string, path::Path};
@@ -45,7 +45,7 @@ mod test {
     let path = Path::new("../dart_example");
 
     // reference the example lib so it doesn't get optimized away
-    let _ = example::load();
+    example::load();
 
     Membrane::new()
       .timeout(200)
@@ -100,18 +100,18 @@ class Contact {
     );
 
     // verify that borrowed types are no longer created in the borrowing namespace
-    assert!(path.join("lib/src/locations/location.dart").exists() == true);
-    assert!(path.join("lib/src/accounts/contact.dart").exists() == true);
-    assert!(path.join("lib/src/accounts/status.dart").exists() == true);
-    assert!(path.join("lib/src/accounts/filter.dart").exists() == true);
-    assert!(path.join("lib/src/accounts/match.dart").exists() == true);
-    assert!(path.join("lib/src/common/shared_type.dart").exists() == true);
-    assert!(path.join("lib/src/orgs/location.dart").exists() == false);
-    assert!(path.join("lib/src/orgs/contact.dart").exists() == false);
-    assert!(path.join("lib/src/orgs/status.dart").exists() == false);
-    assert!(path.join("lib/src/orgs/filter.dart").exists() == false);
-    assert!(path.join("lib/src/orgs/match.dart").exists() == false);
-    assert!(path.join("lib/src/orgs/shared_type.dart").exists() == false);
+    assert!(path.join("lib/src/locations/location.dart").exists());
+    assert!(path.join("lib/src/accounts/contact.dart").exists());
+    assert!(path.join("lib/src/accounts/status.dart").exists());
+    assert!(path.join("lib/src/accounts/filter.dart").exists());
+    assert!(path.join("lib/src/accounts/match.dart").exists());
+    assert!(path.join("lib/src/common/shared_type.dart").exists());
+    assert!(!path.join("lib/src/orgs/location.dart").exists());
+    assert!(!path.join("lib/src/orgs/contact.dart").exists());
+    assert!(!path.join("lib/src/orgs/status.dart").exists());
+    assert!(!path.join("lib/src/orgs/filter.dart").exists());
+    assert!(!path.join("lib/src/orgs/match.dart").exists());
+    assert!(!path.join("lib/src/orgs/shared_type.dart").exists());
 
     let imports =
       read_to_string(path.join("lib").join("src").join("orgs").join("orgs.dart")).unwrap();
@@ -139,7 +139,7 @@ import '../locations/locations.dart' show Location;
     let path = Path::new("../dart_example");
 
     // reference the example lib so it doesn't get optimized away
-    let _ = example::load();
+    example::load();
 
     Membrane::new()
       .with_c_style_enums(false)

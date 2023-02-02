@@ -49,9 +49,9 @@ pub fn build_lib(path: &PathBuf, additional_args: &mut Vec<&str>) {
 
 pub fn run_dart(path: &PathBuf, args: Vec<&str>, verbose: bool) {
   let pub_get = Command::new("dart")
-      .current_dir(&path)
+      .current_dir(path)
       // set the library path to our temp pub project for linux
-      .env("LD_LIBRARY_PATH", &path)
+      .env("LD_LIBRARY_PATH", path)
       .arg("--disable-analytics")
       .args(args)
       .output()
