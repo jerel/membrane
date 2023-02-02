@@ -51,7 +51,7 @@ pub(crate) fn maybe_inject_metadata(mut token_stream: TokenStream) -> TokenStrea
             }
 
             #[no_mangle]
-            pub extern "C" fn membrane_metadata_version() -> *mut i8 {
+            pub extern "C" fn membrane_metadata_version() -> *mut std::os::raw::c_char {
               // allow the developer to override the embedded version string with one of their own choosing
               const LIB_VERSION: Option<&str> = option_env!("MEMBRANE_CDYLIB_VERSION");
 
@@ -68,7 +68,7 @@ pub(crate) fn maybe_inject_metadata(mut token_stream: TokenStream) -> TokenStrea
             }
 
             #[no_mangle]
-            pub extern "C" fn membrane_metadata_membrane_version() -> *mut i8 {
+            pub extern "C" fn membrane_metadata_membrane_version() -> *mut std::os::raw::c_char {
               let version = ::std::ffi::CString::new(::membrane::metadata::version()).expect("Invalid string received");
               version.into_raw()
             }

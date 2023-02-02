@@ -98,6 +98,7 @@ use std::{
   collections::{BTreeMap, BTreeSet, HashMap},
   fs::{read_to_string, remove_file},
   io::Write,
+  os::raw::c_char,
   path::{Path, PathBuf},
   process::exit,
 };
@@ -1088,7 +1089,7 @@ pub unsafe extern "C" fn membrane_free_membrane_vec(len: i64, ptr: *const u8) ->
 
 #[doc(hidden)]
 #[no_mangle]
-pub unsafe extern "C" fn membrane_free_membrane_string(ptr: *mut i8) -> i32 {
+pub unsafe extern "C" fn membrane_free_membrane_string(ptr: *mut c_char) -> i32 {
   // turn the pointer back into a CString and Rust will drop it
   let _ = ::std::ffi::CString::from_raw(ptr);
 
