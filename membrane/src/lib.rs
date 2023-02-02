@@ -160,7 +160,17 @@ impl std::fmt::Debug for DeferredEnumTrace {
 inventory::collect!(DeferredTrace);
 inventory::collect!(DeferredEnumTrace);
 
+macro_rules! return_if_error {
+  ( $e:expr ) => {
+    if !$e.errors.is_empty() {
+      return $e;
+    }
+  };
+}
+
+#[derive(Debug)]
 pub struct Membrane {
+  errors: Vec<String>,
   package_name: String,
   destination: PathBuf,
   library: String,
@@ -205,6 +215,7 @@ impl<'a> Membrane {
   where
     P: ?Sized + AsRef<Path> + std::fmt::Debug,
   {
+    let mut errors = vec![];
     let mut input_libs = vec![];
 
     std::env::set_var(
@@ -228,8 +239,9 @@ impl<'a> Membrane {
           ) {
             Ok(symbols) => symbols,
             Err(msg) => {
-              tracing::error!("{}", msg);
-              exit(1);
+              errors.push(format!("{}", msg));
+              // panic to terminate without having a compatible branch type
+              panic!();
             }
           };
 
@@ -323,6 +335,7 @@ impl<'a> Membrane {
     });
 
     Self {
+      errors,
       package_name: match std::env::var_os("MEMBRANE_PACKAGE_NAME") {
         Some(name) => name.into_string().unwrap(),
         None => "".to_string(),
@@ -363,6 +376,7 @@ impl<'a> Membrane {
   ///
   /// Can be overridden with the environment variable `MEMBRANE_DESTINATION`.
   pub fn package_destination_dir<P: ?Sized + AsRef<Path>>(&mut self, path: &'a P) -> &mut Self {
+    return_if_error!(self);
     // allowing an empty path could result in data loss in a directory named `lib`
     assert!(
       !path.as_ref().to_str().unwrap().is_empty(),
@@ -379,6 +393,7 @@ impl<'a> Membrane {
   ///
   /// Can be overridden with the environment variable `MEMBRANE_PACKAGE_NAME`.
   pub fn package_name(&mut self, name: &str) -> &mut Self {
+    return_if_error!(self);
     if self.package_name.is_empty() {
       self.package_name = name.to_string();
     }
@@ -390,6 +405,7 @@ impl<'a> Membrane {
   ///
   /// Can be overridden with the environment variable `MEMBRANE_LLVM_PATHS`. Takes a comma or space separated list.
   pub fn llvm_paths(&mut self, paths: Vec<&str>) -> &mut Self {
+    return_if_error!(self);
     assert!(
       !paths.is_empty(),
       "llvm_paths() cannot be called with no paths"
@@ -406,6 +422,7 @@ impl<'a> Membrane {
   ///
   /// Can be overridden with the environment variable `MEMBRANE_LIBRARY`.
   pub fn using_lib(&mut self, name: &str) -> &mut Self {
+    return_if_error!(self);
     if self.library == "libmembrane" {
       self.library = name.to_string();
     }
@@ -417,6 +434,7 @@ impl<'a> Membrane {
   /// Existing Dart files in this directory may be deleted during this operation.
   #[allow(unreachable_code)]
   pub fn create_pub_package(&mut self) -> &mut Self {
+    return_if_error!(self);
     use serde_generate::SourceInstaller;
 
     #[cfg(all(
@@ -443,14 +461,18 @@ impl<'a> Membrane {
       let registry = match self.namespaced_registry.get(namespace).unwrap() {
         Ok(reg) => reg,
         Err(Error::MissingVariants(names)) => {
-          tracing::error!(
+          self.errors.push(format!(
             "An enum was used that has not had the membrane::dart_enum macro applied for the consuming namespace. Please add #[dart_enum(namespace = \"{}\")] to the {} enum.",
             namespace,
             names.first().unwrap()
-          );
-          exit(1);
+          ));
+
+          return self;
         }
-        Err(err) => panic!("{}", err),
+        Err(err) => {
+          self.errors.push(format!("{}", err));
+          return self;
+        }
       };
       let generator = serde_generate::dart::CodeGenerator::new(&config);
       generator
@@ -473,7 +495,9 @@ impl<'a> Membrane {
     if pub_get.status.code() != Some(0) {
       std::io::stderr().write_all(&pub_get.stderr).unwrap();
       std::io::stdout().write_all(&pub_get.stdout).unwrap();
-      tracing::error!("'dart pub get' returned an error");
+      self
+        .errors
+        .push("'dart pub get' returned an error".to_string());
     }
 
     self
@@ -483,6 +507,7 @@ impl<'a> Membrane {
   /// When set to `true` (the default) we generate basic Dart enums. When set to `false`
   /// Dart classes are generated (one for the base case and one for each variant).
   pub fn with_c_style_enums(&mut self, val: bool) -> &mut Self {
+    return_if_error!(self);
     self.c_style_enums = val;
     self
   }
@@ -495,6 +520,7 @@ impl<'a> Membrane {
   ///
   /// Default: 1000ms
   pub fn timeout(&mut self, val: i32) -> &mut Self {
+    return_if_error!(self);
     self.timeout = Some(val);
     self
   }
@@ -503,6 +529,7 @@ impl<'a> Membrane {
   /// Write a header file for each namespace that provides the C types
   /// needed by ffigen to generate the FFI bindings.
   pub fn write_c_headers(&mut self) -> &mut Self {
+    return_if_error!(self);
     let head = r#"/*
  * AUTO GENERATED FILE, DO NOT EDIT
  *
@@ -539,8 +566,9 @@ uint8_t membrane_free_membrane_string(char *ptr);
 
     let path = self.destination.join("lib/src/membrane_types.h");
     std::fs::write(&path, head).unwrap_or_else(|_| {
-      tracing::error!("unable to write {}", path.to_str().unwrap());
-      exit(1);
+      self
+        .errors
+        .push(format!("unable to write {}", path.to_str().unwrap()));
     });
 
     let namespaces = self.namespaces.clone();
@@ -554,6 +582,7 @@ uint8_t membrane_free_membrane_string(char *ptr);
   ///
   /// Write all Dart classes needed by the Dart application.
   pub fn write_api(&mut self) -> &mut Self {
+    return_if_error!(self);
     let namespaces = self.namespaces.clone();
     namespaces.iter().for_each(|x| {
       self.create_ffi_impl(x);
@@ -574,6 +603,7 @@ uint8_t membrane_free_membrane_string(char *ptr);
   ///
   /// Invokes `dart run ffigen` with the appropriate config to generate FFI bindings.
   pub fn write_bindings(&mut self) -> &mut Self {
+    return_if_error!(self);
     if !self.generated {
       return self;
     }
@@ -593,11 +623,25 @@ uint8_t membrane_free_membrane_string(char *ptr);
     if ffigen.status.code() != Some(0) {
       std::io::stderr().write_all(&ffigen.stderr).unwrap();
       std::io::stdout().write_all(&ffigen.stdout).unwrap();
-      tracing::error!("dart ffigen returned an error");
-      exit(1);
+      self
+        .errors
+        .push("dart ffigen returned an error".to_string());
     }
 
     self
+  }
+
+  ///
+  /// Whether any errors were found during code generation.
+  pub fn is_err(&mut self) -> bool {
+    !self.errors.is_empty()
+  }
+
+  ///
+  /// Returns all codegen errors and empties the error queue. This will prevent Membrane from
+  /// automatically exiting `1` and allow you to implement your own CLI exit handling if needed.
+  pub fn drain_errors(&mut self) -> Vec<String> {
+    self.errors.drain(..).collect()
   }
 
   ///
@@ -700,8 +744,10 @@ headers:
 
     let path = self.destination.join("ffigen.yaml");
     std::fs::write(&path, config).unwrap_or_else(|_| {
-      tracing::error!("unable to write ffigen config {}", path.to_str().unwrap());
-      exit(1);
+      self.errors.push(format!(
+        "unable to write ffigen config {}",
+        path.to_str().unwrap()
+      ));
     });
 
     self
@@ -729,10 +775,13 @@ headers:
 
     let mut buffer =
       std::fs::File::create(path.clone()).expect("header could not be written at namespace path");
-    buffer.write_all(head.as_bytes()).unwrap_or_else(|_| {
-      tracing::error!("unable to write C header file {}", path.to_str().unwrap());
-      exit(1);
-    });
+
+    if let Err(_) = buffer.write_all(head.as_bytes()) {
+      self.errors.push(format!(
+        "unable to write C header file {}",
+        path.to_str().unwrap()
+      ));
+    }
 
     fns.iter().for_each(|x| {
       generators::functions::C::new(x).build(self).write(&buffer);
@@ -963,8 +1012,9 @@ class {class_name}Api {{
   fn create_imports(&mut self) -> &mut Self {
     let mut owned_types: Vec<String> = vec![];
     let mut non_owned_types: Vec<String> = vec![];
+    let borrows = self.borrows.clone();
 
-    self.borrows.iter().for_each(|(namespace, imports)| {
+    borrows.iter().for_each(|(namespace, imports)| {
       imports
         .iter()
         // sort the imports in reverse order so that we can append them to existing
@@ -973,8 +1023,7 @@ class {class_name}Api {{
         .for_each(|(from_namespace, borrowed_types)| {
           let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
             if namespace == from_namespace {
-              tracing::error!("{ns}::{import} was borrowed by {ns} which is a self reference", ns = namespace, import = r#type);
-              exit(1);
+              self.errors.push(format!("`{ns}::{import}` was borrowed by `{ns}` which is a self reference", ns = namespace, import = r#type));
             }
 
             let auto_import = self.with_child_borrows(from_namespace, r#type);
@@ -1045,17 +1094,33 @@ class {class_name}Api {{
         });
     });
 
-    let reborrows: Vec<String> = non_owned_types
+    // if we already have an error about borrows above then lets exit with that
+    return_if_error!(self);
+
+    let mut reborrows: Vec<String> = non_owned_types
       .iter()
       .filter(|path| owned_types.contains(path))
       .map(|p| p.clone())
       .collect();
 
+    reborrows.sort();
+
     if !reborrows.is_empty() {
-      panic!("The following `borrows` were found which attempt to reborrow a type which is not owned by the target namespace: `{}`", reborrows.join(", "));
+      self.errors.push(format!("The following `borrows` were found which attempt to reborrow a type which is not owned by the target namespace: `{}`", reborrows.join(", ")));
     }
 
     self
+  }
+}
+
+impl Drop for Membrane {
+  fn drop(&mut self) {
+    if self.is_err() {
+      for err in self.errors.iter() {
+        tracing::error!("{:?}", err);
+      }
+      exit(1);
+    }
   }
 }
 
