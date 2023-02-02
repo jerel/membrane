@@ -239,7 +239,7 @@ impl<'a> Membrane {
           ) {
             Ok(symbols) => symbols,
             Err(msg) => {
-              errors.push(format!("{}", msg));
+              errors.push(msg);
               // panic to terminate without having a compatible branch type
               panic!();
             }
@@ -776,7 +776,7 @@ headers:
     let mut buffer =
       std::fs::File::create(path.clone()).expect("header could not be written at namespace path");
 
-    if let Err(_) = buffer.write_all(head.as_bytes()) {
+    if buffer.write_all(head.as_bytes()).is_err() {
       self.errors.push(format!(
         "unable to write C header file {}",
         path.to_str().unwrap()
@@ -1100,7 +1100,7 @@ class {class_name}Api {{
     let mut reborrows: Vec<String> = non_owned_types
       .iter()
       .filter(|path| owned_types.contains(path))
-      .map(|p| p.clone())
+      .cloned()
       .collect();
 
     reborrows.sort();

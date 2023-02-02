@@ -25,4 +25,4 @@ impl Interface for TestRuntime {
   }
 }
 
-pub static RUNTIME: App<TestRuntime> = App::new(|| TestRuntime());
+pub static RUNTIME: App<TestRuntime> = App::new(TestRuntime);
