@@ -961,16 +961,19 @@ class {class_name}Api {{
   }
 
   fn create_imports(&mut self) -> &mut Self {
+    let mut owned_types: Vec<String> = vec![];
+    let mut non_owned_types: Vec<String> = vec![];
+
     self.borrows.iter().for_each(|(namespace, imports)| {
       imports
         .iter()
         // sort the imports in reverse order so that we can append them to existing
-        // lines and up with a descending order
+        // lines and end up with a descending order
         .rev()
         .for_each(|(from_namespace, borrowed_types)| {
           let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
             if namespace == from_namespace {
-              tracing::error!("{ns}::{import} was borrowed by {ns} which is a circular reference", ns = namespace, import = r#type);
+              tracing::error!("{ns}::{import} was borrowed by {ns} which is a self reference", ns = namespace, import = r#type);
               exit(1);
             }
 
@@ -987,6 +990,11 @@ class {class_name}Api {{
 
           borrowed_types.sort();
           borrowed_types.dedup();
+
+          // this is the path that is owned (IE the namespace that holds the Rust source type)
+          owned_types.extend(borrowed_types.iter().map(|ty| format!("{}::{}", namespace, ty)));
+          // and this is the borrowed path
+          non_owned_types.extend(borrowed_types.iter().map(|ty| format!("{}::{}", from_namespace, ty)));
 
           let file_name = format!("{ns}.dart", ns = namespace);
           let namespace_path = self.destination.join("lib/src").join(namespace);
@@ -1036,6 +1044,16 @@ class {class_name}Api {{
           std::fs::write(barrel_file_path, barrel_file.join("\n")).unwrap();
         });
     });
+
+    let reborrows: Vec<String> = non_owned_types
+      .iter()
+      .filter(|path| owned_types.contains(path))
+      .map(|p| p.clone())
+      .collect();
+
+    if !reborrows.is_empty() {
+      panic!("The following `borrows` were found which attempt to reborrow a type which is not owned by the target namespace: `{}`", reborrows.join(", "));
+    }
 
     self
   }
