@@ -54,3 +54,19 @@ jobs:
     - name: Compile web
       working-directory: ./dart_example
       run: dart compile js -o example.js bin/dart_example.dart
+
+    - name: Compile on aarch64
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        arch: aarch64
+        distro: ubuntu22.04
+        githubToken: ${{ github.token }}
+        dockerRunArgs: |
+          --volume "${PWD}:/membrane"
+        install: |
+          apt-get update -q -y
+          apt-get install -q -y curl build-essential
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        run: |
+          cd /membrane
+          ~/.cargo/bin/cargo build
