@@ -15,6 +15,17 @@ pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, syn::
   input.parse::<Token![<]>()?;
 
   match stream_ident.to_string().as_str() {
+    "Future" => {
+      let item_ident = input.parse::<Ident>()?;
+      if item_ident != "Output" {
+        return Err(Error::new(span, "expected `impl Future<Output = Result>`"));
+      }
+
+      input.parse::<Token![=]>()?;
+      let (t, e) = parse_type(input)?;
+      input.parse::<Token![>]>()?;
+      Ok((OutputStyle::Serialized, t, e))
+    }
     "Stream" => {
       let item_ident = input.parse::<Ident>()?;
       if item_ident != "Item" {
