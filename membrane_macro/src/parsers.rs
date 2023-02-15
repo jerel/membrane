@@ -11,9 +11,8 @@ struct MaybeMutExpr(Expr);
 
 impl Parse for MaybeMutExpr {
   fn parse(input: ParseStream) -> Result<Self> {
-    let lookahead = input.lookahead1();
-    if lookahead.peek(Token![mut]) {
-      // if we find a `mut` token we just drop it as its not important to our type collection
+    if input.lookahead1().peek(Token![mut]) {
+      // if we find a `mut` token we drop it as it's not important to our type collection
       let _: Token![mut] = input.parse()?;
     }
     input.parse().map(MaybeMutExpr)
