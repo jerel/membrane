@@ -119,7 +119,11 @@ pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
     .iter()
     .map(|arg| match arg {
       MaybeMutExpr(Expr::Type(syn::ExprType { ty, expr: var, .. })) => Ok(Input {
-        variable: quote!(#var).to_string(),
+        variable: quote!(#var)
+          .to_string()
+          // we remove the raw identifier name as we use Ident::new_raw everywhere to safely construct identifiers
+          .trim_start_matches("r#")
+          .to_string(),
         rust_type: quote!(#ty).to_string().split_whitespace().collect(),
         ty: *ty.clone(),
       }),

@@ -178,6 +178,11 @@ pub fn impl_future() -> impl futures::Future<Output = Result<i64, String>> {
   async { Ok(42) }
 }
 
+#[async_dart(namespace = "accounts")]
+pub async fn reserved_word(r#type: String) -> Result<String, String> {
+  Ok(r#type)
+}
+
 #[async_dart(namespace = "accounts", disable_logging = true)]
 pub async fn scalar_empty() -> Result<(), String> {
   Ok(())
