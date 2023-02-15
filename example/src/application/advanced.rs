@@ -232,7 +232,9 @@ pub async fn scalar_u32(val: i64) -> Result<u32, String> {
 }
 
 #[async_dart(namespace = "accounts")]
-pub async fn scalar_i64(val: i64) -> Result<i64, String> {
+pub async fn scalar_i64(mut val: i64) -> Result<i64, String> {
+  // test mutable arguments
+  val = val * 2 / 2;
   assert!(val == 10);
   Ok(val)
 }

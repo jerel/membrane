@@ -7,6 +7,19 @@ use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::{Error, Expr, ExprPath, Ident, Token};
 
+struct MaybeMutExpr(Expr);
+
+impl Parse for MaybeMutExpr {
+  fn parse(input: ParseStream) -> Result<Self> {
+    let lookahead = input.lookahead1();
+    if lookahead.peek(Token![mut]) {
+      // if we find a `mut` token we just drop it as its not important to our type collection
+      let _: Token![mut] = input.parse()?;
+    }
+    input.parse().map(MaybeMutExpr)
+  }
+}
+
 pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, syn::Type, syn::Type)> {
   input.parse::<Token![impl]>()?;
   let span = input.span();
@@ -100,16 +113,17 @@ fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
 }
 
 pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
-  let args: Punctuated<Expr, Token![,]> = arg_buffer.parse_terminated(Expr::parse)?;
+  let args: Punctuated<MaybeMutExpr, Token![,]> =
+    arg_buffer.parse_terminated(MaybeMutExpr::parse)?;
   args
     .iter()
     .map(|arg| match arg {
-      Expr::Type(syn::ExprType { ty, expr: var, .. }) => Ok(Input {
+      MaybeMutExpr(Expr::Type(syn::ExprType { ty, expr: var, .. })) => Ok(Input {
         variable: quote!(#var).to_string(),
         rust_type: quote!(#ty).to_string().split_whitespace().collect(),
         ty: *ty.clone(),
       }),
-      ty => Err(syn::Error::new_spanned(
+      MaybeMutExpr(ty) => Err(syn::Error::new_spanned(
         ty,
         "not a supported argument type for Dart interop",
       )),
