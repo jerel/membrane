@@ -40,6 +40,12 @@ void main() {
     expect(await accounts.implFuture(), 42);
   });
 
+  test('can call a function that uses Rust reserved words in the arguments',
+      () async {
+    final accounts = AccountsApi();
+    expect(await accounts.reservedWord(type: 'input val'), 'input val');
+  });
+
   test('can call os-threaded Rust and get contact', () async {
     final accounts = AccountsApi();
     expect(

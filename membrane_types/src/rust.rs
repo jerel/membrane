@@ -16,7 +16,7 @@ impl std::convert::TryFrom<&Vec<Input>> for RustExternParams {
     let mut stream = vec![];
 
     for input in inputs {
-      let variable = Ident::new(&input.variable, Span::call_site());
+      let variable = Ident::new_raw(&input.variable, Span::call_site());
       let c_type = rust_c_type(
         &flatten_types(&input.ty, vec![])?
           .iter()
@@ -38,7 +38,7 @@ impl std::convert::TryFrom<&Vec<Input>> for RustTransforms {
     let mut stream = vec![];
 
     for input in inputs {
-      let variable = Ident::new(&input.variable, Span::call_site());
+      let variable = Ident::new_raw(&input.variable, Span::call_site());
       let cast = cast_c_type_to_rust(
         &flatten_types(&input.ty, vec![])?
           .iter()
@@ -59,7 +59,7 @@ impl From<&Vec<Input>> for RustArgs {
     let mut stream = vec![];
 
     for input in inputs {
-      stream.push(Ident::new(&input.variable, Span::call_site()))
+      stream.push(Ident::new_raw(&input.variable, Span::call_site()))
     }
 
     Self(stream)
@@ -137,25 +137,25 @@ fn rust_c_type(ty: &[&str], type_: &syn::Type) -> syn::Result<TokenStream2> {
 fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result<TokenStream2> {
   let result = match types[..] {
     ["String"] => {
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q!(cstr!(#variable, panic!("invalid C string")).to_string())
     }
     ["i64"] => {
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q!(#variable)
     }
     ["f64"] => {
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q!(#variable)
     }
     ["bool"] => {
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q!(#variable != 0)
     }
     // this also handles Vec
     [serialized, ..] if serialized != "Option" => {
       let variable_name = variable;
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       let deserialize = deserialize(variable, variable_name, ty, types[0]);
       q! {
         {
@@ -165,7 +165,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
     }
     ["Option", "String"] => {
       let variable_name = variable;
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q! {
         match unsafe { #variable.as_ref() } {
           Some(val) => {
@@ -181,7 +181,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       }
     }
     ["Option", "i64"] => {
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q! {
         match unsafe { #variable.as_ref() } {
           Some(val) => Some(*val),
@@ -190,7 +190,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       }
     }
     ["Option", "f64"] => {
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q! {
         match unsafe { #variable.as_ref() } {
           Some(val) => Some(*val),
@@ -199,7 +199,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       }
     }
     ["Option", "bool"] => {
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       q! {
         match unsafe { #variable.as_ref() } {
           Some(val) => Some(*val != 0),
@@ -209,7 +209,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
     }
     ["Option", ..] => {
       let variable_name = variable;
-      let variable = Ident::new(variable, Span::call_site());
+      let variable = Ident::new_raw(variable, Span::call_site());
       let ty = extract_type_from_option(ty).unwrap();
       let str_ty = q!(#ty).to_string().split_whitespace().collect::<String>();
 

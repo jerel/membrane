@@ -178,6 +178,11 @@ pub fn impl_future() -> impl futures::Future<Output = Result<i64, String>> {
   async { Ok(42) }
 }
 
+#[async_dart(namespace = "accounts")]
+pub async fn reserved_word(r#type: String) -> Result<String, String> {
+  Ok(r#type)
+}
+
 #[async_dart(namespace = "accounts", disable_logging = true)]
 pub async fn scalar_empty() -> Result<(), String> {
   Ok(())
@@ -232,7 +237,9 @@ pub async fn scalar_u32(val: i64) -> Result<u32, String> {
 }
 
 #[async_dart(namespace = "accounts")]
-pub async fn scalar_i64(val: i64) -> Result<i64, String> {
+pub async fn scalar_i64(mut val: i64) -> Result<i64, String> {
+  // test mutable arguments
+  val = val * 2 / 2;
   assert!(val == 10);
   Ok(val)
 }
