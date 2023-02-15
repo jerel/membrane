@@ -35,6 +35,11 @@ void main() {
             Contact(id: 1, fullName: "Alice Smith", status: Status.pending)));
   });
 
+  test('can get a value from a function that returns impl Future', () async {
+    final accounts = AccountsApi();
+    expect(await accounts.implFuture(), 42);
+  });
+
   test('can call os-threaded Rust and get contact', () async {
     final accounts = AccountsApi();
     expect(
