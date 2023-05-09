@@ -65,8 +65,8 @@ jobs:
           --volume "${PWD}:/membrane"
         install: |
           apt-get update -q -y
-          apt-get install -q -y curl build-essential
+          apt-get install -q -y curl build-essential git
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         run: |
           cd /membrane
-          ~/.cargo/bin/cargo build
+          ~/.cargo/bin/cargo build --config net.git-fetch-with-cli=true
