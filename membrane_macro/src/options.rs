@@ -51,7 +51,7 @@ pub(crate) fn extract_options(
       options
     }
     Some((ident, Lit::Bool(val))) if ident == "timeout" && !sync => {
-      if val.value == true {
+      if val.value {
         return Err(
           "`true` is not a valid option for `timeout`, must be an integer or `false`".to_string(),
         );
