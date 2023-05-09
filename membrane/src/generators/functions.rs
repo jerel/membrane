@@ -405,8 +405,14 @@ impl Callable for Ffi {
         class_name = self.fun.namespace.to_upper_camel_case(),
         fn_name = self.fun.fn_name,
         timeout = if let Some(val) = self.fun.timeout {
-          // check the async_dart option configured timeout first
-          format!(".timeout(const Duration(milliseconds: {}))", val)
+          // if #[async_dart(timeout = false)] is set then it will be represented
+          //  here as a -1 value and we will disable the timeout for this instance
+          if val < 0 {
+            "".to_string()
+          } else {
+            // use the async_dart option configured timeout
+            format!(".timeout(const Duration(milliseconds: {}))", val)
+          }
         } else if let Some(val) = config.timeout {
           // fall back to global timeout
           format!(".timeout(const Duration(milliseconds: {}))", val)
