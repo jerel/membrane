@@ -7,10 +7,26 @@ pub trait Interface {
     F: Future + Send + 'static,
     F::Output: Send + 'static;
 
+  fn info_spawn<F>(&self, future: F, _info: Info) -> JoinHandle
+  where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+  {
+    self.spawn(future)
+  }
+
   fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
   where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static;
+
+  fn info_spawn_blocking<F, R>(&self, future: F, _info: Info) -> JoinHandle
+  where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+  {
+    self.spawn_blocking(future)
+  }
 }
 
 pub struct JoinHandle {
@@ -21,6 +37,10 @@ impl JoinHandle {
   pub fn abort(&self) {
     (self.abort)();
   }
+}
+
+pub struct Info<'a> {
+  pub name: &'a str,
 }
 
 #[derive(Debug)]

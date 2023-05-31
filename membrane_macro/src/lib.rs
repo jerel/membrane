@@ -164,6 +164,7 @@ fn to_token_stream(
     }
   }
 
+  let rust_fn_name = fn_name.to_string();
   let rust_outer_params: Vec<TokenStream2> = if sync {
     RustExternParams::try_from(&inputs)?.into()
   } else {
@@ -198,7 +199,7 @@ fn to_token_stream(
       ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::StreamSerialized => quote! {
-      let membrane_join_handle = crate::RUNTIME.get().spawn(
+      let membrane_join_handle = crate::RUNTIME.get().info_spawn(
         async move {
           use ::membrane::futures::stream::StreamExt;
           let mut stream = #fn_name(#(#rust_inner_args),*);
@@ -208,7 +209,8 @@ fn to_token_stream(
             let result: ::std::result::Result<#output, #error> = result;
             ::membrane::utils::send::<#output, #error>(isolate, result);
           }
-        }
+        },
+        ::membrane::runtime::Info { name: #rust_fn_name }
       );
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
@@ -238,7 +240,7 @@ fn to_token_stream(
     OutputStyle::Serialized if os_thread => quote! {
       let (membrane_future_handle, membrane_future_registration) = ::futures::future::AbortHandle::new_pair();
 
-      crate::RUNTIME.get().spawn_blocking(
+      crate::RUNTIME.get().info_spawn_blocking(
         move || {
           ::futures::executor::block_on(
             ::futures::future::Abortable::new(
@@ -248,19 +250,21 @@ fn to_token_stream(
                 ::membrane::utils::send::<#output, #error>(isolate, result);
               }, membrane_future_registration)
           )
-        }
+        },
+        ::membrane::runtime::Info { name: #rust_fn_name }
       );
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_future_handle.abort() }));
       ::std::boxed::Box::into_raw(Box::new(handle))
     },
     OutputStyle::Serialized => quote! {
-      let membrane_join_handle = crate::RUNTIME.get().spawn(
+      let membrane_join_handle = crate::RUNTIME.get().info_spawn(
         async move {
           let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
           let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
           ::membrane::utils::send::<#output, #error>(isolate, result);
-        }
+        },
+        ::membrane::runtime::Info { name: #rust_fn_name }
       );
 
       let handle = ::membrane::TaskHandle(::std::boxed::Box::new(move || { membrane_join_handle.abort() }));
@@ -312,7 +316,7 @@ fn to_token_stream(
 
   let c_name = extern_c_fn_name.to_string();
   let c_header_types = c_header_types.join(", ");
-  let name = fn_name.to_string().to_lower_camel_case();
+  let dart_fn_name = rust_fn_name.to_lower_camel_case();
   let is_stream = [
     OutputStyle::StreamSerialized,
     OutputStyle::StreamEmitterSerialized,
@@ -346,7 +350,7 @@ fn to_token_stream(
               function: ::membrane::Function {
                 extern_c_fn_name: #c_name,
                 extern_c_fn_types: #c_header_types,
-                fn_name: #name,
+                fn_name: #dart_fn_name,
                 is_stream: #is_stream,
                 is_sync: #sync,
                 return_type: #return_type,
