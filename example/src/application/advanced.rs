@@ -498,7 +498,7 @@ pub async fn enum_data() -> Result<data::Reports, String> {
   Ok(reports)
 }
 
-#[async_dart(namespace = "accounts", timeout = 100)]
+#[async_dart(namespace = "accounts", timeout = false)]
 pub async fn slow_function(sleep_for: i64) -> Result<(), String> {
   use tokio::time::{sleep, Duration};
   sleep(Duration::from_millis(sleep_for as u64)).await;

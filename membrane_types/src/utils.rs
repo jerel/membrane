@@ -9,15 +9,11 @@ pub fn extract_type_from_option(ty: &syn::Type) -> Option<&syn::Type> {
   }
 
   fn extract_option_segment(path: &Path) -> Option<&PathSegment> {
-    let idents_of_path = path
-      .segments
-      .iter()
-      .into_iter()
-      .fold(String::new(), |mut acc, v| {
-        acc.push_str(&v.ident.to_string());
-        acc.push('|');
-        acc
-      });
+    let idents_of_path = path.segments.iter().fold(String::new(), |mut acc, v| {
+      acc.push_str(&v.ident.to_string());
+      acc.push('|');
+      acc
+    });
 
     vec!["Option|", "std|option|Option|", "core|option|Option|"]
       .into_iter()

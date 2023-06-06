@@ -50,6 +50,15 @@ pub(crate) fn extract_options(
       options.timeout = Some(val.base10_parse().unwrap());
       options
     }
+    Some((ident, Lit::Bool(val))) if ident == "timeout" && !sync => {
+      if val.value {
+        return Err(
+          "`true` is not a valid option for `timeout`, must be an integer or `false`".to_string(),
+        );
+      }
+      options.timeout = Some(-1);
+      options
+    }
     Some((ident, _)) if ident == "os_thread" && sync => {
       return invalid_option("sync_dart", "os_thread=true");
     }
