@@ -462,8 +462,14 @@ impl<'a> Membrane {
       let registry = match self.namespaced_registry.get(namespace).unwrap() {
         Ok(reg) => reg,
         Err(Error::MissingVariants(names)) => {
-          self.errors.push(format!(
-            "An enum was used that has not had the membrane::dart_enum macro applied for the consuming namespace. Please add #[dart_enum(namespace = \"{}\")] to the {} enum.",
+          self.errors.push(format!(r#"
+##
+#
+# An enum was used that has not had the membrane::dart_enum macro applied for a namespace which owns or borrows it.
+#
+# Please add #[dart_enum(namespace = "{}")] to the {} enum.
+#
+##"#,
             namespace,
             names.first().unwrap()
           ));
@@ -1118,7 +1124,7 @@ impl Drop for Membrane {
   fn drop(&mut self) {
     if self.is_err() {
       for err in self.errors.iter() {
-        tracing::error!("{:?}", err);
+        tracing::error!("{}", err);
       }
       exit(1);
     }
