@@ -896,10 +896,20 @@ export './{ns}/{ns}.dart' hide TraitHelpers;
 final _bindings = loader.bindings;
 final _loggingDisabled = bool.fromEnvironment('MEMBRANE_DISABLE_LOGS');
 
+@Deprecated('{class_name}ApiError is deprecated. Use {class_name}ApiException.')
+typedef {class_name}ApiError = {class_name}ApiException;
+
 @immutable
-class {class_name}ApiError implements Exception {{
+class {class_name}ApiException implements Exception {{
   final e;
-  const {class_name}ApiError(this.e);
+  const {class_name}ApiException(this.e);
+
+  @override
+  String toString() {{
+    return (e == null)
+        ? "{class_name}"
+        : "{class_name}: $e";
+  }}
 }}
 
 @immutable
@@ -958,10 +968,20 @@ import 'package:meta/meta.dart';
 import './{ns}/{ns}.dart';
 export './{ns}/{ns}.dart' hide TraitHelpers;
 
+@Deprecated('{class_name}ApiError is deprecated. Use {class_name}ApiException.')
+typedef {class_name}ApiError = {class_name}ApiException;
+
 @immutable
-class {class_name}ApiError implements Exception {{
+class {class_name}ApiException implements Exception {{
   final e;
-  const {class_name}ApiError(this.e);
+  const {class_name}ApiException(this.e);
+
+  @override
+  String toString() {{
+    return (e == null)
+        ? "{class_name}"
+        : "{class_name}: $e";
+  }}
 }}
 
 @immutable
