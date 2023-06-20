@@ -48,7 +48,7 @@ void main(List<String> arguments) async {
 
   try {
     await accounts.deleteContact(id: "1");
-  } on AccountsApiError catch (err) {
+  } on AccountsApiException catch (err) {
     print(err.e);
   }
 
