@@ -10,7 +10,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use std::convert::TryFrom;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{parse_macro_input, AttributeArgs, Block, Ident, Token, Type};
+use syn::{parse_macro_input, punctuated::Punctuated, Block, Ident, MetaNameValue, Token, Type};
 
 mod options;
 mod parsers;
@@ -94,7 +94,9 @@ pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
 fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream {
   let options = match extract_options(
-    parse_macro_input!(attrs as AttributeArgs),
+    parse_macro_input!(attrs with Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+      .into_iter()
+      .collect(),
     Options::default(),
     sync,
   ) {
@@ -417,7 +419,9 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let Options {
     namespace, borrow, ..
   } = match extract_options(
-    parse_macro_input!(attrs as AttributeArgs),
+    parse_macro_input!(attrs with Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+      .into_iter()
+      .collect(),
     Options::default(),
     false,
   ) {

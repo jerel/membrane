@@ -5,19 +5,7 @@ use membrane_types::{syn, Input, OutputStyle};
 use proc_macro::TokenStream;
 use syn::parse::{Parse, ParseBuffer, ParseStream, Result};
 use syn::punctuated::Punctuated;
-use syn::{Error, Expr, ExprPath, Ident, Token};
-
-struct MaybeMutExpr(Expr);
-
-impl Parse for MaybeMutExpr {
-  fn parse(input: ParseStream) -> Result<Self> {
-    if input.lookahead1().peek(Token![mut]) {
-      // if we find a `mut` token we drop it as it's not important to our type collection
-      let _: Token![mut] = input.parse()?;
-    }
-    input.parse().map(MaybeMutExpr)
-  }
-}
+use syn::{Error, ExprPath, Ident, Token};
 
 pub fn parse_trait_return_type(input: ParseStream) -> Result<(OutputStyle, syn::Type, syn::Type)> {
   input.parse::<Token![impl]>()?;
@@ -112,12 +100,17 @@ fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
 }
 
 pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
-  let args: Punctuated<MaybeMutExpr, Token![,]> =
-    arg_buffer.parse_terminated(MaybeMutExpr::parse)?;
+  let args: Punctuated<syn::FnArg, Token![,]> =
+    arg_buffer.parse_terminated(syn::FnArg::parse, Token![,])?;
   args
     .iter()
+    .map(|arg| match &*arg {
+      syn::FnArg::Typed(syn::PatType { pat, ty, .. }) => (Some(*pat.clone()), ty),
+      syn::FnArg::Receiver(syn::Receiver { ty, .. }) => (None, ty),
+    })
     .map(|arg| match arg {
-      MaybeMutExpr(Expr::Type(syn::ExprType { ty, expr: var, .. })) => Ok(Input {
+      // mutability is discarded in PathIdent since it's not important to our parsing at this point
+      (Some(syn::Pat::Ident(syn::PatIdent { ident: var, .. })), ty) => Ok(Input {
         variable: quote!(#var)
           .to_string()
           // we remove the raw identifier name as we use Ident::new_raw everywhere to safely construct identifiers
@@ -126,7 +119,7 @@ pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
         rust_type: quote!(#ty).to_string().split_whitespace().collect(),
         ty: *ty.clone(),
       }),
-      MaybeMutExpr(ty) => Err(syn::Error::new_spanned(
+      (_, ty) => Err(syn::Error::new_spanned(
         ty,
         "not a supported argument type for Dart interop",
       )),

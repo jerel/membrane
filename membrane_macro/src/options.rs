@@ -1,5 +1,5 @@
 use membrane_types::syn;
-use syn::{Lit, Meta, MetaNameValue, NestedMeta};
+use syn::{Expr::Lit, ExprLit, MetaNameValue};
 
 #[derive(Debug, Default)]
 pub(crate) struct Options {
@@ -11,24 +11,36 @@ pub(crate) struct Options {
 }
 
 pub(crate) fn extract_options(
-  mut input: Vec<NestedMeta>,
+  mut input: Vec<MetaNameValue>,
   mut options: Options,
   sync: bool,
 ) -> Result<Options, String> {
   let option = match input.pop() {
-    Some(NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. }))) => {
+    Some(syn::MetaNameValue { path, value, .. }) => {
       let ident = path.get_ident().unwrap().clone();
-      Some((ident, lit))
+      Some((ident, value))
     }
     _ => None,
   };
 
   let options = match option {
-    Some((ident, Lit::Str(val))) if ident == "namespace" => {
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Str(val),
+        ..
+      }),
+    )) if ident == "namespace" => {
       options.namespace = val.value();
       options
     }
-    Some((ident, Lit::Str(val))) if ident == "borrow" => {
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Str(val),
+        ..
+      }),
+    )) if ident == "borrow" => {
       let value = val.value();
       let borrow = value.split("::").collect::<Vec<&str>>();
       // check the given borrow for correctness, then push the string
@@ -42,15 +54,33 @@ pub(crate) fn extract_options(
         ));
       }
     }
-    Some((ident, Lit::Bool(val))) if ident == "disable_logging" => {
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Bool(val),
+        ..
+      }),
+    )) if ident == "disable_logging" => {
       options.disable_logging = val.value();
       options
     }
-    Some((ident, Lit::Int(val))) if ident == "timeout" && !sync => {
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Int(val),
+        ..
+      }),
+    )) if ident == "timeout" && !sync => {
       options.timeout = Some(val.base10_parse().unwrap());
       options
     }
-    Some((ident, Lit::Bool(val))) if ident == "timeout" && !sync => {
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Bool(val),
+        ..
+      }),
+    )) if ident == "timeout" && !sync => {
       if val.value {
         return Err(
           "`true` is not a valid option for `timeout`, must be an integer or `false`".to_string(),
@@ -62,7 +92,13 @@ pub(crate) fn extract_options(
     Some((ident, _)) if ident == "os_thread" && sync => {
       return invalid_option("sync_dart", "os_thread=true");
     }
-    Some((ident, Lit::Bool(val))) if ident == "os_thread" => {
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Bool(val),
+        ..
+      }),
+    )) if ident == "os_thread" => {
       options.os_thread = val.value();
       options
     }
