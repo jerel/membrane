@@ -104,7 +104,7 @@ pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
     arg_buffer.parse_terminated(syn::FnArg::parse, Token![,])?;
   args
     .iter()
-    .map(|arg| match &*arg {
+    .map(|arg| match arg {
       syn::FnArg::Typed(syn::PatType { pat, ty, .. }) => (Some(*pat.clone()), ty),
       syn::FnArg::Receiver(syn::Receiver { ty, .. }) => (None, ty),
     })
