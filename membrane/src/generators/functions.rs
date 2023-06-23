@@ -339,7 +339,7 @@ impl Callable for Ffi {
       if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
         return {return_de};
       }}
-      throw {class_name}ApiException({error_de});
+      throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
         throw MemoryFreeFailedException('Resource freeing call to C failed');
@@ -362,7 +362,7 @@ impl Callable for Ffi {
         if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
           return {return_de};
         }}
-        throw {class_name}ApiException({error_de});
+        throw {class_name}ApiError({error_de});
       }});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
@@ -393,7 +393,7 @@ impl Callable for Ffi {
       if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
         return {return_de};
       }}
-      throw {class_name}ApiException({error_de});
+      throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
         throw CancellationFailedException('Cancellation call to C failed');

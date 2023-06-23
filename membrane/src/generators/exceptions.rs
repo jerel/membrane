@@ -10,7 +10,7 @@ abstract class MembraneException implements Exception {
   @override
   String toString() {
     {
-      return (message == null) ? "$this" : "$this: $message";
+      return (message == null) ? "$runtimeType" : "$runtimeType: $message";
     }
   }
 }

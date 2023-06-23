@@ -48,8 +48,8 @@ void main(List<String> arguments) async {
 
   try {
     await accounts.deleteContact(id: "1");
-  } on AccountsApiException catch (err) {
-    print(err.e);
+  } on AccountsApiError catch (err) {
+    print(err);
   }
 
   accounts.contacts().take(1).forEach((contact) {
