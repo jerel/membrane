@@ -275,9 +275,9 @@ impl Callable for Ffi {
       _taskResult = _bindings.{extern_c_fn_name}({native_port}{dart_inner_args});
       if (_taskResult.kind == MembraneResponseKind.panic) {{
         final ptr = _taskResult.data.cast<Utf8>();
-        throw RustPanicException(ptr.toDartString());
+        throw MembraneRustPanicException(ptr.toDartString());
       }} else if (_taskResult.kind != MembraneResponseKind.data) {{
-        throw UnknownResponseVariantException('Found unknown MembraneResponseKind variant, is generated Dart code and Rust code mismatched?');
+        throw MembraneUnknownResponseVariantException('Found unknown MembraneResponseKind variant, is generated Dart code and Rust code mismatched?');
       }}
     }} finally {{
       _toFree.forEach((ptr) => calloc.free(ptr));
@@ -342,7 +342,7 @@ impl Callable for Ffi {
       throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_free_membrane_vec(length + 8, _taskResult.data) < 1) {{
-        throw MemoryFreeFailedException('Resource freeing call to C failed');
+        throw MembraneMemoryFreeFailedException('Resource freeing call to C failed');
       }}
     }}"#,
         return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
@@ -366,7 +366,7 @@ impl Callable for Ffi {
       }});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
-        throw CancellationFailedException('Cancellation call to C failed');
+        throw MembraneCancellationFailedException('Cancellation call to C failed');
       }}
     }}"#,
         return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),
@@ -396,7 +396,7 @@ impl Callable for Ffi {
       throw {class_name}ApiError({error_de});
     }} finally {{
       if (_taskResult.kind == MembraneResponseKind.data && _bindings.membrane_cancel_membrane_task(_taskResult.data) < 1) {{
-        throw CancellationFailedException('Cancellation call to C failed');
+        throw MembraneCancellationFailedException('Cancellation call to C failed');
       }}
     }}"#,
         return_de = self.fun.deserializer(self.fun.return_type, enum_tracer_registry, config),

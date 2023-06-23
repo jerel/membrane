@@ -15,20 +15,20 @@ abstract class MembraneException implements Exception {
   }
 }
 
-class CancellationFailedException extends MembraneException {
-  const CancellationFailedException([String? message]) : super(message);
+class MembraneCancellationFailedException extends MembraneException {
+  const MembraneCancellationFailedException([String? message]) : super(message);
 }
 
-class MemoryFreeFailedException extends MembraneException {
-  const MemoryFreeFailedException([String? message]) : super(message);
+class MembraneMemoryFreeFailedException extends MembraneException {
+  const MembraneMemoryFreeFailedException([String? message]) : super(message);
 }
 
-class RustPanicException extends MembraneException {
-  const RustPanicException([String? message]) : super(message);
+class MembraneRustPanicException extends MembraneException {
+  const MembraneRustPanicException([String? message]) : super(message);
 }
 
-class UnknownResponseVariantException extends MembraneException {
-  const UnknownResponseVariantException([String? message]) : super(message);
+class MembraneUnknownResponseVariantException extends MembraneException {
+  const MembraneUnknownResponseVariantException([String? message]) : super(message);
 }
 "#
   .to_string()
