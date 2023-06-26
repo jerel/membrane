@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'package:dart_example/accounts.dart';
 import 'package:dart_example/locations.dart';
+import 'package:dart_example/membrane_exceptions.dart';
 import 'package:dart_example/orgs.dart';
 
 void main() {
@@ -483,11 +484,8 @@ void main() {
 
   test('test that panics in sync code are handled gracefully', () {
     final accounts = AccountsApi();
-    try {
-      accounts.contactSyncPanic();
-    } on AccountsApiError catch (err) {
-      expect(err.e, "The sync rust code panicked");
-    }
+    expect(() async => accounts.contactSyncPanic(),
+        throwsA(isA<MembraneException>()));
   });
 
   test('test that borrowing from other namespaces works', () async {

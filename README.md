@@ -19,8 +19,8 @@
       alt="Valgrind Memory Check" />
   </a>
   <a href="https://github.com/jerel/membrane">
-    <img src="https://img.shields.io/badge/rust-1.61%2B-orange.svg"
-      alt="Rust 1.61+" />
+    <img src="https://img.shields.io/badge/rust-1.62%2B-orange.svg"
+      alt="Rust 1.62+" />
   </a>
 </div>
 
