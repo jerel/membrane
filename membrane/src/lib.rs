@@ -921,8 +921,8 @@ class {class_name}ApiError implements Exception {{
   @override
   String toString() {{
     return (e == null)
-        ? "{class_name}"
-        : "{class_name}: $e";
+        ? "{class_name}ApiError"
+        : "{class_name}ApiError: $e";
   }}
 }}
 
@@ -991,8 +991,8 @@ class {class_name}ApiError implements Exception {{
   @override
   String toString() {{
     return (e == null)
-        ? "{class_name}"
-        : "{class_name}: $e";
+        ? "{class_name}ApiError"
+        : "{class_name}ApiError: $e";
   }}
 }}
 
