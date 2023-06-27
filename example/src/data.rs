@@ -137,3 +137,7 @@ pub struct Organization {
   pub owner: Contact,
   pub location: Location,
 }
+
+// test the borrowing of types which are cased differently in Dart and Rust
+#[derive(Deserialize, Serialize)]
+pub struct GDPR(pub bool);

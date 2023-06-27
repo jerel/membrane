@@ -387,7 +387,8 @@ void main() {
   test('can fetch a vector from a separate namespace', () async {
     final locations = LocationsApi();
     expect(
-        (await locations.getLocation(id: 10)).polylineCoords,
+        (await locations.getLocation(id: 10, withinGdpr: GDPR(value: true)))
+            .polylineCoords,
         equals([
           [-104.0185546875, 43.004647127794435],
           [-104.0625, 37.78808138412046],
@@ -403,7 +404,7 @@ void main() {
     });
 
     final locations = LocationsApi();
-    await locations.getLocation(id: 1);
+    await locations.getLocation(id: 1, withinGdpr: GDPR(value: true));
 
     expect(logs.first, contains('[FINE] membrane.locations:'));
   });
@@ -494,6 +495,7 @@ void main() {
 
     final orgs = OrgsApi();
     await orgs.getOrgWithBorrowedType(
-        id: Filter(value: [Match(field: "id", value: "1")]));
+        id: Filter(value: [Match(field: "id", value: "1")]),
+        withinGdpr: GDPR(value: true));
   });
 }

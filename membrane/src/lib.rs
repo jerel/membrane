@@ -1092,11 +1092,12 @@ class {class_name}Api {{
             .unwrap()
             .lines()
             .filter_map(|line| {
-              if borrowed_types.contains(
+              // because CamelCasing the snake_cased `part 'central_usa.dart'` won't match the
+              // acronym borrow `CentralUSA` we instead convert the borrows to snake_case to do the match
+              if borrowed_types.iter().map(|t| t.to_snake_case()).collect::<Vec<String>>().contains(
                 &line
                   .replace("part '", "")
                   .replace(".dart';", "")
-                  .to_upper_camel_case(),
               ) {
                 None
               } else if line.starts_with("import '../bincode") {
