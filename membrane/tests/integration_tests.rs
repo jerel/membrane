@@ -120,7 +120,7 @@ class Contact {
       &imports,
       "import '../accounts/accounts.dart' show Contact, Filter, Match, Reports, Status, StatusExtension;
 import '../common/common.dart' show Arg, Error, Mixed, SharedType, VecWrapper;
-import '../locations/locations.dart' show Location;
+import '../locations/locations.dart' show GDPR, Location;
 ",
     );
 

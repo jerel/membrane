@@ -535,7 +535,7 @@ pub async fn borrowed_types(id: i64) -> Result<data::Location, String> {
 }
 
 #[async_dart(namespace = "locations")]
-pub async fn get_location(id: i64) -> Result<data::Location, String> {
+pub async fn get_location(id: i64, _within_gdpr: data::GDPR) -> Result<data::Location, String> {
   let _id = id;
 
   Ok(data::Location {
@@ -549,11 +549,15 @@ pub async fn get_location(id: i64) -> Result<data::Location, String> {
 
 #[async_dart(
   namespace = "orgs",
+  borrow = "locations::GDPR",
   borrow = "locations::Location",
   borrow = "accounts::Contact",
   borrow = "accounts::Filter"
 )]
-pub async fn get_org_with_borrowed_type(id: data::Filter) -> Result<data::Organization, String> {
+pub async fn get_org_with_borrowed_type(
+  id: data::Filter,
+  _within_gdpr: data::GDPR,
+) -> Result<data::Organization, String> {
   let _ = id;
   Ok(data::Organization {
     id: 1,
