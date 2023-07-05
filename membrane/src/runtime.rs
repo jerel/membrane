@@ -31,6 +31,7 @@ pub trait Interface {
 
 pub struct JoinHandle {
   pub abort: Box<dyn Fn()>,
+  pub abort: Box<dyn Fn() + Send + 'static>,
 }
 
 impl JoinHandle {
@@ -38,6 +39,9 @@ impl JoinHandle {
     (self.abort)();
   }
 }
+
+unsafe impl Send for AbortHandle {}
+unsafe impl Sync for AbortHandle {}
 
 pub struct Info<'a> {
   pub name: &'a str,
