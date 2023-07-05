@@ -48,29 +48,29 @@ _View the [example](https://github.com/jerel/membrane/tree/main/example) directo
 
 In your crate's `lib.rs` add a `RUNTIME` static that will survive for the lifetime of the program. `RUNTIME` must hold an instance of `membrane::App<Runtime>` where `Runtime` has the `membrane::Interface` trait implemented for whichever async framework you wish to use. In our examples we use `tokio` to provide the runtime behavior, you are welcome to copy it:
 ``` rust
-use membrane::runtime::{App, Interface, JoinHandle};
+use membrane::runtime::{App, Interface, AbortHandle};
 
 pub struct Runtime(tokio::runtime::Runtime);
 
 impl Interface for Runtime {
-  fn spawn<F>(&self, future: F) -> JoinHandle
+  fn spawn<F>(&self, future: F) -> AbortHandle
   where
     F: std::future::Future + Send + 'static,
     F::Output: Send + 'static,
   {
     let handle = self.0.spawn(future);
-    JoinHandle {
+    AbortHandle {
       abort: Box::new(move || handle.abort()),
     }
   }
 
-  fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
+  fn spawn_blocking<F, R>(&self, future: F) -> AbortHandle
   where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
   {
     let handle = self.0.spawn_blocking(future);
-    JoinHandle {
+    AbortHandle {
       abort: Box::new(move || handle.abort()),
     }
   }

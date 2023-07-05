@@ -1,31 +1,27 @@
 mod application;
 mod data;
 
-use membrane::runtime::{App, Interface, JoinHandle};
+use membrane::runtime::{AbortHandle, App, Interface};
 
 pub struct Runtime(tokio::runtime::Runtime);
 
 impl Interface for Runtime {
-  fn spawn<F>(&self, future: F) -> JoinHandle
+  fn spawn<F>(&self, future: F) -> AbortHandle
   where
     F: std::future::Future + Send + 'static,
     F::Output: Send + 'static,
   {
-    let handle = self.0.spawn(future);
-    JoinHandle {
-      abort: Box::new(move || handle.abort()),
-    }
+    let join_handle = self.0.spawn(future);
+    AbortHandle::new(move || join_handle.abort())
   }
 
-  fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
+  fn spawn_blocking<F, R>(&self, future: F) -> AbortHandle
   where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
   {
-    let handle = self.0.spawn_blocking(future);
-    JoinHandle {
-      abort: Box::new(move || handle.abort()),
-    }
+    let join_handle = self.0.spawn_blocking(future);
+    AbortHandle::new(move || join_handle.abort())
   }
 }
 

@@ -1,27 +1,23 @@
-use membrane::runtime::{App, Interface, JoinHandle};
+use membrane::runtime::{AbortHandle, App, Interface};
 use std::future::Future;
 
 pub struct TestRuntime();
 
 impl Interface for TestRuntime {
-  fn spawn<T>(&self, _future: T) -> JoinHandle
+  fn spawn<T>(&self, _future: T) -> AbortHandle
   where
     T: Future + Send + 'static,
     T::Output: Send + 'static,
   {
-    JoinHandle {
-      abort: Box::new(|| {}),
-    }
+    AbortHandle::new(|| {})
   }
 
-  fn spawn_blocking<F, R>(&self, _future: F) -> JoinHandle
+  fn spawn_blocking<F, R>(&self, _future: F) -> AbortHandle
   where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
   {
-    JoinHandle {
-      abort: Box::new(|| {}),
-    }
+    AbortHandle::new(|| {})
   }
 }
 

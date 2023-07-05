@@ -2,12 +2,12 @@ use once_cell::sync::OnceCell;
 use std::future::Future;
 
 pub trait Interface {
-  fn spawn<F>(&self, future: F) -> JoinHandle
+  fn spawn<F>(&self, future: F) -> AbortHandle
   where
     F: Future + Send + 'static,
     F::Output: Send + 'static;
 
-  fn info_spawn<F>(&self, future: F, _info: Info) -> JoinHandle
+  fn info_spawn<F>(&self, future: F, _info: Info) -> AbortHandle
   where
     F: Future + Send + 'static,
     F::Output: Send + 'static,
@@ -15,12 +15,12 @@ pub trait Interface {
     self.spawn(future)
   }
 
-  fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
+  fn spawn_blocking<F, R>(&self, future: F) -> AbortHandle
   where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static;
 
-  fn info_spawn_blocking<F, R>(&self, future: F, _info: Info) -> JoinHandle
+  fn info_spawn_blocking<F, R>(&self, future: F, _info: Info) -> AbortHandle
   where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
@@ -29,13 +29,27 @@ pub trait Interface {
   }
 }
 
-pub struct JoinHandle {
-  pub abort: Box<dyn Fn()>,
+#[deprecated(
+  since = "0.9.5",
+  note = "please use `AbortHandle` instead, renamed to better match common tokio naming convention"
+)]
+pub type JoinHandle = AbortHandle;
+
+pub struct AbortHandle {
+  #[deprecated(since = "0.9.5", note = "please use `AbortHandle::new()` instead")]
   pub abort: Box<dyn Fn() + Send + 'static>,
 }
 
-impl JoinHandle {
+impl AbortHandle {
+  pub fn new(abort: impl Fn() + Send + 'static) -> Self {
+    #[allow(deprecated)]
+    Self {
+      abort: Box::new(abort),
+    }
+  }
+
   pub fn abort(&self) {
+    #[allow(deprecated)]
     (self.abort)();
   }
 }
