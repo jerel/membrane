@@ -56,30 +56,26 @@ pub async fn one_success() -> Result<Vec<i32>, String> {
   Ok(vec![10])
 }
 
-use membrane::runtime::{App, Interface, JoinHandle};
+use membrane::runtime::{App, Interface, AbortHandle};
 use membrane::{async_dart, sync_dart};
 use std::future::Future;
 
 struct TestRuntime();
 impl Interface for TestRuntime {
-  fn spawn<T>(&self, future: T) -> JoinHandle
+  fn spawn<T>(&self, future: T) -> AbortHandle
   where
     T: Future + Send + 'static,
     T::Output: Send + 'static,
   {
-    JoinHandle {
-      abort: Box::new(|| {}),
-    }
+    AbortHandle::new(|| {})
   }
 
-  fn spawn_blocking<F, R>(&self, future: F) -> JoinHandle
+  fn spawn_blocking<F, R>(&self, future: F) -> AbortHandle
   where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
   {
-    JoinHandle {
-      abort: Box::new(|| {}),
-    }
+    AbortHandle::new(|| {})
   }
 }
 

@@ -57,7 +57,7 @@ pub fn contact_async_emitter(user_id: String) -> impl Emitter<Result<data::Conta
   });
 
   let e = emitter.clone();
-  // drop the JoinHandle to detach the thread
+  // drop the AbortHandle to detach the thread
   let _ = thread::spawn(move || {
     e.on_done(|| {
       println!("\n[contact_async_emitter] the finalizer has been called for the Emitter");
@@ -119,7 +119,7 @@ pub fn contact_async_stream_emitter(
     .for_each(|contact| {
       let stream = stream.clone();
 
-      // drop the JoinHandle to detach the thread
+      // drop the AbortHandle to detach the thread
       let _ = thread::spawn(move || {
         let id = thread::current().id();
 
