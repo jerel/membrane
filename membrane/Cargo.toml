@@ -8,7 +8,7 @@ name = "membrane"
 readme = "../README.md"
 repository = "https://github.com/jerel/membrane"
 rust-version = "1.61"
-version = "0.9.4"
+version = "0.9.5"
 
 [lib]
 crate-type = ["lib"]
