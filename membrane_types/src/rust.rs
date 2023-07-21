@@ -113,13 +113,13 @@ pub fn flatten_types(ty: &syn::Type, mut types: Vec<String>) -> syn::Result<Vec<
 fn rust_c_type(ty: &[&str], type_: &syn::Type) -> syn::Result<TokenStream2> {
   let result = match ty[..] {
     ["String"] => q!(*const ::std::os::raw::c_char),
-    ["i64"] => q!(::std::os::raw::c_long),
+    ["i64"] => q!(::std::os::raw::c_longlong),
     ["f64"] => q!(::std::os::raw::c_double),
     ["bool"] => q!(::std::os::raw::c_char), // i8
     ["Vec", ..] => q!(*const u8),
     [serialized] if serialized != "Option" => q!(*const u8),
     ["Option", "String"] => q!(*const ::std::os::raw::c_char),
-    ["Option", "i64"] => q!(*const ::std::os::raw::c_long),
+    ["Option", "i64"] => q!(*const ::std::os::raw::c_longlong),
     ["Option", "f64"] => q!(*const ::std::os::raw::c_double),
     ["Option", "bool"] => q!(*const ::std::os::raw::c_char), // i8
     ["Option", ..] => q!(*const u8),

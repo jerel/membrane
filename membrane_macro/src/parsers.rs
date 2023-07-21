@@ -61,6 +61,8 @@ pub fn parse_return_type(input: ParseStream) -> Result<(OutputStyle, syn::Type, 
 fn parse_type(input: ParseStream) -> Result<(syn::Type, syn::Type)> {
   let outer_span = input.span();
   let type_path = input.parse::<syn::TypePath>()?;
+  // if the formatter inserts a trailing comma on multi-line types then discard it
+  let _ = input.parse::<Token![,]>();
   let return_type = &type_path.path.segments.last().unwrap();
   if return_type.ident != "Result" {
     return Err(Error::new(outer_span, "expected enum `Result`"));
