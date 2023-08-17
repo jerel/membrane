@@ -345,6 +345,7 @@ fn to_token_stream(
     quote! { None }
   };
   let borrow = quote! { &[#(#borrow),*] };
+  let debug_location = quote! { concat!(file!(), ":", line!()) };
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
@@ -365,6 +366,7 @@ fn to_token_stream(
                 dart_transforms: #dart_transforms,
                 dart_inner_args: #dart_inner_args,
                 output: "",
+                location: #debug_location,
               },
               namespace: #namespace,
               trace: |

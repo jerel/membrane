@@ -105,6 +105,12 @@ use std::{
 };
 use tracing::{debug, info, warn};
 
+type Namespace = &'static str;
+type Borrows =
+  HashMap<Namespace, BTreeMap<&'static str, (BTreeSet<&'static str>, ExplicitBorrowLocations)>>;
+type SourceCodeLocation = &'static str;
+type ExplicitBorrowLocations = HashMap<&'static str, Vec<SourceCodeLocation>>;
+
 #[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct Function {
@@ -123,6 +129,7 @@ pub struct Function {
   pub dart_outer_params: &'static str,
   pub dart_transforms: &'static str,
   pub dart_inner_args: &'static str,
+  pub location: SourceCodeLocation,
 }
 
 #[doc(hidden)]
@@ -183,7 +190,7 @@ pub struct Membrane {
   generated: bool,
   c_style_enums: bool,
   timeout: Option<i32>,
-  borrows: HashMap<&'static str, BTreeMap<&'static str, BTreeSet<&'static str>>>,
+  borrows: Borrows,
   _inputs: Vec<libloading::Library>,
 }
 
@@ -282,7 +289,7 @@ impl<'a> Membrane {
     let mut namespaced_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
-    let mut borrows: HashMap<&str, BTreeMap<&str, BTreeSet<&str>>> = HashMap::new();
+    let mut borrows: Borrows = HashMap::new();
 
     // collect all the metadata about functions (without tracing them yet)
     functions.iter().for_each(|item| {
@@ -304,7 +311,7 @@ impl<'a> Membrane {
         .clone()
         .into_iter()
         .for_each(|(for_namespace, from_namespaces)| {
-          if let Some(types) = from_namespaces.get(item.namespace) {
+          if let Some((types, _location)) = from_namespaces.get(item.namespace) {
             if types.contains(item.name) {
               let tracer = namespaced_registry
                 .entry(for_namespace)
@@ -1025,7 +1032,7 @@ class {class_name}Api {{
   fn create_borrows(
     namespaced_fn_registry: &HashMap<&str, Vec<Function>>,
     namespace: &'static str,
-    borrows: &mut HashMap<&'static str, BTreeMap<&str, BTreeSet<&str>>>,
+    borrows: &mut Borrows,
   ) {
     let default = &vec![];
     let fns = namespaced_fn_registry.get(namespace).unwrap_or(default);
@@ -1038,10 +1045,11 @@ class {class_name}Api {{
         .for_each(|borrow_list| {
           if let [from_namespace, r#type] = borrow_list[..] {
             let imports = borrows.entry(namespace).or_default();
-            let types = imports.entry(from_namespace).or_default();
+            let (types, source_code_locations) = imports.entry(from_namespace).or_insert((BTreeSet::new(), HashMap::new()));
             types.insert(r#type);
+            source_code_locations.entry(r#type).or_default().push(fun.location);
           } else {
-            tracing::error!("Found an invalid `borrow`: `{:?}`. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow);
+            tracing::error!("Found an invalid `borrow`: `{:?}`{location_hint}. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow, location_hint = utils::display_code_location(Some(&vec![fun.location])));
             exit(1);
           }
         });
@@ -1059,17 +1067,17 @@ class {class_name}Api {{
         // sort the imports in reverse order so that we can append them to existing
         // lines and end up with a descending order
         .rev()
-        .for_each(|(from_namespace, borrowed_types)| {
+        .for_each(|(from_namespace, (borrowed_types, borrow_locations_for_type))| {
           let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
             if namespace == from_namespace {
-              self.errors.push(format!("`{ns}::{import}` was borrowed by `{ns}` which is a self reference", ns = namespace, import = r#type));
+              self.errors.push(format!("`{ns}::{import}`{location_hint} was borrowed by `{ns}` which is a self reference", location_hint = utils::display_code_location(borrow_locations_for_type.get(r#type)), ns = namespace, import = r#type));
             }
 
             let auto_import = self.with_child_borrows(from_namespace, r#type);
             auto_import.iter().for_each(|x| {
               if borrowed_types.contains(x.as_str()) && x != r#type {
-                warn!("{ns}::{import} was explicitly borrowed but it is already implicitly borrowed because it is a subtype of `{ns}::{type}`. Remove the `{ns}::{import}` borrow.",
-                ns = from_namespace, import = x, r#type = r#type);
+                warn!("{ns}::{import} was explicitly borrowed{manual_hint} but it is already implicitly borrowed because it is a subtype of `{ns}::{type}`{auto_hint}. Remove the `{ns}::{import}` borrow.",
+                ns = from_namespace, manual_hint = utils::display_code_location(borrow_locations_for_type.get(x.as_str())), import = x, r#type = r#type, auto_hint = utils::display_code_location(borrow_locations_for_type.get(r#type)));
               }
             });
 

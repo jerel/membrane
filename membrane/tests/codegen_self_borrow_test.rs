@@ -36,7 +36,7 @@ mod test {
 
     assert_eq!(
       membrane.drain_errors(),
-      vec!["`a::Location` was borrowed by `a` which is a self reference"]
+      vec!["`a::Location` at membrane/tests/codegen_self_borrow_test.rs:19 was borrowed by `a` which is a self reference"]
     );
   }
 }
