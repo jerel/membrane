@@ -33,19 +33,19 @@ pub(crate) fn display_code_location(location: Option<&Vec<SourceCodeLocation>>) 
           .map(|(index, path)| {
             if last == 0 {
               // single item
-              format!("{}", path)
+              path.to_string()
             } else if index == 0 && last == 1 {
               // on the first of two
               format!("{} and", path)
             } else if index == 1 && last == 1 {
               // on the second of two
-              format!("{}", path)
+              path.to_string()
             } else if index == (last - 1) {
               // on the next to last of many
               format!("{}, and", path)
             } else if index == last {
               // on the last of many
-              format!("{}", path)
+              path.to_string()
             } else {
               format!("{},", path)
             }
