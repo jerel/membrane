@@ -1,4 +1,4 @@
-pub fn create_ffi_loader(library: &str) -> String {
+pub fn create_ffi_loader(library: &str, dart_config: &crate::DartConfig) -> String {
   format!(
     r#"// AUTO GENERATED FILE, DO NOT EDIT
 //
@@ -6,29 +6,29 @@ pub fn create_ffi_loader(library: &str) -> String {
 import 'dart:ffi';
 import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';
-import 'package:logging/logging.dart';
+import '{logger_path}';
 
 import './ffi_bindings.dart' as ffi_bindings;
 
 DynamicLibrary _open() {{
   if (Platform.isLinux) {{
-    Logger('membrane').info('Opening native library {lib}.so');
+    {logger}.{info_logger}('Opening native library {lib}.so');
     return DynamicLibrary.open('{lib}.so');
   }}
   if (Platform.isAndroid) {{
-    Logger('membrane').info('Opening native library {lib}.so');
+    {logger}.{info_logger}('Opening native library {lib}.so');
     return DynamicLibrary.open('{lib}.so');
   }}
   if (Platform.isIOS) {{
-    Logger('membrane').info('Creating dynamic library {lib}');
+    {logger}.{info_logger}('Creating dynamic library {lib}');
     return DynamicLibrary.executable();
   }}
   if (Platform.isMacOS) {{
-    Logger('membrane').info('Opening native library {lib}.dylib');
+    {logger}.{info_logger}('Opening native library {lib}.dylib');
     return DynamicLibrary.open('{lib}.dylib');
   }}
   if (Platform.isWindows) {{
-    Logger('membrane').info('Opening native library {lib}.dll');
+    {logger}.{info_logger}('Opening native library {lib}.dll');
     return DynamicLibrary.open('{lib}.dll');
   }}
   throw UnsupportedError('This platform is not supported.');
@@ -43,21 +43,21 @@ typedef _StoreDartPostCobjectDart = void Function(
 
 _load() {{
   final dl = _open();
-  Logger('membrane').info('Initializing FFI bindings');
+  {logger}.{info_logger}('Initializing FFI bindings');
   final bindings = ffi_bindings.NativeLibrary(dl);
   final storeDartPostCobject =
       dl.lookupFunction<_StoreDartPostCobjectC, _StoreDartPostCobjectDart>(
     'store_dart_post_cobject',
   );
 
-  Logger('membrane').fine('Initializing Dart_PostCObject');
+  {logger}.{debug_logger}('Initializing Dart_PostCObject');
   storeDartPostCobject(NativeApi.postCObject);
 
   final ptr = bindings.membrane_metadata_version();
   final version = ptr.cast<Utf8>().toDartString();
   bindings.membrane_free_membrane_string(ptr);
   final msg = "Successfully loaded '{lib}' which was built at version '$version'.";
-  Logger('membrane').info(msg);
+  {logger}.{info_logger}(msg);
 
   bindingsLoaded = true;
   return bindings;
@@ -74,6 +74,10 @@ bool bindingsLoaded = false;
 final bindings = _load();
 "#,
     lib = library,
+    logger_path = dart_config.logger_import_path,
+    logger = dart_config.logger,
+    info_logger = dart_config.info_log_fn,
+    debug_logger = dart_config.debug_log_fn,
   )
 }
 

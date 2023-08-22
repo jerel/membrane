@@ -105,6 +105,25 @@ use std::{
 };
 use tracing::{debug, info, warn};
 
+#[derive(Debug)]
+pub struct DartConfig {
+  logger_import_path: &'static str,
+  logger: &'static str,
+  info_log_fn: &'static str,
+  debug_log_fn: &'static str,
+}
+
+impl Default for DartConfig {
+  fn default() -> Self {
+    Self {
+      logger_import_path: "package:logging/logging.dart",
+      logger: "Logger(\"membrane\")",
+      info_log_fn: "info",
+      debug_log_fn: "fine",
+    }
+  }
+}
+
 type Namespace = &'static str;
 type Borrows =
   HashMap<Namespace, BTreeMap<&'static str, (BTreeSet<&'static str>, ExplicitBorrowLocations)>>;
@@ -192,6 +211,7 @@ pub struct Membrane {
   timeout: Option<i32>,
   borrows: Borrows,
   _inputs: Vec<libloading::Library>,
+  dart_config: DartConfig,
 }
 
 impl<'a> Membrane {
@@ -377,6 +397,7 @@ impl<'a> Membrane {
       timeout: None,
       borrows,
       _inputs: input_libs,
+      dart_config: DartConfig::default(),
     }
   }
 
@@ -537,6 +558,23 @@ impl<'a> Membrane {
   pub fn timeout(&mut self, val: i32) -> &mut Self {
     return_if_error!(self);
     self.timeout = Some(val);
+    self
+  }
+
+  ///
+  /// Configures some aspects of the generated Dart code.
+  ///
+  /// Default:
+  ///
+  /// DartConfig {
+  ///   logger_import_path: "package:logging/logging.dart",
+  ///   logger: "Logger(\"membrane\")",
+  ///   info_log_fn: "info",
+  ///   debug_log_fn: "fine",
+  /// }
+  pub fn dart_config(&mut self, config: DartConfig) -> &mut Self {
+    return_if_error!(self);
+    self.dart_config = config;
     self
   }
 
@@ -833,7 +871,7 @@ export './src/membrane_exceptions.dart';";
   }
 
   fn create_loader(&mut self) -> &mut Self {
-    let ffi_loader = loaders::create_ffi_loader(&self.library);
+    let ffi_loader = loaders::create_ffi_loader(&self.library, &self.dart_config);
     let path = self.destination.join("lib/src/membrane_loader_ffi.dart");
     std::fs::write(path, ffi_loader).unwrap();
 
@@ -906,7 +944,7 @@ import 'dart:ffi';
 import 'dart:isolate' show ReceivePort;
 import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
-import 'package:logging/logging.dart';
+import '{logger_path}';
 import 'package:meta/meta.dart';
 
 import './membrane_exceptions.dart';
@@ -935,11 +973,17 @@ class {class_name}ApiError implements Exception {{
 
 @immutable
 class {class_name}Api {{
-  static final _log = Logger('membrane.{ns}');
+  static final _log = {logger};
   const {class_name}Api();
 "#,
       ns = &namespace,
-      class_name = &namespace.to_upper_camel_case()
+      class_name = &namespace.to_upper_camel_case(),
+      logger_path = self.dart_config.logger_import_path,
+      logger = self
+        .dart_config
+        .logger
+        .replace("')", &format!(".{}')", &namespace))
+        .replace("\")", &format!(".{}\")", &namespace)),
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
