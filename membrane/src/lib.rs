@@ -117,7 +117,7 @@ impl Default for DartConfig {
   fn default() -> Self {
     Self {
       logger_import_path: "package:logging/logging.dart",
-      logger: "Logger(\"membrane\")",
+      logger: "Logger('membrane')",
       info_log_fn: "info",
       debug_log_fn: "fine",
     }
@@ -568,7 +568,7 @@ impl<'a> Membrane {
   ///
   /// DartConfig {
   ///   logger_import_path: "package:logging/logging.dart",
-  ///   logger: "Logger(\"membrane\")",
+  ///   logger: "Logger('membrane')",
   ///   info_log_fn: "info",
   ///   debug_log_fn: "fine",
   /// }
