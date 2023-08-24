@@ -107,10 +107,10 @@ use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 pub struct DartConfig {
-  logger_import_path: &'static str,
-  logger: &'static str,
-  info_log_fn: &'static str,
-  debug_log_fn: &'static str,
+  pub logger_import_path: &'static str,
+  pub logger: &'static str,
+  pub info_log_fn: &'static str,
+  pub fine_log_fn: &'static str,
 }
 
 impl Default for DartConfig {
@@ -119,7 +119,7 @@ impl Default for DartConfig {
       logger_import_path: "package:logging/logging.dart",
       logger: "Logger('membrane')",
       info_log_fn: "info",
-      debug_log_fn: "fine",
+      fine_log_fn: "fine",
     }
   }
 }
@@ -570,7 +570,7 @@ impl<'a> Membrane {
   ///   logger_import_path: "package:logging/logging.dart",
   ///   logger: "Logger('membrane')",
   ///   info_log_fn: "info",
-  ///   debug_log_fn: "fine",
+  ///   fine_log_fn: "fine",
   /// }
   pub fn dart_config(&mut self, config: DartConfig) -> &mut Self {
     return_if_error!(self);

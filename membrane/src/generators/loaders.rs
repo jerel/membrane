@@ -50,7 +50,7 @@ _load() {{
     'store_dart_post_cobject',
   );
 
-  {logger}.{debug_logger}('Initializing Dart_PostCObject');
+  {logger}.{fine_logger}('Initializing Dart_PostCObject');
   storeDartPostCobject(NativeApi.postCObject);
 
   final ptr = bindings.membrane_metadata_version();
@@ -77,7 +77,7 @@ final bindings = _load();
     logger_path = dart_config.logger_import_path,
     logger = dart_config.logger,
     info_logger = dart_config.info_log_fn,
-    debug_logger = dart_config.debug_log_fn,
+    fine_logger = dart_config.fine_log_fn,
   )
 }
 
