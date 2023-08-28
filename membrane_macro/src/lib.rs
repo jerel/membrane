@@ -170,7 +170,7 @@ fn to_token_stream(
   let rust_outer_params: Vec<TokenStream2> = if sync {
     RustExternParams::try_from(&inputs)?.into()
   } else {
-    vec![
+    [
       vec![quote! {membrane_port: i64}],
       RustExternParams::try_from(&inputs)?.into(),
     ]

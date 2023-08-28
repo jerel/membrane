@@ -297,7 +297,7 @@ impl<'a> Membrane {
       )
     });
 
-    let mut namespaces = vec![
+    let mut namespaces = [
       enums.iter().map(|x| x.namespace).collect::<Vec<&str>>(),
       functions.iter().map(|x| x.namespace).collect::<Vec<&str>>(),
     ]
