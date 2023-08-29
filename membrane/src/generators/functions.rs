@@ -58,7 +58,7 @@ impl Builder for Ffi {
       output: self
         .begin()
         .signature()
-        .body()
+        .body(config)
         .body_return(enum_registry, config)
         .end()
         .output
@@ -80,9 +80,9 @@ impl Builder for Web {
     self.output.as_bytes()
   }
 
-  fn build(&mut self, _config: &Membrane) -> Web {
+  fn build(&mut self, config: &Membrane) -> Web {
     Web {
-      output: self.begin().signature().body().end().output.clone(),
+      output: self.begin().signature().body(config).end().output.clone(),
       fun: self.fun.clone(),
     }
   }
@@ -246,7 +246,7 @@ impl Function {
 trait Callable {
   fn begin(&mut self) -> &mut Self;
   fn signature(&mut self) -> &mut Self;
-  fn body(&mut self) -> &mut Self;
+  fn body(&mut self, config: &Membrane) -> &mut Self;
   fn body_return(&mut self, enum_tracer_registry: &Registry, config: &Membrane) -> &mut Self;
   fn end(&mut self) -> &mut Self;
 }
@@ -262,7 +262,7 @@ impl Callable for Ffi {
     self
   }
 
-  fn body(&mut self) -> &mut Self {
+  fn body(&mut self, config: &Membrane) -> &mut Self {
     self.output += format!(
       r#" {{{disable_logging}
     final List<Pointer> _toFree = [];{fn_transforms}{receive_port}
@@ -270,7 +270,7 @@ impl Callable for Ffi {
     MembraneResponse _taskResult;
     try {{
       if (!_loggingDisabled) {{
-        _log.fine('Calling Rust `{fn_name}` via C `{extern_c_fn_name}`');
+        _log.{fine_logger}('Calling Rust `{fn_name}` via C `{extern_c_fn_name}`');
       }}
       _taskResult = _bindings.{extern_c_fn_name}({native_port}{dart_inner_args});
       if (_taskResult.kind == MembraneResponseKind.panic) {{
@@ -282,7 +282,7 @@ impl Callable for Ffi {
     }} finally {{
       _toFree.forEach((ptr) => calloc.free(ptr));
       if (!_loggingDisabled) {{
-        _log.fine('Freed arguments to `{extern_c_fn_name}`');
+        _log.{fine_logger}('Freed arguments to `{extern_c_fn_name}`');
       }}
     }}
 "#,
@@ -315,6 +315,7 @@ impl Callable for Ffi {
       } else {
         String::from(", ") + self.fun.dart_inner_args
       },
+      fine_logger = config.dart_config.logger.fine_log_fn
     )
     .as_str();
     self
@@ -333,7 +334,7 @@ impl Callable for Ffi {
     final length = ByteData.view(data.asTypedList(8).buffer).getInt64(0, Endian.little);
     try {{
       if (!_loggingDisabled) {{
-        _log.fine('Deserializing data from {fn_name}');
+        _log.{fine_logger}('Deserializing data from {fn_name}');
       }}
       final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
       if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
@@ -349,6 +350,7 @@ impl Callable for Ffi {
         error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
         class_name = self.fun.namespace.to_upper_camel_case(),
         fn_name = self.fun.fn_name,
+        fine_logger = config.dart_config.logger.fine_log_fn
       )
     } else if self.fun.is_stream {
       format!(
@@ -356,7 +358,7 @@ impl Callable for Ffi {
     try {{
       yield* _port{timeout}.map((input) {{
         if (!_loggingDisabled) {{
-          _log.fine('Deserializing data from {fn_name}');
+          _log.{fine_logger}('Deserializing data from {fn_name}');
         }}
         final deserializer = BincodeDeserializer(input as Uint8List);
         if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
@@ -381,13 +383,14 @@ impl Callable for Ffi {
           // having all streams auto-disconnect after a pause in events is not desirable
           "".to_string()
         },
+        fine_logger = config.dart_config.logger.fine_log_fn
       )
     } else {
       format!(
         r#"
     try {{
       if (!_loggingDisabled) {{
-        _log.fine('Deserializing data from {fn_name}');
+        _log.{fine_logger}('Deserializing data from {fn_name}');
       }}
       final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
       if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
@@ -419,6 +422,7 @@ impl Callable for Ffi {
           // and by default we won't time out at all
           "".to_string()
         },
+        fine_logger = config.dart_config.logger.fine_log_fn
       )
     }
     .as_str();
@@ -438,7 +442,7 @@ impl Callable for Web {
     self
   }
 
-  fn body(&mut self) -> &mut Self {
+  fn body(&mut self, _config: &Membrane) -> &mut Self {
     self.output += "{
       throw UnimplementedError();";
 
@@ -478,7 +482,7 @@ impl Callable for C {
     self
   }
 
-  fn body(&mut self) -> &mut Self {
+  fn body(&mut self, _config: &Membrane) -> &mut Self {
     self
   }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
@@ -469,7 +470,9 @@ void main() {
       expect(err.duration?.inMilliseconds, 200);
       expect(err.message, "Future not completed");
     }
-  });
+  },
+      // temporarily skipped in CI due to https://github.com/rust-lang/rust/issues/88622
+      skip: Platform.environment['CI'] == 'true');
 
   test(
       'test that panics in stream code are handled gracefully and merely time out',
@@ -481,13 +484,17 @@ void main() {
       expect(err.duration?.inMilliseconds, 20);
       expect(err.message, "No stream event");
     }
-  });
+  },
+      // temporarily skipped in CI due to https://github.com/rust-lang/rust/issues/88622
+      skip: Platform.environment['CI'] == 'true');
 
   test('test that panics in sync code are handled gracefully', () {
     final accounts = AccountsApi();
     expect(() async => accounts.contactSyncPanic(),
         throwsA(isA<MembraneException>()));
-  });
+  },
+      // temporarily skipped in CI due to https://github.com/rust-lang/rust/issues/88622
+      skip: Platform.environment['CI'] == 'true');
 
   test('test that borrowing from other namespaces works', () async {
     final accounts = AccountsApi();

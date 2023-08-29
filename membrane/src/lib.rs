@@ -105,6 +105,36 @@ use std::{
 };
 use tracing::{debug, info, warn};
 
+#[derive(Debug, Default)]
+pub struct DartConfig {
+  pub logger: DartLoggerConfig,
+}
+
+#[derive(Debug)]
+pub struct DartLoggerConfig {
+  pub import_path: &'static str,
+  pub instance: &'static str,
+  pub info_log_fn: &'static str,
+  pub fine_log_fn: &'static str,
+}
+
+impl Default for DartLoggerConfig {
+  fn default() -> Self {
+    Self {
+      import_path: "package:logging/logging.dart",
+      instance: "Logger('membrane')",
+      info_log_fn: "info",
+      fine_log_fn: "fine",
+    }
+  }
+}
+
+type Namespace = &'static str;
+type Borrows =
+  HashMap<Namespace, BTreeMap<&'static str, (BTreeSet<&'static str>, ExplicitBorrowLocations)>>;
+type SourceCodeLocation = &'static str;
+type ExplicitBorrowLocations = HashMap<&'static str, Vec<SourceCodeLocation>>;
+
 #[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct Function {
@@ -123,6 +153,7 @@ pub struct Function {
   pub dart_outer_params: &'static str,
   pub dart_transforms: &'static str,
   pub dart_inner_args: &'static str,
+  pub location: SourceCodeLocation,
 }
 
 #[doc(hidden)]
@@ -183,8 +214,9 @@ pub struct Membrane {
   generated: bool,
   c_style_enums: bool,
   timeout: Option<i32>,
-  borrows: HashMap<&'static str, BTreeMap<&'static str, BTreeSet<&'static str>>>,
+  borrows: Borrows,
   _inputs: Vec<libloading::Library>,
+  dart_config: DartConfig,
 }
 
 impl<'a> Membrane {
@@ -270,7 +302,7 @@ impl<'a> Membrane {
       )
     });
 
-    let mut namespaces = vec![
+    let mut namespaces = [
       enums.iter().map(|x| x.namespace).collect::<Vec<&str>>(),
       functions.iter().map(|x| x.namespace).collect::<Vec<&str>>(),
     ]
@@ -282,7 +314,7 @@ impl<'a> Membrane {
     let mut namespaced_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
-    let mut borrows: HashMap<&str, BTreeMap<&str, BTreeSet<&str>>> = HashMap::new();
+    let mut borrows: Borrows = HashMap::new();
 
     // collect all the metadata about functions (without tracing them yet)
     functions.iter().for_each(|item| {
@@ -304,7 +336,7 @@ impl<'a> Membrane {
         .clone()
         .into_iter()
         .for_each(|(for_namespace, from_namespaces)| {
-          if let Some(types) = from_namespaces.get(item.namespace) {
+          if let Some((types, _location)) = from_namespaces.get(item.namespace) {
             if types.contains(item.name) {
               let tracer = namespaced_registry
                 .entry(for_namespace)
@@ -370,6 +402,7 @@ impl<'a> Membrane {
       timeout: None,
       borrows,
       _inputs: input_libs,
+      dart_config: DartConfig::default(),
     }
   }
 
@@ -530,6 +563,25 @@ impl<'a> Membrane {
   pub fn timeout(&mut self, val: i32) -> &mut Self {
     return_if_error!(self);
     self.timeout = Some(val);
+    self
+  }
+
+  ///
+  /// Configures some aspects of the generated Dart code.
+  ///
+  /// Default:
+  ///
+  /// DartConfig {
+  ///   logger: DartLoggerConfig {
+  ///     import_path: "package:logging/logging.dart",
+  ///     instance: "Logger('membrane')",
+  ///     info_log_fn: "info",
+  ///     fine_log_fn: "fine",
+  ///   }
+  /// }
+  pub fn dart_config(&mut self, config: DartConfig) -> &mut Self {
+    return_if_error!(self);
+    self.dart_config = config;
     self
   }
 
@@ -826,7 +878,7 @@ export './src/membrane_exceptions.dart';";
   }
 
   fn create_loader(&mut self) -> &mut Self {
-    let ffi_loader = loaders::create_ffi_loader(&self.library);
+    let ffi_loader = loaders::create_ffi_loader(&self.library, &self.dart_config);
     let path = self.destination.join("lib/src/membrane_loader_ffi.dart");
     std::fs::write(path, ffi_loader).unwrap();
 
@@ -899,7 +951,7 @@ import 'dart:ffi';
 import 'dart:isolate' show ReceivePort;
 import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
-import 'package:logging/logging.dart';
+import '{logger_path}';
 import 'package:meta/meta.dart';
 
 import './membrane_exceptions.dart';
@@ -928,11 +980,18 @@ class {class_name}ApiError implements Exception {{
 
 @immutable
 class {class_name}Api {{
-  static final _log = Logger('membrane.{ns}');
+  static final _log = {logger};
   const {class_name}Api();
 "#,
       ns = &namespace,
-      class_name = &namespace.to_upper_camel_case()
+      class_name = &namespace.to_upper_camel_case(),
+      logger_path = self.dart_config.logger.import_path,
+      logger = self
+        .dart_config
+        .logger
+        .instance
+        .replace("')", &format!(".{}')", &namespace))
+        .replace("\")", &format!(".{}\")", &namespace)),
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
@@ -1025,7 +1084,7 @@ class {class_name}Api {{
   fn create_borrows(
     namespaced_fn_registry: &HashMap<&str, Vec<Function>>,
     namespace: &'static str,
-    borrows: &mut HashMap<&'static str, BTreeMap<&str, BTreeSet<&str>>>,
+    borrows: &mut Borrows,
   ) {
     let default = &vec![];
     let fns = namespaced_fn_registry.get(namespace).unwrap_or(default);
@@ -1038,10 +1097,11 @@ class {class_name}Api {{
         .for_each(|borrow_list| {
           if let [from_namespace, r#type] = borrow_list[..] {
             let imports = borrows.entry(namespace).or_default();
-            let types = imports.entry(from_namespace).or_default();
+            let (types, source_code_locations) = imports.entry(from_namespace).or_insert((BTreeSet::new(), HashMap::new()));
             types.insert(r#type);
+            source_code_locations.entry(r#type).or_default().push(fun.location);
           } else {
-            tracing::error!("Found an invalid `borrow`: `{:?}`. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow);
+            tracing::error!("Found an invalid `borrow`: `{:?}`{location_hint}. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow, location_hint = utils::display_code_location(Some(&vec![fun.location])));
             exit(1);
           }
         });
@@ -1059,17 +1119,17 @@ class {class_name}Api {{
         // sort the imports in reverse order so that we can append them to existing
         // lines and end up with a descending order
         .rev()
-        .for_each(|(from_namespace, borrowed_types)| {
+        .for_each(|(from_namespace, (borrowed_types, borrow_locations_for_type))| {
           let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
             if namespace == from_namespace {
-              self.errors.push(format!("`{ns}::{import}` was borrowed by `{ns}` which is a self reference", ns = namespace, import = r#type));
+              self.errors.push(format!("`{ns}::{import}`{location_hint} was borrowed by `{ns}` which is a self reference", location_hint = utils::display_code_location(borrow_locations_for_type.get(r#type)), ns = namespace, import = r#type));
             }
 
             let auto_import = self.with_child_borrows(from_namespace, r#type);
             auto_import.iter().for_each(|x| {
               if borrowed_types.contains(x.as_str()) && x != r#type {
-                warn!("{ns}::{import} was explicitly borrowed but it is already implicitly borrowed because it is a subtype of `{ns}::{type}`. Remove the `{ns}::{import}` borrow.",
-                ns = from_namespace, import = x, r#type = r#type);
+                warn!("{ns}::{import} was explicitly borrowed{manual_hint} but it is already implicitly borrowed because it is a subtype of `{ns}::{type}`{auto_hint}. Remove the `{ns}::{import}` borrow.",
+                ns = from_namespace, manual_hint = utils::display_code_location(borrow_locations_for_type.get(x.as_str())), import = x, r#type = r#type, auto_hint = utils::display_code_location(borrow_locations_for_type.get(r#type)));
               }
             });
 
