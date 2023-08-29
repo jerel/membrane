@@ -572,10 +572,12 @@ impl<'a> Membrane {
   /// Default:
   ///
   /// DartConfig {
-  ///   import_path: "package:logging/logging.dart",
-  ///   logger: "Logger('membrane')",
-  ///   info_log_fn: "info",
-  ///   fine_log_fn: "fine",
+  ///   logger: DartLoggerConfig {
+  ///     import_path: "package:logging/logging.dart",
+  ///     instance: "Logger('membrane')",
+  ///     info_log_fn: "info",
+  ///     fine_log_fn: "fine",
+  ///   }
   /// }
   pub fn dart_config(&mut self, config: DartConfig) -> &mut Self {
     return_if_error!(self);
