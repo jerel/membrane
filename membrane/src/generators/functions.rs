@@ -315,7 +315,7 @@ impl Callable for Ffi {
       } else {
         String::from(", ") + self.fun.dart_inner_args
       },
-      fine_logger = config.dart_config.fine_log_fn
+      fine_logger = config.dart_config.logger.fine_log_fn
     )
     .as_str();
     self
@@ -350,7 +350,7 @@ impl Callable for Ffi {
         error_de = self.fun.deserializer(self.fun.error_type, enum_tracer_registry, config),
         class_name = self.fun.namespace.to_upper_camel_case(),
         fn_name = self.fun.fn_name,
-        fine_logger = config.dart_config.fine_log_fn
+        fine_logger = config.dart_config.logger.fine_log_fn
       )
     } else if self.fun.is_stream {
       format!(
@@ -383,7 +383,7 @@ impl Callable for Ffi {
           // having all streams auto-disconnect after a pause in events is not desirable
           "".to_string()
         },
-        fine_logger = config.dart_config.fine_log_fn
+        fine_logger = config.dart_config.logger.fine_log_fn
       )
     } else {
       format!(
@@ -422,7 +422,7 @@ impl Callable for Ffi {
           // and by default we won't time out at all
           "".to_string()
         },
-        fine_logger = config.dart_config.fine_log_fn
+        fine_logger = config.dart_config.logger.fine_log_fn
       )
     }
     .as_str();

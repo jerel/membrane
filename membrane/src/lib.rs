@@ -105,19 +105,24 @@ use std::{
 };
 use tracing::{debug, info, warn};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DartConfig {
-  pub logger_import_path: &'static str,
-  pub logger: &'static str,
+  pub logger: DartLoggerConfig,
+}
+
+#[derive(Debug)]
+pub struct DartLoggerConfig {
+  pub import_path: &'static str,
+  pub instance: &'static str,
   pub info_log_fn: &'static str,
   pub fine_log_fn: &'static str,
 }
 
-impl Default for DartConfig {
+impl Default for DartLoggerConfig {
   fn default() -> Self {
     Self {
-      logger_import_path: "package:logging/logging.dart",
-      logger: "Logger('membrane')",
+      import_path: "package:logging/logging.dart",
+      instance: "Logger('membrane')",
       info_log_fn: "info",
       fine_log_fn: "fine",
     }
@@ -567,7 +572,7 @@ impl<'a> Membrane {
   /// Default:
   ///
   /// DartConfig {
-  ///   logger_import_path: "package:logging/logging.dart",
+  ///   import_path: "package:logging/logging.dart",
   ///   logger: "Logger('membrane')",
   ///   info_log_fn: "info",
   ///   fine_log_fn: "fine",
@@ -978,10 +983,11 @@ class {class_name}Api {{
 "#,
       ns = &namespace,
       class_name = &namespace.to_upper_camel_case(),
-      logger_path = self.dart_config.logger_import_path,
+      logger_path = self.dart_config.logger.import_path,
       logger = self
         .dart_config
         .logger
+        .instance
         .replace("')", &format!(".{}')", &namespace))
         .replace("\")", &format!(".{}\")", &namespace)),
     );

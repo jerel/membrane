@@ -74,10 +74,10 @@ bool bindingsLoaded = false;
 final bindings = _load();
 "#,
     lib = library,
-    logger_path = dart_config.logger_import_path,
-    logger = dart_config.logger,
-    info_logger = dart_config.info_log_fn,
-    fine_logger = dart_config.fine_log_fn,
+    logger_path = dart_config.logger.import_path,
+    logger = dart_config.logger.instance,
+    info_logger = dart_config.logger.info_log_fn,
+    fine_logger = dart_config.logger.fine_log_fn,
   )
 }
 
