@@ -514,7 +514,7 @@ dependencies = [
 
 [[package]]
 name = "membrane_types"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
