@@ -118,8 +118,8 @@ impl Default for DartConfig {
       versions: HashMap::from([
         ("sdk", ">=2.17.0 <3.0.0"),
         ("ffi", "^2.0.0"),
-        ("ffigen", "^6.1.2"),
-        ("logger", "^1.0.2"),
+        ("ffigen", "^7.2.7"),
+        ("logger", "^1.1.0"),
       ]),
       logger: DartLoggerConfig::default(),
       v1_import_style: vec![],
