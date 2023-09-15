@@ -254,6 +254,7 @@ trait Callable {
 impl Callable for Ffi {
   fn begin(&mut self) -> &mut Self {
     self.output += &self.fun.begin();
+    self.output += self.fun.docblock;
     self
   }
 
@@ -434,6 +435,7 @@ impl Callable for Ffi {
 impl Callable for Web {
   fn begin(&mut self) -> &mut Self {
     self.output += &self.fun.begin();
+    self.output += self.fun.docblock;
     self
   }
 

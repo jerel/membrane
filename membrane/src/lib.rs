@@ -206,6 +206,7 @@ pub struct Function {
   pub dart_transforms: &'static str,
   pub dart_inner_args: &'static str,
   pub location: SourceCodeLocation,
+  pub docblock: &'static str,
 }
 
 #[doc(hidden)]

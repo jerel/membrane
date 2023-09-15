@@ -10,6 +10,10 @@ pub fn contacts() -> impl Stream<Item = Result<data::Contact, data::Error>> {
   futures::stream::iter(vec![Ok(data::Contact::default())])
 }
 
+///
+/// This is a docblock that was written in Rust and
+/// will be added to the generated Dart code.
+///
 #[async_dart(namespace = "accounts")]
 pub async fn contact(user_id: String) -> Result<data::Contact, data::Error> {
   println!("async {:?}", thread::current().id());
