@@ -1,4 +1,5 @@
 use serde_reflection::{ContainerFormat, Format, Named, VariantFormat};
+use std::fs::{read_to_string, write};
 use std::process::exit;
 use tracing::error;
 
@@ -94,4 +95,17 @@ fn extract_name(format: &Format) -> Option<Vec<String>> {
 
 fn filter_named(item: &Named<Format>) -> Option<Vec<String>> {
   extract_name(&item.value)
+}
+
+pub(crate) fn inject_imports(
+  path: std::path::PathBuf,
+  filter: impl FnMut(&str) -> Option<Vec<String>>,
+) -> Result<(), std::io::Error> {
+  let dart_file = read_to_string(&path)?
+    .lines()
+    .filter_map(filter)
+    .flatten()
+    .collect::<Vec<String>>();
+
+  write(path, dart_file.join("\n"))
 }

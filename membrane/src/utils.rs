@@ -58,6 +58,10 @@ pub(crate) fn display_code_location(location: Option<&Vec<SourceCodeLocation>>) 
   }
 }
 
+pub(crate) fn new_style_export<S: AsRef<str>>(namespace: S, config: &crate::DartConfig) -> bool {
+  !config.v1_import_style.contains(&namespace.as_ref())
+}
+
 #[cfg(test)]
 mod tests {
   use super::display_code_location;

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dart_example/common.dart' show Arg, VecWrapper;
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'package:dart_example/accounts.dart';
