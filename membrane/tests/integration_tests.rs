@@ -58,11 +58,25 @@ mod test {
 
     let api = read_to_string(path.join("lib/src").join("accounts_ffi.dart")).unwrap();
     assert!(api.contains("@immutable\nclass AccountsApi {"));
-    assert!(api.contains("Future<Contact> contact({required String userId}) async {"));
+    assert_contains_part(
+      &api,
+      "///
+/// This is a docblock that was written in Rust and
+/// will be added to the generated Dart code.
+///
+Future<Contact> contact({required String userId}) async {",
+    );
 
     let web_api = read_to_string(path.join("lib/src").join("accounts_web.dart")).unwrap();
     assert!(web_api.contains("@immutable\nclass AccountsApi {"));
-    assert!(web_api.contains("Future<Contact> contact({required String userId}) async {"));
+    assert_contains_part(
+      &web_api,
+      "///
+/// This is a docblock that was written in Rust and
+/// will be added to the generated Dart code.
+///
+Future<Contact> contact({required String userId}) async {",
+    );
 
     let dart_type = read_to_string(
       path

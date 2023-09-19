@@ -3,6 +3,7 @@ use membrane_types::c::CHeaderTypes;
 use membrane_types::dart::{DartArgs, DartParams, DartTransforms};
 use membrane_types::heck::ToLowerCamelCase;
 use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
+use membrane_types::syn::Attribute;
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
 use options::{extract_options, Options};
 use proc_macro::TokenStream;
@@ -23,11 +24,27 @@ struct ReprDart {
   output_style: OutputStyle,
   output: syn::Type,
   error: syn::Type,
+  docblock: String,
 }
 
 impl Parse for ReprDart {
   fn parse(input: ParseStream) -> Result<Self> {
     let arg_buffer;
+
+    let docblock = input
+      .call(Attribute::parse_outer)?
+      .iter()
+      .map(|x| x.meta.require_name_value())
+      .map(|x: Result<&MetaNameValue>| Ok(x?.value.clone()))
+      .filter_map(|x: Result<syn::Expr>| match x {
+        Ok(syn::Expr::Lit(syn::ExprLit {
+          lit: syn::Lit::Str(comment),
+          ..
+        })) => Some(Ok(format!("/// {}\n", &comment.value()))),
+        _ => None,
+      })
+      .collect::<Result<Vec<String>>>()?
+      .join("");
 
     input.parse::<Token![pub]>()?;
     if input.peek(Token![async]) {
@@ -50,6 +67,7 @@ impl Parse for ReprDart {
       output_style,
       output: ret_type,
       error: err_type,
+      docblock,
     })
   }
 }
@@ -144,6 +162,7 @@ fn to_token_stream(
     output,
     error,
     inputs,
+    docblock,
     ..
   } = repr_dart;
 
@@ -367,6 +386,7 @@ fn to_token_stream(
                 dart_inner_args: #dart_inner_args,
                 output: "",
                 location: #debug_location,
+                docblock: #docblock,
               },
               namespace: #namespace,
               trace: |
