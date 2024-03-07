@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[dart_enum(namespace = "accounts")]
 #[dart_enum(namespace = "orgs")]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Hash)]
 pub enum Status {
   Pending,
   Active,
@@ -42,7 +42,7 @@ pub struct Mixed {
   three: Option<VecWrapper>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Hash)]
 pub struct Contact {
   pub id: i64,
   pub full_name: String,

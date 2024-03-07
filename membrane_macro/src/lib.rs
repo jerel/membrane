@@ -172,6 +172,7 @@ fn to_token_stream(
     timeout,
     os_thread,
     borrow,
+    rate_limit,
   } = options;
 
   let mut functions = TokenStream::new();
@@ -203,6 +204,18 @@ fn to_token_stream(
   let dart_outer_params: Vec<String> = DartParams::try_from(&inputs)?.into();
   let dart_transforms: Vec<String> = DartTransforms::try_from(&inputs)?.into();
   let dart_inner_args: Vec<String> = DartArgs::from(&inputs).into();
+
+  let rate_limit_condition = if let Some(limiter) = rate_limit {
+    let hasher_function = Ident::new(&format!("hash_{}", &rust_fn_name), Span::call_site());
+    quote! {
+      let ::std::result::Result::Err(err) = {
+        let hash = #limiter.#hasher_function(#rust_fn_name, #(&#rust_inner_args),*);
+        #limiter.check(#rust_fn_name, hash).await
+      }
+    }
+  } else {
+    quote!(false)
+  };
 
   let return_statement = match output_style {
     OutputStyle::EmitterSerialized | OutputStyle::StreamEmitterSerialized if sync => {
@@ -281,9 +294,13 @@ fn to_token_stream(
     OutputStyle::Serialized => quote! {
       let membrane_join_handle = crate::RUNTIME.get().info_spawn(
         async move {
-          let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
           let isolate = ::membrane::allo_isolate::Isolate::new(membrane_port);
-          ::membrane::utils::send::<#output, #error>(isolate, result);
+          if #rate_limit_condition {
+            ::membrane::utils::send_rate_limited(isolate);
+          } else {
+            let result: ::std::result::Result<#output, #error> = #fn_name(#(#rust_inner_args),*).await;
+            ::membrane::utils::send::<#output, #error>(isolate, result);
+          }
         },
         ::membrane::runtime::Info { name: #rust_fn_name }
       );

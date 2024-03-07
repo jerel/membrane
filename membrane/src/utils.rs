@@ -2,6 +2,14 @@ use crate::SourceCodeLocation;
 use allo_isolate::Isolate;
 use serde::ser::Serialize;
 
+pub fn send_rate_limited(isolate: Isolate) -> bool {
+  if let Ok(buffer) = crate::bincode::serialize(&(crate::MembraneMsgKind::RateLimited as u8)) {
+    isolate.post(crate::allo_isolate::ZeroCopyBuffer(buffer))
+  } else {
+    false
+  }
+}
+
 pub fn send<T: Serialize, E: Serialize>(isolate: Isolate, result: Result<T, E>) -> bool {
   match result {
     Ok(value) => {

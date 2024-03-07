@@ -506,4 +506,17 @@ void main() {
         id: Filter(value: [Match(field: "id", value: "1")]),
         withinGdpr: GDPR(value: true));
   });
+
+  test('test that functions can be rate limited', () async {
+    final contact =
+        Contact(id: 1, fullName: "Alice Smith", status: Status.pending);
+    final accounts = AccountsApi();
+
+    assert(await accounts.rateLimitedFunction(contact: contact) ==
+        contact.fullName);
+    expect(() async => await accounts.rateLimitedFunction(contact: contact),
+        throwsA(isA<MembraneRateLimited>()));
+    expect(() async => await accounts.rateLimitedFunction(contact: contact),
+        throwsA(isA<MembraneRateLimited>()));
+  });
 }

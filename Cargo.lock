@@ -49,6 +49,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.69"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b2d0f03b3640e3a630367e40c468cb7f309529c708ed1d88597047b0e7c6ef7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.18",
+]
+
+[[package]]
 name = "atomic"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -126,6 +137,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derated"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "once_cell",
+ "ordered-float",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -171,8 +193,10 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "cc",
+ "derated",
  "futures",
  "membrane",
+ "once_cell",
  "serde",
  "serde_bytes",
  "tokio",
@@ -540,6 +564,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-traits"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39e3200413f237f41ab11ad6d161bc7239c84dcb631773ccd7de3dfe4b5c267c"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "num_cpus"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -554,6 +587,15 @@ name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
+
+[[package]]
+name = "ordered-float"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a76df7075c7d4d01fdcb46c912dd17fba5b60c78ea480b475f2b6ab6f666584e"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "output_vt100"

@@ -1,8 +1,10 @@
 use data::OptionsDemo;
 use membrane::emitter::{emitter, Emitter, StreamEmitter};
 use membrane::{async_dart, sync_dart};
+use once_cell::sync::Lazy;
 use tokio_stream::Stream;
 
+use std::collections::hash_map::DefaultHasher;
 // used for background threading examples
 use std::{thread, time::Duration};
 
@@ -583,4 +585,31 @@ pub async fn get_org_with_borrowed_type(
 )]
 pub async fn unused_duplicate_borrows(_id: i64) -> Result<data::Organization, String> {
   todo!()
+}
+
+struct MyLimit(RateLimit);
+
+impl MyLimit {
+  fn per_milliseconds(milliseconds: u64, max_queued: Option<u64>) -> Self {
+    Self(RateLimit::per_milliseconds(milliseconds, max_queued))
+  }
+
+  fn hash_rate_limited_function(&self, fn_name: &str, contact: &data::Contact) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut s = DefaultHasher::new();
+    (fn_name, contact.id).hash(&mut s);
+    s.finish()
+  }
+
+  async fn check(&self, key: &'static str, hash: u64) -> Result<(), derated::Dropped> {
+    self.0.check(key, hash).await
+  }
+}
+
+use derated::RateLimit;
+static RATE_LIMIT: Lazy<MyLimit> = Lazy::new(|| MyLimit::per_milliseconds(100, None));
+
+#[async_dart(namespace = "accounts", rate_limit = RATE_LIMIT)]
+pub async fn rate_limited_function(contact: data::Contact) -> Result<String, String> {
+  Ok(contact.full_name)
 }

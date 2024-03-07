@@ -22,8 +22,10 @@ skip-codegen = ["membrane/skip-generate"]
 
 [dependencies]
 async-stream = "0.3"
+derated = {path = "../../derated"}
 futures = "0.3"
 membrane = {path = "../membrane"}
+once_cell = "*"
 serde = {version = "1.0", features = ["derive"]}
 serde_bytes = "0.11"
 tokio = {version = "1", features = ["full"]}

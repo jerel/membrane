@@ -8,6 +8,7 @@ pub(crate) struct Options {
   pub timeout: Option<i32>,
   pub os_thread: bool,
   pub borrow: Vec<String>,
+  pub rate_limit: Option<syn::Path>,
 }
 
 pub(crate) fn extract_options(
@@ -64,6 +65,13 @@ pub(crate) fn extract_options(
       options.disable_logging = val.value();
       options
     }
+    Some((ident, syn::Expr::Path(syn::ExprPath { path, .. })))
+      if ident == "rate_limit" && !sync =>
+    {
+      options.rate_limit = Some(path);
+      options
+    }
+    // TODO handle the invalid rate_limit case
     Some((
       ident,
       Lit(ExprLit {

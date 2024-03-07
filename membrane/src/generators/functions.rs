@@ -338,8 +338,11 @@ impl Callable for Ffi {
         _log.{fine_logger}('Deserializing data from {fn_name}');
       }}
       final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
-      if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+      final msgCode = deserializer.deserializeUint8();
+      if (msgCode == MembraneMsgKind.ok) {{
         return {return_de};
+      }} else if (msgCode == MembraneMsgKind.rateLimited) {{
+        throw MembraneRateLimited();
       }}
       throw {class_name}ApiError({error_de});
     }} finally {{
@@ -362,8 +365,11 @@ impl Callable for Ffi {
           _log.{fine_logger}('Deserializing data from {fn_name}');
         }}
         final deserializer = BincodeDeserializer(input as Uint8List);
-        if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+        final msgCode = deserializer.deserializeUint8();
+        if (msgCode == MembraneMsgKind.ok) {{
           return {return_de};
+        }} else if (msgCode == MembraneMsgKind.rateLimited) {{
+          throw MembraneRateLimited();
         }}
         throw {class_name}ApiError({error_de});
       }});
@@ -394,8 +400,11 @@ impl Callable for Ffi {
         _log.{fine_logger}('Deserializing data from {fn_name}');
       }}
       final deserializer = BincodeDeserializer(await _port.first{timeout} as Uint8List);
-      if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
+      final msgCode = deserializer.deserializeUint8();
+      if (msgCode == MembraneMsgKind.ok) {{
         return {return_de};
+      }} else if (msgCode == MembraneMsgKind.rateLimited) {{
+        throw MembraneRateLimited();
       }}
       throw {class_name}ApiError({error_de});
     }} finally {{

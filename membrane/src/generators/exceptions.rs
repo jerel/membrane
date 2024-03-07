@@ -30,6 +30,10 @@ class MembraneRustPanicException extends MembraneException {
 class MembraneUnknownResponseVariantException extends MembraneException {
   const MembraneUnknownResponseVariantException([String? message]) : super(message);
 }
+
+class MembraneRateLimited extends MembraneException {
+  const MembraneRateLimited([String? message]) : super(message);
+}
 "#
   .to_string()
 }

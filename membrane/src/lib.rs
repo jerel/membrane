@@ -656,6 +656,7 @@ impl<'a> Membrane {
 typedef enum MembraneMsgKind {
   Ok,
   Error,
+  RateLimited,
 } MembraneMsgKind;
 
 typedef enum MembraneResponseKind {
@@ -826,6 +827,7 @@ enums:
       'Error': 'error'
       'Ok': 'ok'
       'Panic': 'panic'
+      'RateLimited': 'rateLimited'
 macros:
   include:
     - __none__
@@ -1354,10 +1356,11 @@ pub struct MembraneResponse {
 
 #[doc(hidden)]
 #[repr(u8)]
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, PartialEq)]
 pub enum MembraneMsgKind {
   Ok,
   Error,
+  RateLimited,
 }
 
 #[doc(hidden)]
