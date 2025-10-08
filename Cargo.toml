@@ -1,4 +1,5 @@
 [workspace]
+resolver = "3"
 exclude = [
   "example",
 ]
@@ -7,3 +8,42 @@ members = [
   "membrane_macro",
   "membrane",
 ]
+
+[workspace.package]
+authors = ["Jerel Unruh <mail@unruhdesigns.com>"]
+description = "Membrane is an opinionated crate that generates a Dart package from a Rust library. Extremely fast performance with strict typing and zero copy returns over the FFI boundary via bincode."
+edition = "2018"
+keywords = ["dart", "ffi", "flutter", "bindings", "codegen"]
+license = "Apache-2.0"
+readme = "./README.md"
+repository = "https://github.com/jerel/membrane"
+rust-version = "1.84"
+version = "0.10.0"
+
+[workspace.dependencies]
+example = { path = "./example", features = ["c-example"] }
+membrane_types = { version = "0.5", path = "./membrane_types" }
+membrane_macro = { version = "0.8", path = "./membrane_macro" }
+serde-generate = { version = "0.32", features = ["dart"] }
+serde-reflection = { version = "0.5" }
+
+allo-isolate = "0.1"
+bincode = "1.3"
+ffi_helpers = "0.3"
+futures = { version = "0.3", features = ["executor"] }
+git-version = "0.3"
+heck = "0.5"
+inventory = "0.3"
+libloading = "0.8"
+once_cell = "1.21"
+pretty_assertions = "1.4"
+pretty_env_logger = "0.5"
+proc-macro2 = "1.0"
+regex = "1.11"
+serde = { version = "1.0", features = ["derive"] }
+serial_test = "3.2"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+toml = "0.9"
+trybuild = "1.0"
+tracing = { version = "0.1", features = ["log"] }
+quote = "1.0"

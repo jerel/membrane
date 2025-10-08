@@ -568,10 +568,8 @@ impl<'a> Membrane {
           return self;
         }
       };
-      let generator = serde_generate::dart::CodeGenerator::new(&config);
-      generator
-        .output(self.destination.to_path_buf(), registry)
-        .unwrap();
+
+      installer.install_module(&config, registry).unwrap();
     }
 
     self.generated = true;
