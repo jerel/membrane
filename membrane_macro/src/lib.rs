@@ -5,13 +5,15 @@ use membrane_types::heck::ToLowerCamelCase;
 use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
 use membrane_types::syn::Attribute;
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
-use options::{extract_function_options, FunctionOptions};
+use options::{extract_enum_options, extract_function_options, FunctionOptions};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use std::convert::TryFrom;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{parse_macro_input, punctuated::Punctuated, Block, Ident, MetaNameValue, Token, Type};
+
+use crate::options::EnumOptions;
 
 mod options;
 mod parsers;
@@ -436,16 +438,16 @@ impl Parse for ReprDartEnum {
 ///
 /// Valid options:
 ///   * `namespace`, used to select the Dart implementation code directory.
+///   * `output`, used to override global enum config of `enum`, `sealed`, or `abstract`.
 #[proc_macro_attribute]
 pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
-  let FunctionOptions {
-    namespace, borrow, ..
-  } = match extract_function_options(
+  let EnumOptions {
+    namespace, output, ..
+  } = match extract_enum_options(
     parse_macro_input!(attrs with Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
       .into_iter()
       .collect(),
-    FunctionOptions::default(),
-    false,
+    EnumOptions::default(),
   ) {
     Ok(options) => options,
     Err(err) => {
@@ -458,24 +460,22 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
   let mut variants = TokenStream::new();
   variants.extend(input.clone());
 
-  if !borrow.is_empty() {
-    variants.extend::<TokenStream>(
-      syn::Error::new(
-        Span::call_site(),
-        "`borrow` is not a valid option for #[dart_enum]",
-      )
-      .to_compile_error()
-      .into(),
-    );
-  }
-
   let ReprDartEnum { name } = parse_macro_input!(input as ReprDartEnum);
   let enum_name = name.to_string();
+  let output = if let Some(val) = output {
+    quote! { Some(#val) }
+  } else {
+    quote! { None }
+  };
 
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
           ::membrane::DeferredEnumTrace {
-              name: #enum_name,
+              enum_data: ::membrane::Enum {
+                name: #enum_name,
+                output: #output,
+                namespace: #namespace
+              },
               namespace: #namespace,
               trace: |
                 tracer: &mut ::membrane::serde_reflection::Tracer

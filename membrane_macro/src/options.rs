@@ -10,6 +10,12 @@ pub(crate) struct FunctionOptions {
   pub borrow: Vec<String>,
 }
 
+#[derive(Debug, Default)]
+pub(crate) struct EnumOptions {
+  pub namespace: String,
+  pub output: Option<String>,
+}
+
 pub(crate) fn extract_function_options(
   mut input: Vec<MetaNameValue>,
   mut options: FunctionOptions,
@@ -127,6 +133,56 @@ pub(crate) fn extract_function_options(
   extract_function_options(input, options, sync)
 }
 
+pub(crate) fn extract_enum_options(
+  mut input: Vec<MetaNameValue>,
+  mut options: EnumOptions,
+) -> Result<EnumOptions, String> {
+  let option = match input.pop() {
+    Some(syn::MetaNameValue { path, value, .. }) => {
+      let ident = path.get_ident().unwrap().clone();
+      Some((ident, value))
+    }
+    _ => None,
+  };
+
+  let options = match option {
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Str(val),
+        ..
+      }),
+    )) if ident == "namespace" => {
+      options.namespace = val.value();
+      options
+    }
+    Some((
+      ident,
+      Lit(ExprLit {
+        lit: syn::Lit::Str(val),
+        ..
+      }),
+    )) if ident == "output" => {
+      options.output = Some(val.value());
+      options
+    }
+    Some(_) => {
+      return Err(
+        r#"only `namespace=""`, and `output="enum|sealed|abstract"` are valid options"#.to_string(),
+      );
+    }
+    None => {
+      // we've iterated over all options and didn't find a namespace (required)
+      if options.namespace.is_empty() {
+        return Err(format!("#[dart_enum] expects a `namespace` attribute"));
+      }
+
+      return Ok(options);
+    }
+  };
+
+  extract_enum_options(input, options)
+}
 fn invalid_option(macr: &str, opt: &str) -> Result<FunctionOptions, String> {
   Err(format!(
     "`{opt}` is not a valid option for `{m}`",
