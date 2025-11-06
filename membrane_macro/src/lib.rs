@@ -5,7 +5,7 @@ use membrane_types::heck::ToLowerCamelCase;
 use membrane_types::rust::{flatten_types, RustArgs, RustExternParams, RustTransforms};
 use membrane_types::syn::Attribute;
 use membrane_types::{proc_macro2, quote, syn, Input, OutputStyle};
-use options::{extract_options, Options};
+use options::{extract_function_options, FunctionOptions};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
@@ -111,11 +111,11 @@ pub fn sync_dart(attrs: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 fn dart_impl(attrs: TokenStream, input: TokenStream, sync: bool) -> TokenStream {
-  let options = match extract_options(
+  let options = match extract_function_options(
     parse_macro_input!(attrs with Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
       .into_iter()
       .collect(),
-    Options::default(),
+    FunctionOptions::default(),
     sync,
   ) {
     Ok(options) => options,
@@ -154,7 +154,7 @@ fn to_token_stream(
   input: TokenStream,
   sync: bool,
   span: Span,
-  options: Options,
+  options: FunctionOptions,
 ) -> Result<TokenStream> {
   let ReprDart {
     fn_name,
@@ -166,7 +166,7 @@ fn to_token_stream(
     ..
   } = repr_dart;
 
-  let Options {
+  let FunctionOptions {
     namespace,
     disable_logging,
     timeout,
@@ -438,13 +438,13 @@ impl Parse for ReprDartEnum {
 ///   * `namespace`, used to select the Dart implementation code directory.
 #[proc_macro_attribute]
 pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
-  let Options {
+  let FunctionOptions {
     namespace, borrow, ..
-  } = match extract_options(
+  } = match extract_function_options(
     parse_macro_input!(attrs with Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
       .into_iter()
       .collect(),
-    Options::default(),
+    FunctionOptions::default(),
     false,
   ) {
     Ok(options) => options,

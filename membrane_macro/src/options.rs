@@ -2,7 +2,7 @@ use membrane_types::syn;
 use syn::{Expr::Lit, ExprLit, MetaNameValue};
 
 #[derive(Debug, Default)]
-pub(crate) struct Options {
+pub(crate) struct FunctionOptions {
   pub namespace: String,
   pub disable_logging: bool,
   pub timeout: Option<i32>,
@@ -10,11 +10,11 @@ pub(crate) struct Options {
   pub borrow: Vec<String>,
 }
 
-pub(crate) fn extract_options(
+pub(crate) fn extract_function_options(
   mut input: Vec<MetaNameValue>,
-  mut options: Options,
+  mut options: FunctionOptions,
   sync: bool,
-) -> Result<Options, String> {
+) -> Result<FunctionOptions, String> {
   let option = match input.pop() {
     Some(syn::MetaNameValue { path, value, .. }) => {
       let ident = path.get_ident().unwrap().clone();
@@ -124,10 +124,10 @@ pub(crate) fn extract_options(
     }
   };
 
-  extract_options(input, options, sync)
+  extract_function_options(input, options, sync)
 }
 
-fn invalid_option(macr: &str, opt: &str) -> Result<Options, String> {
+fn invalid_option(macr: &str, opt: &str) -> Result<FunctionOptions, String> {
   Err(format!(
     "`{opt}` is not a valid option for `{m}`",
     m = macr,
