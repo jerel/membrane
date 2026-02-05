@@ -75,3 +75,17 @@ error: not a supported argument type for Dart interop
    |
 50 | pub async fn failing_arg_two(foo: &[i8]) -> Result<(), String> {
    |                                   ^^^^^
+
+warning: unused variable: `future`
+  --> tests/ui/single.rs:65:22
+   |
+65 |   fn spawn<T>(&self, future: T) -> AbortHandle
+   |                      ^^^^^^ help: if this is intentional, prefix it with an underscore: `_future`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `future`
+  --> tests/ui/single.rs:73:34
+   |
+73 |   fn spawn_blocking<F, R>(&self, future: F) -> AbortHandle
+   |                                  ^^^^^^ help: if this is intentional, prefix it with an underscore: `_future`
