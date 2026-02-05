@@ -116,9 +116,9 @@ impl Default for DartConfig {
   fn default() -> Self {
     Self {
       versions: HashMap::from([
-        ("sdk", ">=2.17.0 <3.0.0"),
-        ("ffi", "^2.0.0"),
-        ("ffigen", "^7.2.7"),
+        ("sdk", ">=3.0.0 <4.0.0"),
+        ("ffi", "^2.1.0"),
+        ("ffigen", "^9.0.0"),
         ("logger", "^1.1.0"),
       ]),
       logger: DartLoggerConfig::default(),
@@ -393,7 +393,7 @@ impl<'a> Membrane {
       Self::create_borrows(&namespaced_fn_registry, namespace, &mut borrows);
     });
 
-    // collect all the metadata about functions (without tracing them yet)
+    // collect all the metadata about enums (without tracing them yet)
     enums.iter().for_each(|item| {
       namespaced_enum_registry
         .entry(item.namespace)
