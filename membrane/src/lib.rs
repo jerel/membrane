@@ -491,7 +491,7 @@ impl<'a> Membrane {
       !path.as_ref().to_str().unwrap().is_empty(),
       "package_destination_dir() cannot be called with an empty path"
     );
-    if self.destination == PathBuf::from("membrane_output") {
+    if *self.destination == *"membrane_output" {
       self.destination = path.as_ref().to_path_buf();
     }
     self
@@ -574,11 +574,7 @@ impl<'a> Membrane {
             .into_iter()
             .flat_map(|enums| {
               enums.iter().filter_map(|x| {
-                if x.output.is_some() {
-                  Some((x.name, x.output.unwrap()))
-                } else {
-                  None
-                }
+                x.output.map(|output| (x.name, output))
               })
             })
             .collect::<HashMap<&'static str, &'static str>>(),
