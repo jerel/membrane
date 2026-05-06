@@ -2,7 +2,7 @@ use pretty_assertions::assert_eq;
 use std::fs;
 use std::io::Write;
 use std::process::{exit, Command};
-use std::{fmt, path::PathBuf};
+use std::{env, fmt, path::PathBuf};
 
 pub fn assert_contains_part(left: &str, right: &str) {
   let left_no_ws = left.split_whitespace().collect::<String>();
@@ -28,21 +28,28 @@ impl<'a> fmt::Debug for PrettyString<'a> {
 }
 
 pub fn build_lib(path: &PathBuf, additional_args: &mut Vec<&str>) {
-  let mut args = vec!["build", "-p", "example"];
+  let example_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+    .join("..")
+    .join("example");
+
+  let mut args = vec!["build"];
   args.append(additional_args);
 
   Command::new("cargo")
+    .current_dir(&example_dir)
     .args(args)
     .output()
     .expect("lib could not be compiled for integration tests");
 
+  let target_dir = example_dir.join("target").join("debug");
+
   // unlink the symlinks because they might be stale
   let _ = fs::remove_file(path.join("libexample.so"));
   let _ = fs::remove_file(path.join("libexample.dylib"));
-  // link the workspace compiled artifacts to the temp test folder
-  let _ = fs::hard_link("../target/debug/libexample.so", path.join("libexample.so"));
+  // link the compiled artifacts to the dart_example folder
+  let _ = fs::hard_link(target_dir.join("libexample.so"), path.join("libexample.so"));
   let _ = fs::hard_link(
-    "../target/debug/libexample.dylib",
+    target_dir.join("libexample.dylib"),
     path.join("libexample.dylib"),
   );
 }

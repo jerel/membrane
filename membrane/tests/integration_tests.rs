@@ -5,20 +5,20 @@ mod test {
 
   use membrane::Membrane;
   use serial_test::serial;
-  use std::{fs::read_to_string, path::Path};
+  use std::{env, fs::read_to_string, path::PathBuf};
 
   #[test]
   #[serial]
   #[cfg(feature = "c-example")]
   fn test_c_project() {
-    let path = Path::new("../dart_example");
+    let path = dart_example_path();
 
     // reference the example lib so it doesn't get optimized away
     let _ = example::load();
 
     Membrane::new()
       .timeout(200)
-      .package_destination_dir(path)
+      .package_destination_dir(&path)
       .using_lib("libexample")
       .create_pub_package()
       .write_api()
@@ -42,14 +42,14 @@ mod test {
   #[test]
   #[serial]
   fn base_project() {
-    let path = Path::new("../dart_example");
+    let path = dart_example_path();
 
     // reference the example lib so it doesn't get optimized away
     example::load();
 
     Membrane::new()
       .timeout(200)
-      .package_destination_dir(path)
+      .package_destination_dir(&path)
       .using_lib("libexample")
       .create_pub_package()
       .write_api()
@@ -150,14 +150,14 @@ import '../locations/locations.dart' show GDPR, Location;
   #[test]
   #[serial]
   fn test_class_enums() {
-    let path = Path::new("../dart_example");
+    let path = dart_example_path();
 
     // reference the example lib so it doesn't get optimized away
     example::load();
 
     Membrane::new()
       .with_c_style_enums(false)
-      .package_destination_dir(path)
+      .package_destination_dir(&path)
       .using_lib("libexample")
       .create_pub_package()
       .write_api()
@@ -176,7 +176,7 @@ import '../locations/locations.dart' show GDPR, Location;
   #[test]
   #[serial]
   fn base_project_loading_cdylib() {
-    let path = Path::new("../dart_example");
+    let path = dart_example_path();
 
     build_lib(&path.to_path_buf(), &mut vec![]);
 
@@ -188,7 +188,7 @@ import '../locations/locations.dart' show GDPR, Location;
 
     Membrane::new_from_cdylib(&path.join(lib))
       .timeout(200)
-      .package_destination_dir(path)
+      .package_destination_dir(&path)
       .using_lib("libexample")
       .create_pub_package()
       .write_api()
@@ -201,5 +201,11 @@ import '../locations/locations.dart' show GDPR, Location;
       vec!["test", "test/main_test.dart"],
       true,
     );
+  }
+
+  fn dart_example_path() -> PathBuf {
+    PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+      .join("..")
+      .join("dart_example")
   }
 }
