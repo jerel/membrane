@@ -174,7 +174,7 @@ pub(crate) fn extract_enum_options(
     None => {
       // we've iterated over all options and didn't find a namespace (required)
       if options.namespace.is_empty() {
-        return Err(format!("#[dart_enum] expects a `namespace` attribute"));
+        return Err("#[dart_enum] expects a `namespace` attribute".to_string());
       }
 
       return Ok(options);

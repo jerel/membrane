@@ -807,7 +807,6 @@ uint8_t membrane_free_membrane_string(char *ptr);
   ///
   /// Private implementations
   ///
-
   fn write_pubspec(&mut self) -> &mut Self {
     // serde-generate uses the last namespace as the pubspec name and dart doesn't
     // like that so we set a proper package name from the basename or from an explicitly given name
@@ -1041,7 +1040,7 @@ export './src/{ns}_ffi.dart' if (dart.library.html) './src/{ns}_web.dart';
       .join("lib/src")
       .join(namespace.to_string() + "_ffi.dart");
 
-    if self.namespaced_fn_registry.get(namespace).is_none() {
+    if !self.namespaced_fn_registry.contains_key(namespace) {
       let head = format!(
         "export './{ns}/{ns}.dart' hide TraitHelpers;",
         ns = &namespace
@@ -1137,7 +1136,7 @@ class {class_name}Api {{
       .join(namespace.to_string() + "_web.dart");
 
     // perhaps this namespace has only enums in it and no functions
-    if self.namespaced_fn_registry.get(namespace).is_none() {
+    if !self.namespaced_fn_registry.contains_key(namespace) {
       let head = if utils::new_style_export(namespace, &self.dart_config) {
         "".to_string()
       } else {
