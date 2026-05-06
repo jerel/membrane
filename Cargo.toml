@@ -24,8 +24,8 @@ version = "1.0.0"
 example = { path = "./example", features = ["c-example"] }
 membrane_types = { version = "0.5", path = "./membrane_types" }
 membrane_macro = { version = "0.8", path = "./membrane_macro" }
-serde-generate = { git = "https://github.com/jerel/serde-reflection", rev = "572d856", features = ["dart"] }
-serde-reflection = { git = "https://github.com/jerel/serde-reflection", rev = "572d856" }
+serde-generate = { version = "0.33", features = ["dart"] }
+serde-reflection = { version = "0.5" }
 
 allo-isolate = "0.1"
 bincode = "1.3"
