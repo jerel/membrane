@@ -491,7 +491,9 @@ impl<'a> Membrane {
       !path.as_ref().to_str().unwrap().is_empty(),
       "package_destination_dir() cannot be called with an empty path"
     );
-    if *self.destination == *"membrane_output" {
+    // compatibility with rust 1.84
+    #[allow(clippy::cmp_owned)]
+    if self.destination == PathBuf::from("membrane_output") {
       self.destination = path.as_ref().to_path_buf();
     }
     self
@@ -573,9 +575,9 @@ impl<'a> Membrane {
             .get(namespace)
             .into_iter()
             .flat_map(|enums| {
-              enums.iter().filter_map(|x| {
-                x.output.map(|output| (x.name, output))
-              })
+              enums
+                .iter()
+                .filter_map(|x| x.output.map(|output| (x.name, output)))
             })
             .collect::<HashMap<&'static str, &'static str>>(),
         );
