@@ -23,7 +23,7 @@ version = "1.0.0"
 [workspace.dependencies]
 example = { path = "./example", features = ["c-example"] }
 membrane_types = { version = "0.5", path = "./membrane_types" }
-membrane_macro = { version = "0.8", path = "./membrane_macro" }
+membrane_macro = { version = "0.9", path = "./membrane_macro" }
 serde-generate = { version = "0.33", features = ["dart"] }
 serde-reflection = { version = "0.5" }
 

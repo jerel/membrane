@@ -481,7 +481,7 @@ dependencies = [
 
 [[package]]
 name = "membrane_macro"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "membrane_types",
  "once_cell",
