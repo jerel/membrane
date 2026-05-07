@@ -6,7 +6,6 @@ use std::io::Write;
 /// The types of interfaces that we generate. FFI and Web are used on
 /// the platforms of the same name and C is used to generate headers for use by FFI.
 ///
-
 pub(crate) struct Ffi {
   output: String,
   fun: Function,
@@ -27,7 +26,6 @@ pub(crate) struct C {
 /// Convert a Function struct into a string representation of a Dart function
 ///
 ///
-
 pub(crate) trait Builder {
   fn new(input: &Function) -> Self;
   fn build(&mut self, config: &Membrane) -> Self;
@@ -113,7 +111,6 @@ impl Builder for C {
 /// Write a string representation to the given buffer
 ///
 ///
-
 pub(crate) trait Writable: Builder {
   fn write(&self, mut buffer: &std::fs::File) {
     buffer

@@ -12,15 +12,15 @@ jobs:
     name: build oldest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@1.62.0
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.84.0
       - run: cargo build --verbose --features c-example --manifest-path membrane/Cargo.toml
   build-stable:
     name: build and test stable
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - uses: dart-lang/setup-dart@v1
 

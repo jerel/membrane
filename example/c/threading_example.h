@@ -3,6 +3,8 @@
 // The `init` function can be named anything (it is called from Rust)
 // and it is free to take additional arguments if desired.
 
+#include <stdbool.h>
+
 typedef void *Context;
 typedef void *Data;
 typedef struct MembraneHandle
@@ -10,7 +12,7 @@ typedef struct MembraneHandle
     Context push_ctx;
     void (*push)(Context, Data);
     Context is_done_ctx;
-    int (*is_done)(Context);
+    bool (*is_done)(Context);
 } MembraneHandle;
 
 void init(MembraneHandle *);
