@@ -9,3 +9,17 @@ error: expected enum `Result`
   |
 5 | pub fn two_failure() -> impl Stream<Item = i32, String> {}
   |                                            ^^^
+
+warning: unused variable: `future`
+  --> tests/ui/stream.rs:19:22
+   |
+19 |   fn spawn<T>(&self, future: T) -> AbortHandle
+   |                      ^^^^^^ help: if this is intentional, prefix it with an underscore: `_future`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `future`
+  --> tests/ui/stream.rs:27:34
+   |
+27 |   fn spawn_blocking<F, R>(&self, future: F) -> AbortHandle
+   |                                  ^^^^^^ help: if this is intentional, prefix it with an underscore: `_future`

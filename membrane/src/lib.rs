@@ -116,9 +116,9 @@ impl Default for DartConfig {
   fn default() -> Self {
     Self {
       versions: HashMap::from([
-        ("sdk", ">=2.17.0 <3.0.0"),
-        ("ffi", "^2.0.0"),
-        ("ffigen", "^7.2.7"),
+        ("sdk", ">=3.0.0 <4.0.0"),
+        ("ffi", "^2.1.0"),
+        ("ffigen", "^9.0.0"),
         ("logger", "^1.1.0"),
       ]),
       logger: DartLoggerConfig::default(),
@@ -227,9 +227,17 @@ impl std::fmt::Debug for DeferredTrace {
 }
 
 #[doc(hidden)]
+#[derive(Debug, Clone)]
+pub struct Enum {
+  pub name: &'static str,
+  pub output: Option<&'static str>,
+  pub namespace: &'static str,
+}
+
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct DeferredEnumTrace {
-  pub name: &'static str,
+  pub enum_data: Enum,
   pub namespace: &'static str,
   pub trace: fn(tracer: &mut serde_reflection::Tracer),
 }
@@ -237,7 +245,7 @@ pub struct DeferredEnumTrace {
 impl std::fmt::Debug for DeferredEnumTrace {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     f.debug_struct("DeferredEnumTrace")
-      .field("name", &self.name)
+      .field("enum_data", &self.enum_data)
       .field("namespace", &self.namespace)
       .finish()
   }
@@ -264,8 +272,10 @@ pub struct Membrane {
   namespaces: Vec<&'static str>,
   namespaced_registry: HashMap<&'static str, serde_reflection::Result<Registry>>,
   namespaced_fn_registry: HashMap<&'static str, Vec<Function>>,
+  namespaced_enum_registry: HashMap<&'static str, Vec<Enum>>,
   generated: bool,
   c_style_enums: bool,
+  sealed_enums: bool,
   timeout: Option<i32>,
   borrows: Borrows,
   _inputs: Vec<libloading::Library>,
@@ -346,7 +356,7 @@ impl<'a> Membrane {
       );
     }
 
-    enums.sort_by_cached_key(|e| &e.name);
+    enums.sort_by_cached_key(|e| &e.enum_data.name);
 
     functions.sort_by_cached_key(|f| {
       format!(
@@ -367,6 +377,7 @@ impl<'a> Membrane {
     let mut namespaced_registry = HashMap::new();
     let mut namespaced_samples = HashMap::new();
     let mut namespaced_fn_registry = HashMap::new();
+    let mut namespaced_enum_registry = HashMap::new();
     let mut borrows: Borrows = HashMap::new();
 
     // collect all the metadata about functions (without tracing them yet)
@@ -382,6 +393,14 @@ impl<'a> Membrane {
       Self::create_borrows(&namespaced_fn_registry, namespace, &mut borrows);
     });
 
+    // collect all the metadata about enums (without tracing them yet)
+    enums.iter().for_each(|item| {
+      namespaced_enum_registry
+        .entry(item.namespace)
+        .or_insert_with(Vec::new)
+        .push(item.enum_data.clone());
+    });
+
     // trace all the enums at least once
     enums.iter().for_each(|item| {
       // trace the enum into the borrowing namespace's registry
@@ -390,7 +409,7 @@ impl<'a> Membrane {
         .into_iter()
         .for_each(|(for_namespace, from_namespaces)| {
           if let Some((types, _location)) = from_namespaces.get(item.namespace) {
-            if types.contains(item.name) {
+            if types.contains(item.enum_data.name) {
               let tracer = namespaced_registry
                 .entry(for_namespace)
                 .or_insert_with(|| Tracer::new(TracerConfig::default()));
@@ -449,9 +468,11 @@ impl<'a> Membrane {
         .map(|(key, val)| (key, val.registry()))
         .collect(),
       namespaced_fn_registry,
+      namespaced_enum_registry,
       namespaces,
       generated: false,
       c_style_enums: true,
+      sealed_enums: true,
       timeout: None,
       borrows,
       _inputs: input_libs,
@@ -470,6 +491,8 @@ impl<'a> Membrane {
       !path.as_ref().to_str().unwrap().is_empty(),
       "package_destination_dir() cannot be called with an empty path"
     );
+    // compatibility with rust 1.84
+    #[allow(clippy::cmp_owned)]
     if self.destination == PathBuf::from("membrane_output") {
       self.destination = path.as_ref().to_path_buf();
     }
@@ -544,7 +567,20 @@ impl<'a> Membrane {
       debug!("Generating lib/src/ code for namespace {}", namespace);
       let config = serde_generate::CodeGeneratorConfig::new(namespace.to_string())
         .with_encodings(vec![serde_generate::Encoding::Bincode])
-        .with_c_style_enums(self.c_style_enums);
+        .with_c_style_enums(self.c_style_enums)
+        .with_sealed_enums(self.sealed_enums)
+        .with_enum_type_overrides(
+          self
+            .namespaced_enum_registry
+            .get(namespace)
+            .into_iter()
+            .flat_map(|enums| {
+              enums
+                .iter()
+                .filter_map(|x| x.output.map(|output| (x.name, output)))
+            })
+            .collect::<HashMap<&'static str, &'static str>>(),
+        );
 
       let registry = match self.namespaced_registry.get(namespace).unwrap() {
         Ok(reg) => reg,
@@ -568,10 +604,8 @@ impl<'a> Membrane {
           return self;
         }
       };
-      let generator = serde_generate::dart::CodeGenerator::new(&config);
-      generator
-        .output(self.destination.to_path_buf(), registry)
-        .unwrap();
+
+      installer.install_module(&config, registry).unwrap();
     }
 
     self.generated = true;
@@ -603,6 +637,16 @@ impl<'a> Membrane {
   pub fn with_c_style_enums(&mut self, val: bool) -> &mut Self {
     return_if_error!(self);
     self.c_style_enums = val;
+    self
+  }
+
+  ///
+  /// When set to `true` (the default) we generate sealed classes for complex enums
+  /// instead of abstract classes. When set to `false`
+  /// abstract classes are generated.
+  pub fn with_sealed_enums(&mut self, val: bool) -> &mut Self {
+    return_if_error!(self);
+    self.sealed_enums = val;
     self
   }
 
@@ -761,7 +805,6 @@ uint8_t membrane_free_membrane_string(char *ptr);
   ///
   /// Private implementations
   ///
-
   fn write_pubspec(&mut self) -> &mut Self {
     // serde-generate uses the last namespace as the pubspec name and dart doesn't
     // like that so we set a proper package name from the basename or from an explicitly given name
@@ -995,7 +1038,7 @@ export './src/{ns}_ffi.dart' if (dart.library.html) './src/{ns}_web.dart';
       .join("lib/src")
       .join(namespace.to_string() + "_ffi.dart");
 
-    if self.namespaced_fn_registry.get(namespace).is_none() {
+    if !self.namespaced_fn_registry.contains_key(namespace) {
       let head = format!(
         "export './{ns}/{ns}.dart' hide TraitHelpers;",
         ns = &namespace
@@ -1091,7 +1134,7 @@ class {class_name}Api {{
       .join(namespace.to_string() + "_web.dart");
 
     // perhaps this namespace has only enums in it and no functions
-    if self.namespaced_fn_registry.get(namespace).is_none() {
+    if !self.namespaced_fn_registry.contains_key(namespace) {
       let head = if utils::new_style_export(namespace, &self.dart_config) {
         "".to_string()
       } else {
