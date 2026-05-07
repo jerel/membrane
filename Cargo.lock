@@ -717,8 +717,7 @@ dependencies = [
 [[package]]
 name = "serde-generate"
 version = "0.33.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f0cd15a5e1d4648c9ba334c936c4d3047acbe275f571c9be07cda925ed82ba6"
+source = "git+https://github.com/jerel/serde-reflection?rev=29e904f#29e904f16e4ea233c04c109d1ceb2e2bb6dcc80c"
 dependencies = [
  "anyhow",
  "heck 0.3.3",
@@ -732,8 +731,7 @@ dependencies = [
 [[package]]
 name = "serde-reflection"
 version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68fb2363ca88876b3e16442b02dde5305646fd50df297c79a4b54fc5f5cf51d4"
+source = "git+https://github.com/jerel/serde-reflection?rev=29e904f#29e904f16e4ea233c04c109d1ceb2e2bb6dcc80c"
 dependencies = [
  "erased-discriminant",
  "once_cell",
