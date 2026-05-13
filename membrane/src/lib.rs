@@ -381,28 +381,28 @@ impl<'a> Membrane {
     let mut borrows: Borrows = HashMap::new();
 
     // collect all the metadata about functions (without tracing them yet)
-    functions.iter().for_each(|item| {
+    for item in &functions {
       namespaced_fn_registry
         .entry(item.namespace)
         .or_insert_with(Vec::new)
         .push(item.function.clone());
-    });
+    }
 
     // work out which namespaces borrow which types from other namespaces
-    namespaces.iter().for_each(|namespace| {
+    for namespace in &namespaces {
       Self::create_borrows(&namespaced_fn_registry, namespace, &mut borrows);
-    });
+    }
 
     // collect all the metadata about enums (without tracing them yet)
-    enums.iter().for_each(|item| {
+    for item in &enums {
       namespaced_enum_registry
         .entry(item.namespace)
         .or_insert_with(Vec::new)
         .push(item.enum_data.clone());
-    });
+    }
 
     // trace all the enums at least once
-    enums.iter().for_each(|item| {
+    for item in &enums {
       // trace the enum into the borrowing namespace's registry
       for (for_namespace, from_namespaces) in &borrows {
         if let Some((types, _location)) = from_namespaces.get(item.namespace) {
@@ -422,10 +422,10 @@ impl<'a> Membrane {
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
       (item.trace)(tracer);
-    });
+    }
 
     // now that we have the enums in the registry we'll trace each of the functions
-    functions.iter().for_each(|item| {
+    for item in &functions {
       let tracer = namespaced_registry
         .entry(item.namespace)
         .or_insert_with(|| Tracer::new(TracerConfig::default()));
@@ -435,7 +435,7 @@ impl<'a> Membrane {
         .or_insert_with(Samples::new);
 
       (item.trace)(tracer, samples);
-    });
+    }
 
     Self {
       errors,
@@ -940,9 +940,9 @@ headers:
       ));
     }
 
-    fns.iter().for_each(|x| {
+    for x in fns {
       generators::functions::C::new(x).build(self).write(&buffer);
-    });
+    }
 
     self
   }
@@ -1114,11 +1114,11 @@ class {class_name}Api {{
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
     buffer.write_all(head.as_bytes()).unwrap();
 
-    fns.iter().for_each(|x| {
+    for x in fns {
       generators::functions::Ffi::new(x)
         .build(self)
         .write(&buffer);
-    });
+    }
 
     buffer.write_all(b"}\n").unwrap();
 
@@ -1194,11 +1194,11 @@ class {class_name}Api {{
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
     buffer.write_all(head.as_bytes()).unwrap();
 
-    fns.iter().for_each(|x| {
+    for x in fns {
       generators::functions::Web::new(x)
         .build(self)
         .write(&buffer);
-    });
+    }
 
     buffer.write_all(b"}\n").unwrap();
 
@@ -1217,37 +1217,32 @@ class {class_name}Api {{
     let default = &vec![];
     let fns = namespaced_fn_registry.get(namespace).unwrap_or(default);
 
-    fns.iter().for_each(move |fun| {
-      fun
+    for fun in fns {
+      for borrow_list in fun
         .borrow
         .iter()
         .map(|borrow| borrow.split("::").map(|x| x.trim()).collect::<Vec<&str>>())
-        .for_each(|borrow_list| {
-          if let [from_namespace, r#type] = borrow_list[..] {
-            let imports = borrows.entry(namespace).or_default();
-            let (types, source_code_locations) = imports.entry(from_namespace).or_insert((BTreeSet::new(), HashMap::new()));
-            types.insert(r#type);
-            source_code_locations.entry(r#type).or_default().push(fun.location);
-          } else {
-            tracing::error!("Found an invalid `borrow`: `{:?}`{location_hint}. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow, location_hint = utils::display_code_location(Some(&vec![fun.location])));
-            exit(1);
-          }
-        });
-    });
+      {
+        if let [from_namespace, r#type] = borrow_list[..] {
+          let imports = borrows.entry(namespace).or_default();
+          let (types, source_code_locations) = imports.entry(from_namespace).or_insert((BTreeSet::new(), HashMap::new()));
+          types.insert(r#type);
+          source_code_locations.entry(r#type).or_default().push(fun.location);
+        } else {
+          tracing::error!("Found an invalid `borrow`: `{:?}`{location_hint}. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow, location_hint = utils::display_code_location(Some(&vec![fun.location])));
+          exit(1);
+        }
+      }
+    }
   }
 
   fn create_imports(&mut self) -> &mut Self {
     let mut owned_types: Vec<String> = vec![];
     let mut non_owned_types: Vec<String> = vec![];
-    let borrows = self.borrows.clone();
+    let borrows = std::mem::take(&mut self.borrows);
 
-    borrows.iter().for_each(|(namespace, imports)| {
-      imports
-        .iter()
-        // sort the imports in reverse order so that we can append them to existing
-        // lines and end up with a descending order
-        .rev()
-        .for_each(|(from_namespace, (borrowed_types, borrow_locations_for_type))| {
+    for (namespace, imports) in &borrows {
+      for (from_namespace, (borrowed_types, borrow_locations_for_type)) in imports.iter().rev() {
           let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
             if namespace == from_namespace {
               self.errors.push(format!("`{ns}::{import}`{location_hint} was borrowed by `{ns}` which is a self reference", location_hint = utils::display_code_location(borrow_locations_for_type.get(r#type)), ns = namespace, import = r#type));
@@ -1342,12 +1337,13 @@ class {class_name}Api {{
               }).unwrap();
           }
 
-          borrowed_types.iter().for_each(|borrowed_type| {
+          for borrowed_type in &borrowed_types {
             let filename = format!("{}.dart", borrowed_type.to_snake_case());
             let _ = remove_file(namespace_path.join(filename));
-          });
-        });
-    });
+          }
+      }
+    }
+    self.borrows = borrows;
 
     // if we already have an error about borrows above then lets exit with that
     return_if_error!(self);
