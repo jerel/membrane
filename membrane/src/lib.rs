@@ -597,7 +597,7 @@ impl<'a> Membrane {
           return self;
         }
         Err(err) => {
-          self.errors.push(format!("{}", err));
+          self.errors.push(err.to_string());
           return self;
         }
       };
