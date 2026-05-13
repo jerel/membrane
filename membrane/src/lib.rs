@@ -725,10 +725,11 @@ uint8_t membrane_free_membrane_string(char *ptr);
         .push(format!("unable to write {}", path.to_str().unwrap()));
     });
 
-    let namespaces = self.namespaces.clone();
-    namespaces.iter().for_each(|x| {
+    let namespaces = std::mem::take(&mut self.namespaces);
+    for x in &namespaces {
       self.write_header(x);
-    });
+    }
+    self.namespaces = namespaces;
 
     self
   }
@@ -737,12 +738,13 @@ uint8_t membrane_free_membrane_string(char *ptr);
   /// Write all Dart classes needed by the Dart application.
   pub fn write_api(&mut self) -> &mut Self {
     return_if_error!(self);
-    let namespaces = self.namespaces.clone();
-    namespaces.iter().for_each(|x| {
+    let namespaces = std::mem::take(&mut self.namespaces);
+    for x in &namespaces {
       self.create_ffi_impl(x);
       self.create_web_impl(x);
       self.create_class(x.to_string());
-    });
+    }
+    self.namespaces = namespaces;
 
     self.create_imports();
 
