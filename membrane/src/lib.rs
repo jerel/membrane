@@ -441,7 +441,7 @@ impl<'a> Membrane {
       errors,
       package_name: match std::env::var_os("MEMBRANE_PACKAGE_NAME") {
         Some(name) => name.into_string().unwrap(),
-        None => "".to_string(),
+        None => String::new(),
       },
       destination: match std::env::var_os("MEMBRANE_DESTINATION") {
         Some(dest) => PathBuf::from(dest),
@@ -895,7 +895,7 @@ headers:
             .collect::<Vec<String>>()
             .join("")
       } else {
-        "".to_string()
+        String::new()
       }
     );
 
@@ -1102,7 +1102,7 @@ class {class_name}Api {{
         .replace("')", &format!(".{}')", &namespace))
         .replace("\")", &format!(".{}\")", &namespace)),
       export = if utils::new_style_export(namespace, &self.dart_config) {
-        "".to_string()
+        String::new()
       } else {
         format!(
           "\nexport './{ns}/{ns}.dart' hide TraitHelpers;\n",
@@ -1135,7 +1135,7 @@ class {class_name}Api {{
     // perhaps this namespace has only enums in it and no functions
     if !self.namespaced_fn_registry.contains_key(namespace) {
       let head = if utils::new_style_export(namespace, &self.dart_config) {
-        "".to_string()
+        String::new()
       } else {
         format!(
           "export './{ns}/{ns}.dart' hide TraitHelpers;",
@@ -1182,7 +1182,7 @@ class {class_name}Api {{
       ns = &namespace,
       class_name = &namespace.to_upper_camel_case(),
       export = if utils::new_style_export(namespace, &self.dart_config) {
-        "".to_string()
+        String::new()
       } else {
         format!(
           "export './{ns}/{ns}.dart' hide TraitHelpers;",
