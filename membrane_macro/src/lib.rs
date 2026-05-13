@@ -253,8 +253,13 @@ fn to_token_stream(
       };
 
       let len: [u8; 8] = (data.len() as i64).to_le_bytes();
-      // prepend the length of response, then box the vec to shrink capacity
-      let mut buffer = vec![len.to_vec(), data.clone()].concat().into_boxed_slice();
+      // prepend the length of response into a single allocation, then box to shrink capacity
+      let mut buffer = {
+        let mut b = ::std::vec::Vec::with_capacity(8 + data.len());
+        b.extend_from_slice(&len);
+        b.extend(data);
+        b.into_boxed_slice()
+      };
       let handle = buffer.as_mut_ptr();
       // forget so that Rust doesn't free while C is using it, we'll free it later
       ::std::mem::forget(buffer);

@@ -334,7 +334,7 @@ impl Callable for Ffi {
       if (!_loggingDisabled) {{
         _log.{fine_logger}('Deserializing data from {fn_name}');
       }}
-      final deserializer = BincodeDeserializer(data.asTypedList(length + 8).sublist(8));
+      final deserializer = BincodeDeserializer(data.elementAt(8).asTypedList(length));
       if (deserializer.deserializeUint8() == MembraneMsgKind.ok) {{
         return {return_de};
       }}
