@@ -404,20 +404,17 @@ impl<'a> Membrane {
     // trace all the enums at least once
     enums.iter().for_each(|item| {
       // trace the enum into the borrowing namespace's registry
-      borrows
-        .clone()
-        .into_iter()
-        .for_each(|(for_namespace, from_namespaces)| {
-          if let Some((types, _location)) = from_namespaces.get(item.namespace) {
-            if types.contains(item.enum_data.name) {
-              let tracer = namespaced_registry
-                .entry(for_namespace)
-                .or_insert_with(|| Tracer::new(TracerConfig::default()));
+      for (for_namespace, from_namespaces) in &borrows {
+        if let Some((types, _location)) = from_namespaces.get(item.namespace) {
+          if types.contains(item.enum_data.name) {
+            let tracer = namespaced_registry
+              .entry(*for_namespace)
+              .or_insert_with(|| Tracer::new(TracerConfig::default()));
 
-              (item.trace)(tracer);
-            }
+            (item.trace)(tracer);
           }
-        });
+        }
+      }
 
       // trace the enum into the owning namespace's registry
       let tracer = namespaced_registry
