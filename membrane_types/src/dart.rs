@@ -18,7 +18,7 @@ impl std::convert::TryFrom<&Vec<Input>> for DartParams {
         dart_type = dart_param_type(
           &flatten_types(&input.ty, vec![])?
             .iter()
-            .map(|x| x.as_str())
+            .map(String::as_str)
             .collect::<Vec<&str>>(),
           &input.ty
         )?,
@@ -43,7 +43,7 @@ impl std::convert::TryFrom<&Vec<Input>> for DartTransforms {
         cast = cast_dart_type_to_c(
           &flatten_types(&input.ty, vec![])?
             .iter()
-            .map(|x| x.as_str())
+            .map(String::as_str)
             .collect::<Vec<&str>>(),
           &input.variable,
           &input.ty
@@ -123,7 +123,7 @@ pub fn dart_type(types: &[&str]) -> String {
   .to_string()
 }
 
-fn dart_param_type(types: &[&str], type_: &syn::Type) -> syn::Result<String> {
+fn dart_param_type(types: &[&str], syn_type: &syn::Type) -> syn::Result<String> {
   let ty;
   let result = match types[..] {
     ["String"] => "required String",
@@ -152,7 +152,7 @@ fn dart_param_type(types: &[&str], type_: &syn::Type) -> syn::Result<String> {
     }
     _ => {
       return Err(syn::Error::new_spanned(
-        type_,
+        syn_type,
         "not a supported argument type for Dart interop",
       ))
     }
@@ -169,7 +169,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       return unsupported_type_error(ty, "a struct")
     }
     _ => (),
-  };
+  }
 
   let cast = match types[..] {
     ["&str"] => return unsupported_type_error(ty, "String"),

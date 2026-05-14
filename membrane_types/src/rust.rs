@@ -20,7 +20,7 @@ impl std::convert::TryFrom<&Vec<Input>> for RustExternParams {
       let c_type = rust_c_type(
         &flatten_types(&input.ty, vec![])?
           .iter()
-          .map(|x| x.as_str())
+          .map(String::as_str)
           .collect::<Vec<&str>>(),
         &input.ty,
       )?;
@@ -42,7 +42,7 @@ impl std::convert::TryFrom<&Vec<Input>> for RustTransforms {
       let cast = cast_c_type_to_rust(
         &flatten_types(&input.ty, vec![])?
           .iter()
-          .map(|x| x.as_str())
+          .map(String::as_str)
           .collect::<Vec<&str>>(),
         &input.variable,
         &input.ty,
@@ -156,7 +156,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
     [serialized, ..] if serialized != "Option" => {
       let variable_name = variable;
       let variable = Ident::new_raw(variable, Span::call_site());
-      let deserialize = deserialize(variable, variable_name, ty, types[0]);
+      let deserialize = deserialize(&variable, variable_name, ty, types[0]);
       q! {
         {
           #deserialize
@@ -213,7 +213,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
       let ty = extract_type_from_option(ty).unwrap();
       let str_ty = q!(#ty).to_string().split_whitespace().collect::<String>();
 
-      let deserialize = deserialize(variable.clone(), variable_name, ty, str_ty.as_str());
+      let deserialize = deserialize(&variable, variable_name, ty, str_ty.as_str());
 
       q! {
         {
@@ -240,7 +240,7 @@ fn cast_c_type_to_rust(types: &[&str], variable: &str, ty: &Type) -> syn::Result
   Ok(result)
 }
 
-fn deserialize(variable: Ident, variable_name: &str, ty: &Type, str_ty: &str) -> TokenStream2 {
+fn deserialize(variable: &Ident, variable_name: &str, ty: &Type, str_ty: &str) -> TokenStream2 {
   q! {
     let data = unsafe {
       use std::convert::TryInto;

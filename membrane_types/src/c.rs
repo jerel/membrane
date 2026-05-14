@@ -14,7 +14,7 @@ impl std::convert::TryFrom<&Vec<Input>> for CHeaderTypes {
         c_type = c_type(
           &flatten_types(&input.ty, vec![])?
             .iter()
-            .map(|x| x.as_str())
+            .map(String::as_str)
             .collect::<Vec<&str>>(),
           &input.ty
         )?,
