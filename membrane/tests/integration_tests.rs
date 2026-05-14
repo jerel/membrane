@@ -25,11 +25,11 @@ mod test {
       .write_c_headers()
       .write_bindings();
 
-    build_lib(&path.to_path_buf(), &mut vec!["--features", "c-example"]);
-    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
+    build_lib(&path, &mut vec!["--features", "c-example"]);
+    run_dart(&path, vec!["pub", "add", "test"], false);
 
     run_dart(
-      &path.to_path_buf(),
+      &path,
       vec![
         "test",
         "test/threading_c_test.dart",
@@ -138,10 +138,10 @@ import '../locations/locations.dart' show GDPR, Location;
 ",
     );
 
-    build_lib(&path.to_path_buf(), &mut vec![]);
-    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
+    build_lib(&path, &mut vec![]);
+    run_dart(&path, vec!["pub", "add", "test"], false);
     run_dart(
-      &path.to_path_buf(),
+      &path,
       vec!["test", "test/main_test.dart"],
       true,
     );
@@ -164,10 +164,10 @@ import '../locations/locations.dart' show GDPR, Location;
       .write_c_headers()
       .write_bindings();
 
-    build_lib(&path.to_path_buf(), &mut vec![]);
-    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
+    build_lib(&path, &mut vec![]);
+    run_dart(&path, vec!["pub", "add", "test"], false);
     run_dart(
-      &path.to_path_buf(),
+      &path,
       vec!["test", "test/enum_test.dart"],
       true,
     );
@@ -178,7 +178,7 @@ import '../locations/locations.dart' show GDPR, Location;
   fn base_project_loading_cdylib() {
     let path = dart_example_path();
 
-    build_lib(&path.to_path_buf(), &mut vec![]);
+    build_lib(&path, &mut vec![]);
 
     let lib = if cfg!(target_os = "macos") {
       "libexample.dylib"
@@ -195,9 +195,9 @@ import '../locations/locations.dart' show GDPR, Location;
       .write_c_headers()
       .write_bindings();
 
-    run_dart(&path.to_path_buf(), vec!["pub", "add", "test"], false);
+    run_dart(&path, vec!["pub", "add", "test"], false);
     run_dart(
-      &path.to_path_buf(),
+      &path,
       vec!["test", "test/main_test.dart"],
       true,
     );

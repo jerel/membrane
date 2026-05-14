@@ -8,6 +8,9 @@ repository.workspace = true
 rust-version.workspace = true
 readme = "../README.md"
 
+[lints]
+workspace = true
+
 [lib]
 crate-type = ["lib"]
 doctest = false

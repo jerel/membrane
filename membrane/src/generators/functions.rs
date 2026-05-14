@@ -35,7 +35,7 @@ pub(crate) trait Builder {
 impl Builder for Ffi {
   fn new(input: &Function) -> Self {
     Self {
-      output: "".to_string(),
+      output: String::new(),
       fun: input.clone(),
     }
   }
@@ -69,7 +69,7 @@ impl Builder for Ffi {
 impl Builder for Web {
   fn new(input: &Function) -> Self {
     Self {
-      output: "".to_string(),
+      output: String::new(),
       fun: input.clone(),
     }
   }
@@ -89,7 +89,7 @@ impl Builder for Web {
 impl Builder for C {
   fn new(input: &Function) -> Self {
     Self {
-      output: "".to_string(),
+      output: String::new(),
       fun: input.clone(),
     }
   }
@@ -379,7 +379,7 @@ impl Callable for Ffi {
         } else {
           // we default to no timeout even if a global timeout is configured because
           // having all streams auto-disconnect after a pause in events is not desirable
-          "".to_string()
+          String::new()
         },
         fine_logger = config.dart_config.logger.fine_log_fn
       )
@@ -408,7 +408,7 @@ impl Callable for Ffi {
           // if #[async_dart(timeout = false)] is set then it will be represented
           //  here as a -1 value and we will disable the timeout for this instance
           if val < 0 {
-            "".to_string()
+            String::new()
           } else {
             // use the async_dart option configured timeout
             format!(".timeout(const Duration(milliseconds: {}))", val)
@@ -418,7 +418,7 @@ impl Callable for Ffi {
           format!(".timeout(const Duration(milliseconds: {}))", val)
         } else {
           // and by default we won't time out at all
-          "".to_string()
+          String::new()
         },
         fine_logger = config.dart_config.logger.fine_log_fn
       )

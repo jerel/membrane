@@ -540,7 +540,7 @@ impl<'a> Membrane {
       return self;
     }
 
-    let installer = serde_generate::dart::Installer::new(self.destination.to_path_buf());
+    let installer = serde_generate::dart::Installer::new(self.destination.clone());
     if let Err(e) = installer.install_serde_runtime() {
       self.errors.push(format!("unable to install serde runtime: {e}"));
       return self;
@@ -803,7 +803,6 @@ uint8_t membrane_free_membrane_string(char *ptr);
     if self.package_name.is_empty() {
       self.package_name = self
         .destination
-        .to_path_buf()
         .file_name()
         .expect("destination path must not be empty or end in '..'")
         .to_str()
@@ -993,7 +992,7 @@ export './membrane_loader_ffi.dart' if (dart.library.html) './membrane_loader_we
     let path = self
       .destination
       .join("lib")
-      .join(namespace.to_string() + ".dart");
+      .join(format!("{namespace}.dart"));
 
     let head = if utils::new_style_export(&namespace, &self.dart_config) {
       format!(
@@ -1242,12 +1241,12 @@ class {class_name}Api {{
             }
 
             let auto_import = self.with_child_borrows(from_namespace, r#type);
-            auto_import.iter().for_each(|x| {
+            for x in &auto_import {
               if borrowed_types.contains(x.as_str()) && x != r#type {
                 warn!("{ns}::{import} was explicitly borrowed{manual_hint} but it is already implicitly borrowed because it is a subtype of `{ns}::{type}`{auto_hint}. Remove the `{ns}::{import}` borrow.",
                 ns = from_namespace, manual_hint = utils::display_code_location(borrow_locations_for_type.get(x.as_str())), import = x, r#type = r#type, auto_hint = utils::display_code_location(borrow_locations_for_type.get(r#type)));
               }
-            });
+            }
 
             auto_import
           }).collect();

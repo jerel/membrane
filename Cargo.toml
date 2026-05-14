@@ -20,6 +20,28 @@ repository = "https://github.com/jerel/membrane"
 rust-version = "1.84"
 version = "1.0.1"
 
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+needless_for_each = "deny"   # prefer for loop over iter().for_each() for plain side effects
+manual_string_new = "deny"   # "".to_string() → String::new()
+implicit_clone = "deny"      # clone-before-iterate when a borrow would do
+redundant_clone = "deny"     # clone that is never used as the original
+
+# Allow noisy pedantic lints that don't apply well to a codegen crate
+match_same_arms = "allow"             # codegen arms are intentionally repetitive
+missing_errors_doc = "allow"          # internal builder API, not a public errors-doc crate
+missing_panics_doc = "allow"          # same
+too_many_lines = "allow"              # codegen methods are inherently long
+needless_raw_string_hashes = "allow"  # raw strings in Dart codegen have necessary hashes
+must_use_candidate = "allow"          # builder pattern returns &mut Self, not worth annotating every fn
+redundant_pub_crate = "allow"         # inventory-collected items need pub(crate) visibility hints
+option_if_let_else = "allow"          # often clearer than the map_or_else alternative
+doc_markdown = "allow"                # Dart/FFI identifiers in docs trip this frequently
+missing_const_for_fn = "allow"        # premature optimisation for a build-time codegen crate
+semicolon_if_nothing_returned = "allow"  # style preference already handled by rustfmt
+
 [workspace.dependencies]
 example = { path = "./example", features = ["c-example"] }
 membrane_types = { version = "0.5", path = "./membrane_types" }
