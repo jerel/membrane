@@ -105,7 +105,7 @@ use std::{
 };
 use tracing::{debug, info, warn};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DartConfig {
   versions: HashMap<&'static str, &'static str>,
   logger: DartLoggerConfig,
@@ -160,7 +160,7 @@ impl DartConfig {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DartLoggerConfig {
   pub dependency_name: &'static str,
   pub import_path: &'static str,
@@ -210,20 +210,11 @@ pub struct Function {
 }
 
 #[doc(hidden)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DeferredTrace {
   pub function: Function,
   pub namespace: &'static str,
   pub trace: fn(tracer: &mut serde_reflection::Tracer, samples: &mut serde_reflection::Samples),
-}
-
-impl std::fmt::Debug for DeferredTrace {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("DeferredTrace")
-      .field("function", &self.function)
-      .field("namespace", &self.namespace)
-      .finish()
-  }
 }
 
 #[doc(hidden)]
@@ -235,20 +226,11 @@ pub struct Enum {
 }
 
 #[doc(hidden)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DeferredEnumTrace {
   pub enum_data: Enum,
   pub namespace: &'static str,
   pub trace: fn(tracer: &mut serde_reflection::Tracer),
-}
-
-impl std::fmt::Debug for DeferredEnumTrace {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("DeferredEnumTrace")
-      .field("enum_data", &self.enum_data)
-      .field("namespace", &self.namespace)
-      .finish()
-  }
 }
 
 inventory::collect!(DeferredTrace);
