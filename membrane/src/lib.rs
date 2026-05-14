@@ -553,11 +553,20 @@ impl<'a> Membrane {
     // remove all previously generated type and header files
     let _ = std::fs::remove_dir_all(self.destination.join("lib"));
     let _ = std::fs::remove_file(self.destination.join("pubspec.yaml"));
-    std::fs::create_dir_all(self.destination.join("lib").join("src")).unwrap();
+    if let Err(e) = std::fs::create_dir_all(self.destination.join("lib").join("src")) {
+      self.errors.push(format!("unable to create output directory: {e}"));
+      return self;
+    }
 
     let installer = serde_generate::dart::Installer::new(self.destination.to_path_buf());
-    installer.install_serde_runtime().unwrap();
-    installer.install_bincode_runtime().unwrap();
+    if let Err(e) = installer.install_serde_runtime() {
+      self.errors.push(format!("unable to install serde runtime: {e}"));
+      return self;
+    }
+    if let Err(e) = installer.install_bincode_runtime() {
+      self.errors.push(format!("unable to install bincode runtime: {e}"));
+      return self;
+    }
 
     for namespace in self.namespaces.iter() {
       debug!("Generating lib/src/ code for namespace {}", namespace);
@@ -601,7 +610,10 @@ impl<'a> Membrane {
         }
       };
 
-      installer.install_module(&config, registry).unwrap();
+      if let Err(e) = installer.install_module(&config, registry) {
+        self.errors.push(format!("unable to install module {namespace}: {e}"));
+        return self;
+      }
     }
 
     self.generated = true;
@@ -614,11 +626,11 @@ impl<'a> Membrane {
       .arg("get")
       .arg("--precompile")
       .output()
-      .unwrap();
+      .expect("failed to spawn dart process");
 
     if pub_get.status.code() != Some(0) {
-      std::io::stderr().write_all(&pub_get.stderr).unwrap();
-      std::io::stdout().write_all(&pub_get.stdout).unwrap();
+      let _ = std::io::stderr().write_all(&pub_get.stderr);
+      let _ = std::io::stdout().write_all(&pub_get.stdout);
       self
         .errors
         .push("'dart pub get' returned an error".to_string());
@@ -774,11 +786,11 @@ uint8_t membrane_free_membrane_string(char *ptr);
       .arg("--config")
       .arg("ffigen.yaml")
       .output()
-      .unwrap();
+      .expect("failed to spawn dart process");
 
     if ffigen.status.code() != Some(0) {
-      std::io::stderr().write_all(&ffigen.stderr).unwrap();
-      std::io::stdout().write_all(&ffigen.stdout).unwrap();
+      let _ = std::io::stderr().write_all(&ffigen.stderr);
+      let _ = std::io::stdout().write_all(&ffigen.stdout);
       self
         .errors
         .push("dart ffigen returned an error".to_string());
@@ -811,9 +823,9 @@ uint8_t membrane_free_membrane_string(char *ptr);
         .destination
         .to_path_buf()
         .file_name()
-        .unwrap()
+        .expect("destination path must not be empty or end in '..'")
         .to_str()
-        .unwrap()
+        .expect("destination path must be valid UTF-8")
         .to_string()
     };
     let path = self.destination.join("pubspec.yaml");
@@ -961,7 +973,7 @@ headers:
   fn create_exceptions(&mut self) -> &mut Self {
     let helpers = exceptions::create_exceptions();
     let path = self.destination.join("lib/src/membrane_exceptions.dart");
-    std::fs::write(path, helpers).unwrap();
+    std::fs::write(path, helpers).expect("membrane_exceptions.dart could not be written");
 
     let barrel_exceptions = "// AUTO GENERATED FILE, DO NOT EDIT
 //
@@ -969,7 +981,7 @@ headers:
 export './src/membrane_exceptions.dart';";
 
     let path = self.destination.join("lib/membrane_exceptions.dart");
-    std::fs::write(path, barrel_exceptions).unwrap();
+    std::fs::write(path, barrel_exceptions).expect("membrane_exceptions.dart barrel could not be written");
 
     self
   }
@@ -977,11 +989,11 @@ export './src/membrane_exceptions.dart';";
   fn create_loader(&mut self) -> &mut Self {
     let ffi_loader = loaders::create_ffi_loader(&self.library, &self.dart_config);
     let path = self.destination.join("lib/src/membrane_loader_ffi.dart");
-    std::fs::write(path, ffi_loader).unwrap();
+    std::fs::write(path, ffi_loader).expect("membrane_loader_ffi.dart could not be written");
 
     let web_loader = loaders::create_web_loader(&self.library);
     let path = self.destination.join("lib/src/membrane_loader_web.dart");
-    std::fs::write(path, web_loader).unwrap();
+    std::fs::write(path, web_loader).expect("membrane_loader_web.dart could not be written");
 
     let barrel_loader = "// AUTO GENERATED FILE, DO NOT EDIT
 //
@@ -989,7 +1001,7 @@ export './src/membrane_exceptions.dart';";
 export './membrane_loader_ffi.dart' if (dart.library.html) './membrane_loader_web.dart';";
 
     let path = self.destination.join("lib/src/membrane_loader.dart");
-    std::fs::write(path, barrel_loader).unwrap();
+    std::fs::write(path, barrel_loader).expect("membrane_loader.dart could not be written");
 
     self
   }
@@ -1024,7 +1036,7 @@ export './src/{ns}_ffi.dart' if (dart.library.html) './src/{ns}_web.dart';
     };
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-    buffer.write_all(head.as_bytes()).unwrap();
+    buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
 
     self
   }
@@ -1042,7 +1054,7 @@ export './src/{ns}_ffi.dart' if (dart.library.html) './src/{ns}_web.dart';
         ns = &namespace
       );
       let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-      buffer.write_all(head.as_bytes()).unwrap();
+      buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
 
       return self;
     }
@@ -1111,7 +1123,7 @@ class {class_name}Api {{
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-    buffer.write_all(head.as_bytes()).unwrap();
+    buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
 
     for x in fns {
       generators::functions::Ffi::new(x)
@@ -1119,7 +1131,7 @@ class {class_name}Api {{
         .write(&buffer);
     }
 
-    buffer.write_all(b"}\n").unwrap();
+    buffer.write_all(b"}\n").expect("failed to write generated Dart file");
 
     self
   }
@@ -1142,7 +1154,7 @@ class {class_name}Api {{
         )
       };
       let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-      buffer.write_all(head.as_bytes()).unwrap();
+      buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
 
       return self;
     }
@@ -1191,7 +1203,7 @@ class {class_name}Api {{
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-    buffer.write_all(head.as_bytes()).unwrap();
+    buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
 
     for x in fns {
       generators::functions::Web::new(x)
@@ -1199,7 +1211,7 @@ class {class_name}Api {{
         .write(&buffer);
     }
 
-    buffer.write_all(b"}\n").unwrap();
+    buffer.write_all(b"}\n").expect("failed to write generated Dart file");
 
     self
   }
@@ -1300,7 +1312,7 @@ class {class_name}Api {{
               } else {
                 Some(vec![line.to_string()])
               }
-            }).unwrap();
+            }).expect("failed to inject imports into generated Dart file");
 
           if utils::new_style_export(namespace, &self.dart_config) {
             imports::inject_imports(src_path.join(format!("{ns}_ffi.dart", ns = namespace)),
@@ -1317,7 +1329,7 @@ class {class_name}Api {{
                 } else {
                   Some(vec![line.to_string()])
                 }
-              }).unwrap();
+              }).expect("failed to inject imports into generated Dart FFI file");
 
             imports::inject_imports(src_path.join(format!("{ns}_web.dart", ns = namespace)),
               |line| {
@@ -1333,7 +1345,7 @@ class {class_name}Api {{
                 } else {
                   Some(vec![line.to_string()])
                 }
-              }).unwrap();
+              }).expect("failed to inject imports into generated Dart web file");
           }
 
           for borrowed_type in &borrowed_types {
