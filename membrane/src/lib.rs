@@ -924,7 +924,7 @@ headers:
 "#;
 
     let mut buffer =
-      std::fs::File::create(path.clone()).expect("header could not be written at namespace path");
+      std::fs::File::create(&path).expect("header could not be written at namespace path");
 
     if buffer.write_all(head.as_bytes()).is_err() {
       self.errors.push(format!(
