@@ -536,17 +536,23 @@ impl<'a> Membrane {
     let _ = std::fs::remove_dir_all(self.destination.join("lib"));
     let _ = std::fs::remove_file(self.destination.join("pubspec.yaml"));
     if let Err(e) = std::fs::create_dir_all(self.destination.join("lib").join("src")) {
-      self.errors.push(format!("unable to create output directory: {e}"));
+      self
+        .errors
+        .push(format!("unable to create output directory: {e}"));
       return self;
     }
 
     let installer = serde_generate::dart::Installer::new(self.destination.clone());
     if let Err(e) = installer.install_serde_runtime() {
-      self.errors.push(format!("unable to install serde runtime: {e}"));
+      self
+        .errors
+        .push(format!("unable to install serde runtime: {e}"));
       return self;
     }
     if let Err(e) = installer.install_bincode_runtime() {
-      self.errors.push(format!("unable to install bincode runtime: {e}"));
+      self
+        .errors
+        .push(format!("unable to install bincode runtime: {e}"));
       return self;
     }
 
@@ -593,7 +599,9 @@ impl<'a> Membrane {
       };
 
       if let Err(e) = installer.install_module(&config, registry) {
-        self.errors.push(format!("unable to install module {namespace}: {e}"));
+        self
+          .errors
+          .push(format!("unable to install module {namespace}: {e}"));
         return self;
       }
     }
@@ -962,7 +970,8 @@ headers:
 export './src/membrane_exceptions.dart';";
 
     let path = self.destination.join("lib/membrane_exceptions.dart");
-    std::fs::write(path, barrel_exceptions).expect("membrane_exceptions.dart barrel could not be written");
+    std::fs::write(path, barrel_exceptions)
+      .expect("membrane_exceptions.dart barrel could not be written");
 
     self
   }
@@ -1017,7 +1026,9 @@ export './src/{ns}_ffi.dart' if (dart.library.html) './src/{ns}_web.dart';
     };
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-    buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
+    buffer
+      .write_all(head.as_bytes())
+      .expect("failed to write generated Dart file");
 
     self
   }
@@ -1035,7 +1046,9 @@ export './src/{ns}_ffi.dart' if (dart.library.html) './src/{ns}_web.dart';
         ns = &namespace
       );
       let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-      buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
+      buffer
+        .write_all(head.as_bytes())
+        .expect("failed to write generated Dart file");
 
       return self;
     }
@@ -1104,7 +1117,9 @@ class {class_name}Api {{
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-    buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
+    buffer
+      .write_all(head.as_bytes())
+      .expect("failed to write generated Dart file");
 
     for x in fns {
       generators::functions::Ffi::new(x)
@@ -1112,7 +1127,9 @@ class {class_name}Api {{
         .write(&buffer);
     }
 
-    buffer.write_all(b"}\n").expect("failed to write generated Dart file");
+    buffer
+      .write_all(b"}\n")
+      .expect("failed to write generated Dart file");
 
     self
   }
@@ -1135,7 +1152,9 @@ class {class_name}Api {{
         )
       };
       let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-      buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
+      buffer
+        .write_all(head.as_bytes())
+        .expect("failed to write generated Dart file");
 
       return self;
     }
@@ -1184,7 +1203,9 @@ class {class_name}Api {{
     );
 
     let mut buffer = std::fs::File::create(path).expect("class could not be written at path");
-    buffer.write_all(head.as_bytes()).expect("failed to write generated Dart file");
+    buffer
+      .write_all(head.as_bytes())
+      .expect("failed to write generated Dart file");
 
     for x in fns {
       generators::functions::Web::new(x)
@@ -1192,7 +1213,9 @@ class {class_name}Api {{
         .write(&buffer);
     }
 
-    buffer.write_all(b"}\n").expect("failed to write generated Dart file");
+    buffer
+      .write_all(b"}\n")
+      .expect("failed to write generated Dart file");
 
     self
   }
@@ -1217,9 +1240,14 @@ class {class_name}Api {{
       {
         if let [from_namespace, r#type] = borrow_list[..] {
           let imports = borrows.entry(namespace).or_default();
-          let (types, source_code_locations) = imports.entry(from_namespace).or_insert((BTreeSet::new(), HashMap::new()));
+          let (types, source_code_locations) = imports
+            .entry(from_namespace)
+            .or_insert((BTreeSet::new(), HashMap::new()));
           types.insert(r#type);
-          source_code_locations.entry(r#type).or_default().push(fun.location);
+          source_code_locations
+            .entry(r#type)
+            .or_default()
+            .push(fun.location);
         } else {
           tracing::error!("Found an invalid `borrow`: `{:?}`{location_hint}. Borrows must be of form `borrow = \"namespace::Type\"`", fun.borrow, location_hint = utils::display_code_location(Some(&vec![fun.location])));
           exit(1);
@@ -1235,7 +1263,7 @@ class {class_name}Api {{
 
     for (namespace, imports) in &borrows {
       for (from_namespace, (borrowed_types, borrow_locations_for_type)) in imports.iter().rev() {
-          let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
+        let mut borrowed_types: Vec<String> = borrowed_types.iter().flat_map(|r#type| {
             if namespace == from_namespace {
               self.errors.push(format!("`{ns}::{import}`{location_hint} was borrowed by `{ns}` which is a self reference", location_hint = utils::display_code_location(borrow_locations_for_type.get(r#type)), ns = namespace, import = r#type));
             }
@@ -1251,41 +1279,73 @@ class {class_name}Api {{
             auto_import
           }).collect();
 
-          borrowed_types.sort();
-          borrowed_types.dedup();
+        borrowed_types.sort();
+        borrowed_types.dedup();
 
-          // this is the path that is owned (IE the namespace that holds the Rust source type)
-          owned_types.extend(borrowed_types.iter().map(|ty| format!("{}::{}", namespace, ty)));
-          // and this is the borrowed path
-          non_owned_types.extend(borrowed_types.iter().map(|ty| format!("{}::{}", from_namespace, ty)));
+        // this is the path that is owned (IE the namespace that holds the Rust source type)
+        owned_types.extend(
+          borrowed_types
+            .iter()
+            .map(|ty| format!("{}::{}", namespace, ty)),
+        );
+        // and this is the borrowed path
+        non_owned_types.extend(
+          borrowed_types
+            .iter()
+            .map(|ty| format!("{}::{}", from_namespace, ty)),
+        );
 
-          let src_path = self.destination.join("lib/src");
-          let namespace_path = src_path.join(namespace);
+        let src_path = self.destination.join("lib/src");
+        let namespace_path = src_path.join(namespace);
 
-          imports::inject_imports(namespace_path.join(format!("{ns}.dart", ns = namespace)),
+        imports::inject_imports(
+          namespace_path.join(format!("{ns}.dart", ns = namespace)),
+          |line| {
+            // because CamelCasing the snake_cased `part 'central_usa.dart'` won't match the
+            // acronym borrow `CentralUSA` we instead convert the borrows to snake_case to do the match
+            if borrowed_types
+              .iter()
+              .map(|t| t.to_snake_case())
+              .collect::<Vec<String>>()
+              .contains(&line.replace("part '", "").replace(".dart';", ""))
+            {
+              None
+            } else if line.starts_with("import '../bincode") {
+              Some(vec![
+                line.to_string(),
+                format!(
+                  "import '../{ns}/{ns}.dart' show {types};",
+                  ns = from_namespace,
+                  types = borrowed_types.join(",")
+                ),
+              ])
+            } else if line.starts_with("export '../serde")
+              && !utils::new_style_export(namespace, &self.dart_config)
+            {
+              Some(vec![
+                line.to_string(),
+                format!(
+                  "export '../{ns}/{ns}.dart' show {types};",
+                  ns = from_namespace,
+                  types = borrowed_types.join(",")
+                ),
+              ])
+            } else {
+              Some(vec![line.to_string()])
+            }
+          },
+        )
+        .expect("failed to inject imports into generated Dart file");
+
+        if utils::new_style_export(namespace, &self.dart_config) {
+          imports::inject_imports(
+            src_path.join(format!("{ns}_ffi.dart", ns = namespace)),
             |line| {
-              // because CamelCasing the snake_cased `part 'central_usa.dart'` won't match the
-              // acronym borrow `CentralUSA` we instead convert the borrows to snake_case to do the match
-              if borrowed_types.iter().map(|t| t.to_snake_case()).collect::<Vec<String>>().contains(
-                &line
-                  .replace("part '", "")
-                  .replace(".dart';", "")
-              ) {
-                None
-              } else if line.starts_with("import '../bincode") {
+              if line.starts_with(&format!("import './{ns}/{ns}.dart'", ns = namespace)) {
                 Some(vec![
                   line.to_string(),
                   format!(
-                    "import '../{ns}/{ns}.dart' show {types};",
-                    ns = from_namespace,
-                    types = borrowed_types.join(",")
-                  ),
-                ])
-              } else if line.starts_with("export '../serde") && !utils::new_style_export(namespace, &self.dart_config) {
-                Some(vec![
-                  line.to_string(),
-                  format!(
-                    "export '../{ns}/{ns}.dart' show {types};",
+                    "import './{ns}/{ns}.dart' show {types};",
                     ns = from_namespace,
                     types = borrowed_types.join(",")
                   ),
@@ -1293,46 +1353,34 @@ class {class_name}Api {{
               } else {
                 Some(vec![line.to_string()])
               }
-            }).expect("failed to inject imports into generated Dart file");
+            },
+          )
+          .expect("failed to inject imports into generated Dart FFI file");
 
-          if utils::new_style_export(namespace, &self.dart_config) {
-            imports::inject_imports(src_path.join(format!("{ns}_ffi.dart", ns = namespace)),
-              |line| {
-                if line.starts_with(&format!("import './{ns}/{ns}.dart'", ns = namespace)) {
-                  Some(vec![
-                    line.to_string(),
-                    format!(
-                      "import './{ns}/{ns}.dart' show {types};",
-                      ns = from_namespace,
-                      types = borrowed_types.join(",")
-                    ),
-                  ])
-                } else {
-                  Some(vec![line.to_string()])
-                }
-              }).expect("failed to inject imports into generated Dart FFI file");
+          imports::inject_imports(
+            src_path.join(format!("{ns}_web.dart", ns = namespace)),
+            |line| {
+              if line.starts_with(&format!("import './{ns}/{ns}.dart'", ns = namespace)) {
+                Some(vec![
+                  line.to_string(),
+                  format!(
+                    "import './{ns}/{ns}.dart' show {types};",
+                    ns = from_namespace,
+                    types = borrowed_types.join(",")
+                  ),
+                ])
+              } else {
+                Some(vec![line.to_string()])
+              }
+            },
+          )
+          .expect("failed to inject imports into generated Dart web file");
+        }
 
-            imports::inject_imports(src_path.join(format!("{ns}_web.dart", ns = namespace)),
-              |line| {
-                if line.starts_with(&format!("import './{ns}/{ns}.dart'", ns = namespace)) {
-                  Some(vec![
-                    line.to_string(),
-                    format!(
-                      "import './{ns}/{ns}.dart' show {types};",
-                      ns = from_namespace,
-                      types = borrowed_types.join(",")
-                    ),
-                  ])
-                } else {
-                  Some(vec![line.to_string()])
-                }
-              }).expect("failed to inject imports into generated Dart web file");
-          }
-
-          for borrowed_type in &borrowed_types {
-            let filename = format!("{}.dart", borrowed_type.to_snake_case());
-            let _ = remove_file(namespace_path.join(filename));
-          }
+        for borrowed_type in &borrowed_types {
+          let filename = format!("{}.dart", borrowed_type.to_snake_case());
+          let _ = remove_file(namespace_path.join(filename));
+        }
       }
     }
     self.borrows = borrows;

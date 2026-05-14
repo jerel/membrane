@@ -140,11 +140,7 @@ import '../locations/locations.dart' show GDPR, Location;
 
     build_lib(&path, &mut vec![]);
     run_dart(&path, vec!["pub", "add", "test"], false);
-    run_dart(
-      &path,
-      vec!["test", "test/main_test.dart"],
-      true,
-    );
+    run_dart(&path, vec!["test", "test/main_test.dart"], true);
   }
 
   #[test]
@@ -166,11 +162,7 @@ import '../locations/locations.dart' show GDPR, Location;
 
     build_lib(&path, &mut vec![]);
     run_dart(&path, vec!["pub", "add", "test"], false);
-    run_dart(
-      &path,
-      vec!["test", "test/enum_test.dart"],
-      true,
-    );
+    run_dart(&path, vec!["test", "test/enum_test.dart"], true);
   }
 
   #[test]
@@ -196,11 +188,7 @@ import '../locations/locations.dart' show GDPR, Location;
       .write_bindings();
 
     run_dart(&path, vec!["pub", "add", "test"], false);
-    run_dart(
-      &path,
-      vec!["test", "test/main_test.dart"],
-      true,
-    );
+    run_dart(&path, vec!["test", "test/main_test.dart"], true);
   }
 
   fn dart_example_path() -> PathBuf {
