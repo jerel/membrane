@@ -124,7 +124,8 @@ impl Writable for Web {}
 impl Writable for C {}
 
 impl Function {
-  fn begin(&mut self) -> String {
+  #[allow(clippy::unused_self)]
+  fn begin(&self) -> String {
     "\n".to_string()
   }
 
@@ -159,11 +160,12 @@ impl Function {
     )
   }
 
-  fn end(&mut self) -> String {
+  #[allow(clippy::unused_self)]
+  fn end(&self) -> String {
     "\n  }\n".to_string()
   }
 
-  #[allow(clippy::only_used_in_recursion)]
+  #[allow(clippy::only_used_in_recursion, clippy::self_only_used_in_recursion)]
   fn deserializer(
     &self,
     ty: &[&str],

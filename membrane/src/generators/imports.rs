@@ -5,17 +5,14 @@ use tracing::error;
 
 impl crate::Membrane {
   pub fn with_child_borrows(&self, from_namespace: &str, r#type: &str) -> Vec<String> {
-    let namespace_registry = match self.namespaced_registry.get(from_namespace) {
-      Some(Ok(registry)) => registry,
-      _ => {
-        error!(
-          "`{ns}::{type}` was borrowed but the namespace `{ns}` doesn't exist.",
-          r#type = r#type,
-          ns = from_namespace
-        );
+    let Some(Ok(namespace_registry)) = self.namespaced_registry.get(from_namespace) else {
+      error!(
+        "`{ns}::{type}` was borrowed but the namespace `{ns}` doesn't exist.",
+        r#type = r#type,
+        ns = from_namespace
+      );
 
-        exit(1);
-      }
+      exit(1);
     };
 
     let mut children = match namespace_registry.get(r#type) {

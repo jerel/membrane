@@ -86,9 +86,9 @@ mod emitter_impl {
       });
 
       Box::into_raw(Box::new(CHandleImpl {
-        push_ctx: ptr as *mut _,
+        push_ctx: ptr.cast(),
         push: run_push_closure::<F, D>,
-        is_done_ctx: is_done_ptr as *mut _,
+        is_done_ctx: is_done_ptr.cast(),
         is_done: run_is_done,
         drop_push_ctx: drop_push_ctx::<F>,
         drop_is_done_ctx: drop_is_done,
@@ -175,13 +175,13 @@ mod emitter_impl {
     F: FnMut(&'r D),
     D: 'r,
   {
-    let ptr = closure as *mut F;
+    let ptr = closure.cast::<F>();
     if ptr.is_null() {
       return eprintln!("run_push_closure was called with a NULL pointer");
     }
     let callback = unsafe { &mut *ptr };
 
-    let data_ptr = data as *mut D;
+    let data_ptr = data.cast::<D>();
     if data_ptr.is_null() {
       return eprintln!("run_push_closure was called with a NULL context pointer");
     }
@@ -197,7 +197,7 @@ mod emitter_impl {
         return eprintln!("membrane drop_push_ctx was called with a NULL pointer");
       }
 
-      drop(Box::from_raw(data as *mut T));
+      drop(Box::from_raw(data.cast::<T>()));
     }
   }
 
@@ -207,7 +207,7 @@ mod emitter_impl {
         return eprintln!("membrane drop_is_done_ctx was called with a NULL pointer");
       }
 
-      drop(Box::from_raw(data as *mut T));
+      drop(Box::from_raw(data.cast::<T>()));
     }
   }
 
@@ -215,7 +215,7 @@ mod emitter_impl {
   where
     F: (FnMut() -> bool),
   {
-    let ptr = closure as *mut F;
+    let ptr = closure.cast::<F>();
     if ptr.is_null() {
       eprintln!("run_is_done_closure was called with a NULL pointer");
       return false;

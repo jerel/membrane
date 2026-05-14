@@ -101,7 +101,7 @@ fn validate_type(type_: &syn::GenericArgument) -> Result<syn::Type> {
   ))
 }
 
-pub(crate) fn parse_args(arg_buffer: ParseBuffer) -> Result<Vec<Input>> {
+pub(crate) fn parse_args(arg_buffer: &ParseBuffer) -> Result<Vec<Input>> {
   let args: Punctuated<syn::FnArg, Token![,]> =
     arg_buffer.parse_terminated(syn::FnArg::parse, Token![,])?;
   args

@@ -65,7 +65,7 @@ impl Parse for ReprDart {
 
     Ok(ReprDart {
       fn_name,
-      inputs: parsers::parse_args(arg_buffer)?,
+      inputs: parsers::parse_args(&arg_buffer)?,
       output_style,
       output: ret_type,
       error: err_type,
@@ -301,7 +301,7 @@ fn to_token_stream(
   };
 
   let extern_c_fn_name = Ident::new(
-    format!("membrane_{}_{}", namespace, fn_name).as_str(),
+    format!("membrane_{namespace}_{fn_name}").as_str(),
     Span::call_site(),
   );
 
@@ -373,6 +373,7 @@ fn to_token_stream(
   let borrow = quote! { &[#(#borrow),*] };
   let debug_location = quote! { concat!(file!(), ":", line!()) };
 
+  #[allow(clippy::used_underscore_binding)]
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
           ::membrane::DeferredTrace {
@@ -473,6 +474,7 @@ pub fn dart_enum(attrs: TokenStream, input: TokenStream) -> TokenStream {
     quote! { None }
   };
 
+  #[allow(clippy::used_underscore_binding)]
   let _deferred_trace = quote! {
       ::membrane::inventory::submit! {
           ::membrane::DeferredEnumTrace {
@@ -544,7 +546,7 @@ pub fn emitter(_item: TokenStream) -> TokenStream {
 ///
 /// // crate_two/Cargo.toml
 /// [lib]
-/// crate-type = ["cdylib"]
+/// `crate-type` = \["cdylib"\]
 ///
 /// // crate_two/src/lib.rs
 /// use crate_one::*;
@@ -552,7 +554,9 @@ pub fn emitter(_item: TokenStream) -> TokenStream {
 ///
 #[proc_macro]
 pub fn export_metadata(token_stream: TokenStream) -> TokenStream {
-  if !utils::is_cdylib() {
+  if utils::is_cdylib() {
+    utils::maybe_inject_metadata(token_stream)
+  } else {
     syn::Error::new(
       Span::call_site(),
       "membrane::export_metadata!() was used in a crate which is not `crate-type` of `cdylib`.
@@ -562,7 +566,5 @@ pub fn export_metadata(token_stream: TokenStream) -> TokenStream {
     )
     .to_compile_error()
     .into()
-  } else {
-    utils::maybe_inject_metadata(token_stream)
   }
 }

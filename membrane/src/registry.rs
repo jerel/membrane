@@ -220,7 +220,7 @@ pub(crate) fn create_borrows(
     for borrow_list in fun
       .borrow
       .iter()
-      .map(|borrow| borrow.split("::").map(|x| x.trim()).collect::<Vec<&str>>())
+      .map(|borrow| borrow.split("::").map(str::trim).collect::<Vec<&str>>())
     {
       if let [from_namespace, r#type] = borrow_list[..] {
         let imports = borrows.entry(namespace).or_default();
@@ -260,7 +260,7 @@ pub(crate) fn into_membrane(data: RegistryData) -> Membrane {
       Some(config) => config
         .to_string_lossy()
         .split(&[',', ' '][..])
-        .map(|x| x.to_string())
+        .map(ToString::to_string)
         .collect(),
       None => vec![],
     },

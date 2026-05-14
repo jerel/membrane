@@ -36,18 +36,18 @@ pub(crate) fn display_code_location(location: Option<&Vec<SourceCodeLocation>>) 
               path.to_string()
             } else if index == 0 && last == 1 {
               // on the first of two
-              format!("{} and", path)
+              format!("{path} and")
             } else if index == 1 && last == 1 {
               // on the second of two
               path.to_string()
             } else if index == (last - 1) {
               // on the next to last of many
-              format!("{}, and", path)
+              format!("{path}, and")
             } else if index == last {
               // on the last of many
               path.to_string()
             } else {
-              format!("{},", path)
+              format!("{path},")
             }
           })
           .collect::<Vec<String>>()

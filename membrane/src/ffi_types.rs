@@ -40,6 +40,7 @@ pub unsafe extern "C" fn membrane_cancel_membrane_task(task_handle: *mut TaskHan
 #[no_mangle]
 pub unsafe extern "C" fn membrane_free_membrane_vec(len: i64, ptr: *const u8) -> i32 {
   // turn the pointer back into a vec and Rust will drop it
+  #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
   let _ = ::std::slice::from_raw_parts::<u8>(ptr, len as usize);
 
   1

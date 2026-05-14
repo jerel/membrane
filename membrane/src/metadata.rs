@@ -27,10 +27,7 @@ pub(crate) fn extract_metadata_from_cdylib(
 ) -> Result<Metadata, String> {
   match extract_metadata(lib_path, input_libs) {Ok(symbols) => Ok(symbols),
     Err(libloading::Error::DlOpen { desc }) => {
-      Err(format!(
-        "No dynamic library file found for Membrane: {:?}",
-        desc
-      ))
+      Err(format!("No dynamic library file found for Membrane: {desc:?}"))
     }
     Err(libloading::Error::DlSym { .. }) => {
       Err("Invalid dynamic library file found for Membrane.
@@ -43,7 +40,7 @@ pub(crate) fn extract_metadata_from_cdylib(
       )
     }
     Err(err) => {
-      Err(format!("Error while loading dynamic library file for Membrane: {:?}", err))
+      Err(format!("Error while loading dynamic library file for Membrane: {err:?}"))
     }
   }
 }

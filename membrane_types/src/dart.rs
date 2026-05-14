@@ -139,7 +139,7 @@ fn dart_param_type(types: &[&str], syn_type: &syn::Type) -> syn::Result<String> 
       &ty
     }
     [serialized] if serialized != "Option" => {
-      ty = format!("required {} ", serialized);
+      ty = format!("required {serialized} ");
       &ty
     }
     ["Option", "String"] => "String?",
@@ -309,10 +309,7 @@ fn cast_dart_type_to_c(types: &[&str], variable: &str, ty: &Type) -> syn::Result
 fn unsupported_type_error(ty: &syn::Type, new_ty: &str) -> Result<String, syn::Error> {
   Err(syn::Error::new_spanned(
     ty,
-    format!(
-      "not a supported argument type for Dart interop, please use {new_ty} instead.",
-      new_ty = new_ty
-    ),
+    format!("not a supported argument type for Dart interop, please use {new_ty} instead."),
   ))
 }
 

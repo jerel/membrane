@@ -55,8 +55,7 @@ pub(crate) fn extract_function_options(
         options
       } else {
         return Err(format!(
-          "`{value}` is not a valid option for `borrow`, must be of the form `borrow = \"namespace::Type\"`",
-          value = value
+          "`{value}` is not a valid option for `borrow`, must be of the form `borrow = \"namespace::Type\"`"
         ));
       }
     }
@@ -184,9 +183,5 @@ pub(crate) fn extract_enum_options(
   extract_enum_options(input, options)
 }
 fn invalid_option(macr: &str, opt: &str) -> Result<FunctionOptions, String> {
-  Err(format!(
-    "`{opt}` is not a valid option for `{m}`",
-    m = macr,
-    opt = opt
-  ))
+  Err(format!("`{opt}` is not a valid option for `{macr}`"))
 }
