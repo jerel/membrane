@@ -440,7 +440,7 @@ impl<'a> Membrane {
     Self {
       errors,
       package_name: match std::env::var_os("MEMBRANE_PACKAGE_NAME") {
-        Some(name) => name.into_string().unwrap(),
+        Some(name) => name.to_string_lossy().into_owned(),
         None => String::new(),
       },
       destination: match std::env::var_os("MEMBRANE_DESTINATION") {
@@ -448,13 +448,12 @@ impl<'a> Membrane {
         None => PathBuf::from("membrane_output"),
       },
       library: match std::env::var_os("MEMBRANE_LIBRARY") {
-        Some(library) => library.into_string().unwrap(),
+        Some(library) => library.to_string_lossy().into_owned(),
         None => "libmembrane".to_string(),
       },
       llvm_paths: match std::env::var_os("MEMBRANE_LLVM_PATHS") {
         Some(config) => config
-          .into_string()
-          .unwrap()
+          .to_string_lossy()
           .split(&[',', ' '][..])
           .map(|x| x.to_string())
           .collect(),
